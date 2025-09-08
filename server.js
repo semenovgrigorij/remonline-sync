@@ -66,13 +66,6 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
   console.log("✅ Google Cloud credentials настроены для Render");
 }
 
-const express = require("express");
-const fetch = require("node-fetch");
-const { BigQuery } = require("@google-cloud/bigquery");
-const cron = require("node-cron");
-const path = require("path");
-require("dotenv").config();
-
 class RemonlineMatrixSync {
   constructor() {
     this.app = express();
