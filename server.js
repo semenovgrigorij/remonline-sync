@@ -8,6 +8,9 @@ const { BigQuery } = require("@google-cloud/bigquery");
 const cron = require("node-cron");
 require("dotenv").config();
 
+if (process.env.NODE_ENV === "production") {
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+}
 /*------------------------------*/
 console.log("🔍 Диагностика Google Cloud credentials...");
 
