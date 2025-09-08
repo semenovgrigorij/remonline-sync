@@ -1,4 +1,13 @@
 // server.js - Синхронизация товаров Remonline с BigQuery (матричный формат)
+
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
+const fetch = require("node-fetch");
+const { BigQuery } = require("@google-cloud/bigquery");
+const cron = require("node-cron");
+require("dotenv").config();
+
 /*------------------------------*/
 console.log("🔍 Диагностика Google Cloud credentials...");
 
@@ -8,10 +17,6 @@ console.log(
   process.env.GOOGLE_APPLICATION_CREDENTIALS
 );
 console.log("NODE_ENV:", process.env.NODE_ENV);
-
-// Проверяем файл credentials
-const fs = require("fs");
-const path = require("path");
 
 try {
   const credentialsPath =
@@ -46,12 +51,10 @@ try {
   console.error("❌ Ошибка при проверке credentials:", error.message);
   console.error("Стек ошибки:", error.stack);
 }
+
 /*---------------------------*/
 // Настройка для Render - создание credentials файла из base64
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
-  const fs = require("fs");
-  const path = require("path");
-
   const credentialsPath = path.join(__dirname, "service-account-key.json");
   const credentialsContent = Buffer.from(
     process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64,
