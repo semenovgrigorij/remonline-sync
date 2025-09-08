@@ -311,7 +311,7 @@ class RemonlineMatrixSync {
           warehouseTitle,
           data: rows,
           totalItems: rows.length,
-          // totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
+          totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
         });
       } catch (error) {
         console.error("Ошибка получения товаров склада:", error);
@@ -358,7 +358,7 @@ class RemonlineMatrixSync {
           productTitle,
           data: rows,
           totalWarehouses: rows.length,
-          // totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
+          totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
         });
       } catch (error) {
         console.error("Ошибка получения складов товара:", error);

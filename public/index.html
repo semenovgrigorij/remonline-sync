@@ -84,6 +84,13 @@
             background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
         }
 
+        .btn.back {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-width: auto;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
         .status-panel {
             padding: 30px;
             background: white;
@@ -139,10 +146,17 @@
             overflow: auto;
         }
 
-        .matrix-container h3 {
+        .matrix-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             margin-bottom: 20px;
+        }
+
+        .matrix-container h3 {
             color: #374151;
             font-size: 1.3rem;
+            margin: 0;
         }
 
         .matrix-table-wrapper {
@@ -170,6 +184,12 @@
             z-index: 10;
             border-right: 1px solid #3730a3;
             min-width: 120px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .matrix-table th:hover {
+            background: #3730a3;
         }
 
         .matrix-table th:first-child {
@@ -180,6 +200,7 @@
             text-align: left;
             min-width: 200px;
             max-width: 200px;
+            cursor: default;
         }
 
         .matrix-table td {
@@ -202,6 +223,12 @@
             min-width: 200px;
             max-width: 200px;
             word-wrap: break-word;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .matrix-table td:first-child:hover {
+            background: #e2e8f0;
         }
 
         .matrix-table tr:hover {
@@ -280,6 +307,48 @@
             margin-top: 5px;
         }
 
+        .detailed-table {
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            display: none;
+        }
+
+        .detailed-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .detailed-table th {
+            background: #374151;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .detailed-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detailed-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .filter-info {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #1e40af;
+            font-weight: 500;
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .controls {
                 flex-direction: column;
@@ -342,9 +411,16 @@
         </div>
 
         <div class="matrix-container">
-            <h3>Матрица остатков товаров</h3>
+            <div class="matrix-header">
+                <h3 id="matrixTitle">Матрица остатков товаров</h3>
+                <button class="btn back" id="backButton" onclick="showFullMatrix()" style="display: none;">
+                    ← Вернуться к полной матрице
+                </button>
+            </div>
 
-            <div class="matrix-table-wrapper">
+            <div id="filterInfo" class="filter-info"></div>
+
+            <div class="matrix-table-wrapper" id="matrixWrapper">
                 <table class="matrix-table" id="matrixTable">
                     <thead>
                         <tr>
@@ -377,12 +453,56 @@
                     <div class="stat-label">Общий остаток</div>
                 </div>
             </div>
+
+            <!-- Детализованная таблица -->
+            <div id="detailTable" class="detailed-table">
+                <table>
+                    <thead id="detailTableHeader">
+                        <!-- Заголовки будут динамически генерироваться -->
+                    </thead>
+                    <tbody id="detailTableBody">
+                        <!-- Данные будут динамически генерироваться -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
         let statusInterval;
         let matrixData = {};
+        let currentView = 'matrix'; // 'matrix', 'warehouse', 'product'
+        let currentFilter = null;
+
+        // Безопасные DOM операции
+        function safeGetElement(id) {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`Элемент ${id} не найден`);
+            }
+            return element;
+        }
+
+        function safeSetDisplay(id, display) {
+            const element = safeGetElement(id);
+            if (element) {
+                element.style.display = display;
+            }
+        }
+
+        function safeSetText(id, text) {
+            const element = safeGetElement(id);
+            if (element) {
+                element.textContent = text;
+            }
+        }
+
+        function safeSetHTML(id, html) {
+            const element = safeGetElement(id);
+            if (element) {
+                element.innerHTML = html;
+            }
+        }
 
         async function apiCall(endpoint, method = 'GET', body = null) {
             const options = {
@@ -442,7 +562,6 @@
                     );
                     alert(`Синхронизация завершена!\n- Складов: ${data.warehousesProcessed}\n- Товаров: ${data.goodsFound}\n- Время: ${Math.round(data.duration / 1000)} сек`);
 
-                    // Ждем 2 секунды и загружаем данные
                     setTimeout(() => {
                         loadMatrixData();
                     }, 2000);
@@ -486,32 +605,26 @@
             console.log('Загрузка данных матрицы...');
             try {
                 const result = await apiCall('/api/preview-data?limit=10000');
-                console.log('Результат API:', result);
 
                 if (!result.data || result.data.length === 0) {
-                    console.log('Нет данных для отображения');
                     displayEmptyMatrix();
                     return;
                 }
 
-                console.log(`Найдено ${result.data.length} записей`);
                 buildMatrix(result.data);
 
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
-                alert(`Ошибка загрузки данных: ${error.message}`);
                 displayEmptyMatrix();
             }
         }
 
         function buildMatrix(data) {
-            console.log('Построение матрицы...');
             try {
                 const matrix = {};
                 const warehouses = new Set();
                 const products = new Set();
 
-                // Группируем данные по товарам и складам
                 data.forEach(item => {
                     const productName = item.title;
                     const warehouseName = item.warehouse_title;
@@ -526,7 +639,6 @@
                     matrix[productName][warehouseName] = quantity;
                 });
 
-                console.log(`Товаров: ${products.size}, Складов: ${warehouses.size}`);
                 displayMatrix(matrix, Array.from(warehouses), Array.from(products));
                 updateSummaryStats(data.length, warehouses.size, data.reduce((sum, item) => sum + item.residue, 0));
 
@@ -537,22 +649,23 @@
         }
 
         function displayMatrix(matrix, warehouses, products) {
-            console.log('Отображение матрицы...');
             try {
-                const table = document.getElementById('matrixTable');
-                const tbody = document.getElementById('matrixBody');
+                const table = safeGetElement('matrixTable');
+                const tbody = safeGetElement('matrixBody');
 
-                if (!table) {
-                    throw new Error('Элемент matrixTable не найден');
-                }
-                if (!tbody) {
-                    throw new Error('Элемент matrixBody не найден');
+                if (!table || !tbody) {
+                    console.error('Не найдены элементы таблицы');
+                    return;
                 }
 
                 // Создаем заголовок таблицы
                 const headerRow = document.createElement('tr');
                 headerRow.innerHTML = '<th>Товар</th>' +
-                    warehouses.map(warehouse => `<th title="${warehouse}">${truncateText(warehouse, 15)}</th>`).join('');
+                    warehouses.map(warehouse =>
+                        `<th title="${warehouse}" onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" style="cursor: pointer;">
+                            ${truncateText(warehouse, 15)}
+                        </th>`
+                    ).join('');
 
                 const thead = table.querySelector('thead');
                 if (thead) {
@@ -565,13 +678,12 @@
                 products.forEach(product => {
                     const row = document.createElement('tr');
 
-                    // Ячейка с названием товара
                     const productCell = document.createElement('td');
                     productCell.textContent = product;
                     productCell.title = product;
+                    productCell.onclick = () => showProductDetails(encodeURIComponent(product));
                     row.appendChild(productCell);
 
-                    // Ячейки с количествами по складам
                     warehouses.forEach(warehouse => {
                         const quantityCell = document.createElement('td');
                         const quantity = matrix[product][warehouse] || 0;
@@ -594,7 +706,12 @@
                 });
 
                 matrixData = { matrix, warehouses, products };
-                console.log('Матрица успешно отображена');
+                currentView = 'matrix';
+
+                // Скрываем элементы детализации
+                safeSetDisplay('backButton', 'none');
+                safeSetDisplay('filterInfo', 'none');
+                safeSetDisplay('detailTable', 'none');
 
             } catch (error) {
                 console.error('Ошибка отображения матрицы:', error);
@@ -602,30 +719,154 @@
             }
         }
 
-        function displayEmptyMatrix() {
-            console.log('Отображение пустой матрицы');
-            const tbody = document.getElementById('matrixBody');
-            const summaryStats = document.getElementById('summaryStats');
+        async function showWarehouseDetails(warehouseTitle) {
+            try {
+                safeSetText('matrixTitle', 'Загрузка товаров склада...');
 
-            if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="100" style="text-align: center; color: #6b7280; padding: 40px;">Нет данных для отображения</td></tr>';
-            }
+                const result = await apiCall(`/api/warehouse-goods/${warehouseTitle}`);
 
-            if (summaryStats) {
-                summaryStats.style.display = 'none';
+                if (result.success) {
+                    currentView = 'warehouse';
+                    currentFilter = decodeURIComponent(warehouseTitle);
+
+                    safeSetText('matrixTitle', `Товары склада: ${result.warehouseTitle}`);
+                    safeSetDisplay('backButton', 'inline-block');
+                    safeSetDisplay('filterInfo', 'block');
+                    safeSetText('filterInfo', `Найдено ${result.totalItems} товаров, общий остаток: ${result.totalQuantity}`);
+
+                    safeSetDisplay('matrixWrapper', 'none');
+                    safeSetDisplay('summaryStats', 'none');
+
+                    displayWarehouseDetails(result.data);
+                } else {
+                    alert(`Ошибка: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+                safeSetText('matrixTitle', 'Матрица остатков товаров');
             }
         }
 
-        function updateSummaryStats(totalProducts, totalWarehouses, totalQuantity) {
-            const totalProductsEl = document.getElementById('totalProducts');
-            const totalWarehousesEl = document.getElementById('totalWarehouses');
-            const totalQuantityEl = document.getElementById('totalQuantity');
-            const summaryStats = document.getElementById('summaryStats');
+        async function showProductDetails(productTitle) {
+            try {
+                safeSetText('matrixTitle', 'Загрузка складов товара...');
 
-            if (totalProductsEl) totalProductsEl.textContent = totalProducts;
-            if (totalWarehousesEl) totalWarehousesEl.textContent = totalWarehouses;
-            if (totalQuantityEl) totalQuantityEl.textContent = totalQuantity;
-            if (summaryStats) summaryStats.style.display = 'flex';
+                const result = await apiCall(`/api/product-warehouses/${productTitle}`);
+
+                if (result.success) {
+                    currentView = 'product';
+                    currentFilter = decodeURIComponent(productTitle);
+
+                    safeSetText('matrixTitle', `Склады товара: ${result.productTitle}`);
+                    safeSetDisplay('backButton', 'inline-block');
+                    safeSetDisplay('filterInfo', 'block');
+                    safeSetText('filterInfo', `Найдено на ${result.totalWarehouses} складах, общий остаток: ${result.totalQuantity}`);
+
+                    safeSetDisplay('matrixWrapper', 'none');
+                    safeSetDisplay('summaryStats', 'none');
+
+                    displayProductDetails(result.data);
+                } else {
+                    alert(`Ошибка: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`Ошибка: ${error.message}`);
+                safeSetText('matrixTitle', 'Матрица остатков товаров');
+            }
+        }
+
+        function displayWarehouseDetails(data) {
+            const header = safeGetElement('detailTableHeader');
+            const body = safeGetElement('detailTableBody');
+
+            if (header) {
+                header.innerHTML = `
+                    <tr>
+                        <th>Товар</th>
+                        <th>Остаток</th>
+                        <th>Код</th>
+                        <th>Артикул</th>
+                        <th>Категория</th>
+                        <th>Ед. изм.</th>
+                        <th>Обновлено</th>
+                    </tr>
+                `;
+            }
+
+            if (body) {
+                body.innerHTML = data.map(item => `
+                    <tr>
+                        <td>${item.title}</td>
+                        <td style="font-weight: 600; color: #059669;">${item.residue}</td>
+                        <td>${item.code || '-'}</td>
+                        <td>${item.article || '-'}</td>
+                        <td>${item.category || '-'}</td>
+                        <td>${item.uom_title || '-'}</td>
+                        <td>${new Date(item.updated_at).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            }
+
+            safeSetDisplay('detailTable', 'block');
+        }
+
+        function displayProductDetails(data) {
+            const header = safeGetElement('detailTableHeader');
+            const body = safeGetElement('detailTableBody');
+
+            if (header) {
+                header.innerHTML = `
+                    <tr>
+                        <th>Склад</th>
+                        <th>Остаток</th>
+                        <th>Код</th>
+                        <th>Артикул</th>
+                        <th>Категория</th>
+                        <th>Ед. изм.</th>
+                        <th>Обновлено</th>
+                    </tr>
+                `;
+            }
+
+            if (body) {
+                body.innerHTML = data.map(item => `
+                    <tr>
+                        <td>${item.warehouse_title}</td>
+                        <td style="font-weight: 600; color: #059669;">${item.residue}</td>
+                        <td>${item.code || '-'}</td>
+                        <td>${item.article || '-'}</td>
+                        <td>${item.category || '-'}</td>
+                        <td>${item.uom_title || '-'}</td>
+                        <td>${new Date(item.updated_at).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            }
+
+            safeSetDisplay('detailTable', 'block');
+        }
+
+        function showFullMatrix() {
+            currentView = 'matrix';
+            currentFilter = null;
+
+            safeSetText('matrixTitle', 'Матрица остатков товаров');
+            safeSetDisplay('backButton', 'none');
+            safeSetDisplay('filterInfo', 'none');
+            safeSetDisplay('detailTable', 'none');
+            safeSetDisplay('matrixWrapper', 'block');
+            safeSetDisplay('summaryStats', 'flex');
+        }
+
+        function displayEmptyMatrix() {
+            safeSetHTML('matrixBody', '<tr><td colspan="100" style="text-align: center; color: #6b7280; padding: 40px;">Нет данных для отображения</td></tr>');
+            safeSetDisplay('summaryStats', 'none');
+        }
+
+        function updateSummaryStats(totalProducts, totalWarehouses, totalQuantity) {
+            safeSetText('totalProducts', totalProducts);
+            safeSetText('totalWarehouses', totalWarehouses);
+            safeSetText('totalQuantity', totalQuantity);
+            safeSetDisplay('summaryStats', 'flex');
         }
 
         function truncateText(text, maxLength) {
@@ -633,6 +874,31 @@
         }
 
         async function exportMatrix() {
+            if (currentView === 'warehouse' && currentFilter) {
+                try {
+                    const result = await apiCall(`/api/warehouse-goods/${encodeURIComponent(currentFilter)}`);
+                    if (result.success) {
+                        exportWarehouseData(result.data, currentFilter);
+                    }
+                } catch (error) {
+                    alert(`Ошибка экспорта: ${error.message}`);
+                }
+                return;
+            }
+
+            if (currentView === 'product' && currentFilter) {
+                try {
+                    const result = await apiCall(`/api/product-warehouses/${encodeURIComponent(currentFilter)}`);
+                    if (result.success) {
+                        exportProductData(result.data, currentFilter);
+                    }
+                } catch (error) {
+                    alert(`Ошибка экспорта: ${error.message}`);
+                }
+                return;
+            }
+
+            // Экспорт полной матрицы
             if (!matrixData.matrix || Object.keys(matrixData.matrix).length === 0) {
                 alert('Нет данных для экспорта');
                 return;
@@ -652,18 +918,68 @@
             });
 
             const csvContent = rows.join('\n');
+            downloadCSV(csvContent, `matrix_inventory_${new Date().toISOString().split('T')[0]}.csv`);
+
+            alert(`Экспортирована матрица: ${products.length} товаров × ${warehouses.length} складов`);
+        }
+
+        function exportWarehouseData(data, warehouseName) {
+            const headers = ['Товар', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм', 'Обновлено'];
+            const rows = [headers.join(',')];
+
+            data.forEach(item => {
+                const row = [
+                    `"${item.title}"`,
+                    item.residue,
+                    `"${item.code || ''}"`,
+                    `"${item.article || ''}"`,
+                    `"${item.category || ''}"`,
+                    `"${item.uom_title || ''}"`,
+                    `"${new Date(item.updated_at).toLocaleString()}"`
+                ];
+                rows.push(row.join(','));
+            });
+
+            const csvContent = rows.join('\n');
+            downloadCSV(csvContent, `warehouse_${warehouseName}_${new Date().toISOString().split('T')[0]}.csv`);
+
+            alert(`Экспортированы товары склада "${warehouseName}": ${data.length} позиций`);
+        }
+
+        function exportProductData(data, productName) {
+            const headers = ['Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм', 'Обновлено'];
+            const rows = [headers.join(',')];
+
+            data.forEach(item => {
+                const row = [
+                    `"${item.warehouse_title}"`,
+                    item.residue,
+                    `"${item.code || ''}"`,
+                    `"${item.article || ''}"`,
+                    `"${item.category || ''}"`,
+                    `"${item.uom_title || ''}"`,
+                    `"${new Date(item.updated_at).toLocaleString()}"`
+                ];
+                rows.push(row.join(','));
+            });
+
+            const csvContent = rows.join('\n');
+            downloadCSV(csvContent, `product_${productName.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+
+            alert(`Экспортированы склады товара "${productName}": ${data.length} позиций`);
+        }
+
+        function downloadCSV(csvContent, filename) {
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
 
             link.setAttribute('href', url);
-            link.setAttribute('download', `matrix_inventory_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', filename);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
-            alert(`Экспортирована матрица: ${products.length} товаров × ${warehouses.length} складов`);
         }
 
         async function refreshStatus() {
@@ -713,7 +1029,7 @@
         }
 
         function updateStatus(elementId, text, type) {
-            const element = document.getElementById(elementId);
+            const element = safeGetElement(elementId);
             if (element) {
                 const valueSpan = element.querySelector('.status-value');
                 if (valueSpan) {
