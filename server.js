@@ -53,17 +53,26 @@ try {
 }
 
 /*---------------------------*/
-// Настройка для Render - создание credentials файла из base64
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
-  const credentialsPath = path.join(__dirname, "service-account-key.json");
-  const credentialsContent = Buffer.from(
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64,
-    "base64"
-  ).toString("utf8");
+// Настройка для Render
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+  try {
+    console.log("Настройка credentials из GOOGLE_CREDENTIALS_JSON...");
+    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
-  fs.writeFileSync(credentialsPath, credentialsContent);
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
-  console.log("✅ Google Cloud credentials настроены для Render");
+    const credentialsPath = path.join(__dirname, "service-account-key.json");
+    fs.writeFileSync(credentialsPath, JSON.stringify(credentials, null, 2));
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+
+    console.log(
+      "✅ Google Cloud credentials настроены, project_id:",
+      credentials.project_id
+    );
+  } catch (error) {
+    console.error("❌ Ошибка парсинга GOOGLE_CREDENTIALS_JSON:", error.message);
+    process.exit(1);
+  }
+} else {
+  console.log("❌ GOOGLE_CREDENTIALS_JSON не найдена в переменных окружения");
 }
 
 class RemonlineMatrixSync {
