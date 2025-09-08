@@ -525,7 +525,15 @@
                         'success'
                     );
                     alert(`Синхронизация завершена!\n- Складов: ${data.warehousesProcessed}\n- Товаров: ${data.goodsFound}\n- Время: ${Math.round(data.duration / 1000)} сек`);
-                    await loadMatrixData();
+
+                    // Задержка перед загрузкой данных матрицы
+                    setTimeout(async () => {
+                        try {
+                            await loadMatrixData();
+                        } catch (error) {
+                            console.error('Ошибка загрузки матрицы после синхронизации:', error);
+                        }
+                    }, 1000);
                 } else {
                     alert(`Ошибка синхронизации: ${result.error}`);
                 }
