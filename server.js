@@ -370,6 +370,7 @@ class RemonlineMatrixSync {
     });
 
     // Поиск товаров по названию
+    // Поиск товаров по названию
     this.app.get("/api/search-products/:searchTerm", async (req, res) => {
       try {
         if (!this.bigquery) {
@@ -382,14 +383,15 @@ class RemonlineMatrixSync {
       SELECT 
         title,
         warehouse_title,
-        residue,
-        code,
-        article,
-        category,
-        uom_title,
-        updated_at
+        SUM(residue) as residue,
+        STRING_AGG(DISTINCT code, ', ') as code,
+        STRING_AGG(DISTINCT article, ', ') as article,
+        STRING_AGG(DISTINCT category, ', ') as category,
+        STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
+        MAX(updated_at) as updated_at
       FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
       WHERE LOWER(title) LIKE LOWER(@search_term) AND residue > 0
+      GROUP BY title, warehouse_title
       ORDER BY title, warehouse_title
     `;
 

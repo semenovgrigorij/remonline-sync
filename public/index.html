@@ -1018,6 +1018,12 @@
         }
 
         async function exportMatrix() {
+            if (currentView === 'search' && searchResults) {
+                // Экспорт результатов поиска
+                exportSearchData(searchResults, currentFilter);
+                return;
+            }
+
             if (currentView === 'warehouse' && currentFilter) {
                 try {
                     const result = await apiCall(`/api/warehouse-goods/${encodeURIComponent(currentFilter)}`);
@@ -1065,6 +1071,31 @@
             downloadCSV(csvContent, `matrix_inventory_${new Date().toISOString().split('T')[0]}.csv`);
 
             alert(`Экспортирована матрица: ${products.length} товаров × ${warehouses.length} складов`);
+        }
+
+        function exportSearchData(data, searchTerm) {
+            const headers = ['Товар', 'Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм', 'Обновлено'];
+            const rows = [headers.join(',')];
+
+            data.forEach(item => {
+                const row = [
+                    `"${item.title}"`,
+                    `"${item.warehouse_title}"`,
+                    item.residue,
+                    `"${item.code || ''}"`,
+                    `"${item.article || ''}"`,
+                    `"${item.category || ''}"`,
+                    `"${item.uom_title || ''}"`,
+                    `"${new Date(item.updated_at).toLocaleString()}"`
+                ];
+                rows.push(row.join(','));
+            });
+
+            const csvContent = rows.join('\n');
+            const filename = `search_${searchTerm.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+            downloadCSV(csvContent, filename);
+
+            alert(`Экспортированы результаты поиска "${searchTerm}": ${data.length} записей`);
         }
 
         function exportWarehouseData(data, warehouseName) {
