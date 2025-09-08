@@ -1,4 +1,52 @@
 // server.js - Синхронизация товаров Remonline с BigQuery (матричный формат)
+/*------------------------------*/
+console.log("🔍 Диагностика Google Cloud credentials...");
+
+// Проверяем переменные окружения
+console.log(
+  "GOOGLE_APPLICATION_CREDENTIALS:",
+  process.env.GOOGLE_APPLICATION_CREDENTIALS
+);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+
+// Проверяем файл credentials
+const fs = require("fs");
+const path = require("path");
+
+try {
+  const credentialsPath =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS || "./service-account-key.json";
+  console.log("Путь к credentials:", credentialsPath);
+
+  // Проверяем существование файла
+  if (fs.existsSync(credentialsPath)) {
+    console.log("✅ Файл credentials существует");
+
+    // Читаем файл как buffer для проверки кодировки
+    const buffer = fs.readFileSync(credentialsPath);
+    console.log("Размер файла:", buffer.length, "байт");
+    console.log("Первые 10 байт (hex):", buffer.slice(0, 10).toString("hex"));
+    console.log("Первые 50 символов:", buffer.slice(0, 50).toString("utf8"));
+
+    // Проверяем BOM (Byte Order Mark)
+    if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+      console.log("⚠️ Обнаружен UTF-8 BOM - это может вызывать проблемы");
+    }
+
+    // Пытаемся прочитать как UTF-8
+    const content = fs.readFileSync(credentialsPath, "utf8");
+
+    // Проверяем JSON
+    const parsed = JSON.parse(content);
+    console.log("✅ JSON валиден, project_id:", parsed.project_id);
+  } else {
+    console.log("❌ Файл credentials не найден по пути:", credentialsPath);
+  }
+} catch (error) {
+  console.error("❌ Ошибка при проверке credentials:", error.message);
+  console.error("Стек ошибки:", error.stack);
+}
+/*---------------------------*/
 // Настройка для Render - создание credentials файла из base64
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
   const fs = require("fs");
