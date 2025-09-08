@@ -809,10 +809,15 @@
         }
 
         function updateSummaryStats(totalProducts, totalWarehouses, totalQuantity) {
-            document.getElementById('totalProducts').textContent = totalProducts;
-            document.getElementById('totalWarehouses').textContent = totalWarehouses;
-            document.getElementById('totalQuantity').textContent = totalQuantity;
-            document.getElementById('summaryStats').style.display = 'flex';
+            const totalProductsEl = document.getElementById('totalProducts');
+            const totalWarehousesEl = document.getElementById('totalWarehouses');
+            const totalQuantityEl = document.getElementById('totalQuantity');
+            const summaryStats = document.getElementById('summaryStats');
+
+            if (totalProductsEl) totalProductsEl.textContent = totalProducts;
+            if (totalWarehousesEl) totalWarehousesEl.textContent = totalWarehouses;
+            if (totalQuantityEl) totalQuantityEl.textContent = totalQuantity;
+            if (summaryStats) summaryStats.style.display = 'flex';
         }
 
         function truncateText(text, maxLength) {
