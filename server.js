@@ -274,6 +274,100 @@ class RemonlineMatrixSync {
         res.status(500).json({ error: error.message });
       }
     });
+
+    // Товары по конкретному складу
+    this.app.get("/api/warehouse-goods/:warehouseTitle", async (req, res) => {
+      try {
+        if (!this.bigquery) {
+          return res.json({ data: [], message: "BigQuery не настроена" });
+        }
+
+        const warehouseTitle = decodeURIComponent(req.params.warehouseTitle);
+
+        const query = `
+          SELECT 
+            title,
+            residue,
+            code,
+            article,
+            category,
+            price_json,
+            uom_title,
+            updated_at
+          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+          WHERE warehouse_title = @warehouse_title AND residue > 0
+          ORDER BY residue DESC, title
+        `;
+
+        const [rows] = await this.bigquery.query({
+          query,
+          location: "EU",
+          params: { warehouse_title: warehouseTitle },
+          types: { warehouse_title: "STRING" },
+        });
+
+        res.json({
+          success: true,
+          warehouseTitle,
+          data: rows,
+          totalItems: rows.length,
+          totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
+        });
+      } catch (error) {
+        console.error("Ошибка получения товаров склада:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+
+    // Склады с конкретным товаром
+    this.app.get("/api/product-warehouses/:productTitle", async (req, res) => {
+      try {
+        if (!this.bigquery) {
+          return res.json({ data: [], message: "BigQuery не настроена" });
+        }
+
+        const productTitle = decodeURIComponent(req.params.productTitle);
+
+        const query = `
+          SELECT 
+            warehouse_title,
+            residue,
+            code,
+            article,
+            category,
+            price_json,
+            uom_title,
+            updated_at
+          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+          WHERE title = @product_title AND residue > 0
+          ORDER BY residue DESC, warehouse_title
+        `;
+
+        const [rows] = await this.bigquery.query({
+          query,
+          location: "EU",
+          params: { product_title: productTitle },
+          types: { product_title: "STRING" },
+        });
+
+        res.json({
+          success: true,
+          productTitle,
+          data: rows,
+          totalWarehouses: rows.length,
+          totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
+        });
+      } catch (error) {
+        console.error("Ошибка получения складов товара:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
   }
 
   initializeBigQuery() {
