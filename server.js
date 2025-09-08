@@ -285,19 +285,19 @@ class RemonlineMatrixSync {
         const warehouseTitle = decodeURIComponent(req.params.warehouseTitle);
 
         const query = `
-          SELECT 
-            title,
-            residue,
-            code,
-            article,
-            category,
-            price_json,
-            uom_title,
-            updated_at
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          WHERE warehouse_title = @warehouse_title AND residue > 0
-          ORDER BY residue DESC, title
-        `;
+      SELECT 
+        title,
+        SUM(residue) as residue,
+        STRING_AGG(DISTINCT code, ', ') as code,
+        STRING_AGG(DISTINCT article, ', ') as article,
+        STRING_AGG(DISTINCT category, ', ') as category,
+        STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
+        MAX(updated_at) as updated_at
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      WHERE warehouse_title = @warehouse_title AND residue > 0
+      GROUP BY title
+      ORDER BY residue DESC, title
+    `;
 
         const [rows] = await this.bigquery.query({
           query,
@@ -332,19 +332,19 @@ class RemonlineMatrixSync {
         const productTitle = decodeURIComponent(req.params.productTitle);
 
         const query = `
-          SELECT 
-            warehouse_title,
-            residue,
-            code,
-            article,
-            category,
-            price_json,
-            uom_title,
-            updated_at
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          WHERE title = @product_title AND residue > 0
-          ORDER BY residue DESC, warehouse_title
-        `;
+      SELECT 
+        warehouse_title,
+        SUM(residue) as residue,
+        STRING_AGG(DISTINCT code, ', ') as code,
+        STRING_AGG(DISTINCT article, ', ') as article,
+        STRING_AGG(DISTINCT category, ', ') as category,
+        STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
+        MAX(updated_at) as updated_at
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      WHERE title = @product_title AND residue > 0
+      GROUP BY warehouse_title
+      ORDER BY residue DESC, warehouse_title
+    `;
 
         const [rows] = await this.bigquery.query({
           query,
