@@ -368,6 +368,53 @@ class RemonlineMatrixSync {
         });
       }
     });
+
+    // Поиск товаров по названию
+    this.app.get("/api/search-products/:searchTerm", async (req, res) => {
+      try {
+        if (!this.bigquery) {
+          return res.json({ data: [], message: "BigQuery не настроена" });
+        }
+
+        const searchTerm = decodeURIComponent(req.params.searchTerm);
+
+        const query = `
+      SELECT 
+        title,
+        warehouse_title,
+        residue,
+        code,
+        article,
+        category,
+        uom_title,
+        updated_at
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      WHERE LOWER(title) LIKE LOWER(@search_term) AND residue > 0
+      ORDER BY title, warehouse_title
+    `;
+
+        const [rows] = await this.bigquery.query({
+          query,
+          location: "EU",
+          params: { search_term: `%${searchTerm}%` },
+          types: { search_term: "STRING" },
+        });
+
+        res.json({
+          success: true,
+          searchTerm,
+          data: rows,
+          totalResults: rows.length,
+          totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
+        });
+      } catch (error) {
+        console.error("Ошибка поиска товаров:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
   }
 
   initializeBigQuery() {

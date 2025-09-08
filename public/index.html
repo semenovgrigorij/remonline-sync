@@ -848,6 +848,13 @@
         function showFullMatrix() {
             currentView = 'matrix';
             currentFilter = null;
+            searchResults = null;
+
+            // Очищаем поле поиска
+            const searchInput = safeGetElement('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
 
             safeSetText('matrixTitle', 'Матрица остатков товаров');
             safeSetDisplay('backButton', 'none');
