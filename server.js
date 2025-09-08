@@ -1,4 +1,19 @@
 // server.js - Синхронизация товаров Remonline с BigQuery (матричный формат)
+// Настройка для Render - создание credentials файла из base64
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+  const fs = require("fs");
+  const path = require("path");
+
+  const credentialsPath = path.join(__dirname, "service-account-key.json");
+  const credentialsContent = Buffer.from(
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64,
+    "base64"
+  ).toString("utf8");
+
+  fs.writeFileSync(credentialsPath, credentialsContent);
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+  console.log("✅ Google Cloud credentials настроены для Render");
+}
 
 const express = require("express");
 const fetch = require("node-fetch");
