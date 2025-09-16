@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remonline Matrix Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="./img/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="./img/favicon.ico" />
     <style>
         * {
             margin: 0;
@@ -379,292 +381,6 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
-        .location-select {
-            padding: 12px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 1rem;
-            background: white;
-            color: #374151;
-            cursor: pointer;
-            min-width: 200px;
-            outline: none;
-            transition: border-color 0.2s ease;
-        }
-
-        .location-select:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .grouped-header {
-            background: #6366f1 !important;
-            color: white;
-            text-align: center;
-            font-weight: 700;
-            font-size: 0.9rem;
-            border-bottom: 2px solid #4f46e5;
-        }
-
-        .location-subheader {
-            background: #8b5cf6 !important;
-            color: white;
-            font-size: 0.8rem;
-            text-align: center;
-        }
-
-        .location-info {
-            background: #f0f9ff;
-            border: 1px solid #0ea5e9;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            color: #0c4a6e;
-            font-weight: 500;
-            display: none;
-        }
-
-        .warehouse-stats {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-
-        .warehouse-stat {
-            background: #f3f4f6;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: #374151;
-        }
-
-        .warehouse-stat strong {
-            color: #1f2937;
-        }
-
-        /* Стили для выпадающего списка локаций */
-        .location-select {
-            padding: 12px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 1rem;
-            background: white;
-            color: #374151;
-            cursor: pointer;
-            min-width: 250px;
-            outline: none;
-            transition: border-color 0.2s ease;
-            margin: 0 10px;
-        }
-
-        .location-select:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .location-select:hover {
-            border-color: #9ca3af;
-        }
-
-        /* Стили для группированных заголовков локаций */
-        .grouped-header {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-            color: white !important;
-            text-align: center !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            border-bottom: 3px solid #4f46e5 !important;
-            border-right: 2px solid #4f46e5 !important;
-            padding: 15px 8px !important;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .grouped-header:hover {
-            background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
-        }
-
-        .grouped-header:before {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #f59e0b, #ef4444, #10b981, #3b82f6);
-        }
-
-        /* Стили для подзаголовков складов */
-        .location-subheader {
-            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%) !important;
-            color: white !important;
-            font-size: 0.8rem !important;
-            text-align: center !important;
-            padding: 10px 6px !important;
-            border-right: 1px solid #7c3aed !important;
-            border-bottom: 1px solid #7c3aed !important;
-            font-weight: 600 !important;
-            min-width: 80px !important;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .location-subheader:hover {
-            background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%) !important;
-            transform: scale(1.05);
-            z-index: 5;
-            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
-        }
-
-        /* Информационная панель для локаций */
-        .location-info {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 2px solid #0ea5e9;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            color: #0c4a6e;
-            font-weight: 500;
-            display: none;
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
-        }
-
-        /* Статистика складов */
-        .warehouse-stats {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin: 15px 0;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .warehouse-stat {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            color: #374151;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
-        }
-
-        .warehouse-stat:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-color: #cbd5e1;
-        }
-
-        .warehouse-stat strong {
-            color: #1f2937;
-        }
-
-        /* Улучшенная визуализация для мобильных устройств */
-        @media (max-width: 768px) {
-            .location-select {
-                min-width: 200px;
-                margin: 5px 0;
-            }
-
-            .warehouse-stats {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .warehouse-stat {
-                width: 100%;
-                text-align: center;
-            }
-
-            .grouped-header {
-                font-size: 0.8rem !important;
-                padding: 10px 4px !important;
-            }
-
-            .location-subheader {
-                font-size: 0.7rem !important;
-                padding: 8px 4px !important;
-                min-width: 60px !important;
-            }
-        }
-
-        /* Анимации для лучшего UX */
-        .matrix-table-wrapper {
-            transition: all 0.3s ease;
-        }
-
-        .matrix-table tr {
-            transition: background-color 0.2s ease;
-        }
-
-        .matrix-table tr:hover .grouped-header,
-        .matrix-table tr:hover .location-subheader {
-            transform: none;
-            /* Отключаем hover эффекты на заголовках при наведении на строку */
-        }
-
-        /* Стили для индикатора загрузки */
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            border-radius: 10px;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        /* Стили для кнопок управления локациями */
-        .location-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin: 10px 0;
-        }
-
-        .location-controls .btn {
-            min-width: 160px;
-        }
-
-        /* Визуальное разделение для групп складов */
-        .matrix-table th.grouped-header:not(:first-child):before {
-            content: '';
-            position: absolute;
-            left: -2px;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(180deg, #fbbf24, #f59e0b, #d97706);
-            border-radius: 2px;
-        }
-
-        /* Подсветка активной локации */
-        .matrix-table th.active-location {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-            box-shadow: 0 0 10px rgba(5, 150, 105, 0.4);
-        }
-
         @media (max-width: 768px) {
             .controls {
                 flex-direction: column;
@@ -706,21 +422,9 @@
             <button class="btn" onclick="syncNow()">Синхронизировать сейчас</button>
             <button class="btn" onclick="startAutoSync()">Запустить авто-синхронизацию</button>
             <button class="btn" onclick="stopAutoSync()">Остановить синхронизацию</button>
-
-            <!-- Новые элементы для работы с локациями -->
-            <div class="location-controls">
-                <select id="locationSelect" class="location-select" onchange="handleLocationChange()">
-                    <option value="">Выберите локацию...</option>
-                </select>
-                <button class="btn" onclick="showLocationMatrix()">Матрица локации</button>
-                <button class="btn secondary" onclick="loadGroupedMatrix()">Группированная матрица</button>
-            </div>
-
-            <div class="location-controls">
-                <button class="btn secondary" onclick="compareLocations()">Сравнить локации</button>
-                <button class="btn secondary" onclick="exportMatrixAdvanced()">Экспорт матрицы</button>
-                <button class="btn secondary" onclick="recreateTable()">🔄 Пересоздать таблицу</button>
-            </div>
+            <button class="btn secondary" onclick="exportMatrix()">Экспорт матрицы</button>
+            <button class="btn secondary" onclick="recreateTable()">🔄 Пересоздать таблицу</button>
+            <button class="btn secondary" onclick="runFullDiagnostic()">🔍 Полная диагностика</button>
         </div>
 
         <div class="status-panel">
@@ -753,24 +457,12 @@
             </div>
         </div>
 
-        <div id="locationInfoPanel" class="location-info">
-            <div id="locationInfoContent">
-                <!-- Информация о локации будет загружаться динамически -->
-            </div>
-        </div>
-
-
         <div class="matrix-container">
             <div class="matrix-header">
                 <h3 id="matrixTitle">Матрица остатков товаров</h3>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn back" id="backButton" onclick="showFullMatrix()" style="display: none;">
-                        ← Вернуться к полной матрице
-                    </button>
-                    <button class="btn back" id="refreshButton" onclick="refreshCurrentView()" style="display: none;">
-                        🔄 Обновить
-                    </button>
-                </div>
+                <button class="btn back" id="backButton" onclick="showFullMatrix()" style="display: none;">
+                    ← Вернуться к полной матрице
+                </button>
             </div>
 
             <div id="filterInfo" class="filter-info"></div>
@@ -1050,33 +742,61 @@
         }
 
         async function loadMatrixData() {
-            console.log('Загрузка данных матрицы...');
+            console.log('🔍 ДИАГНОСТИКА: Начинаем загрузку данных матрицы...');
+
             try {
-                const result = await apiCall('/api/preview-data?limit=10000');
+                // Сначала получаем статистику
+                console.log('📊 Запрашиваем статистику...');
+                const statsResult = await apiCall('/api/statistics');
+                console.log('📈 Статистика из БД:', statsResult);
+
+                // Теперь запрашиваем данные БЕЗ лимита для теста
+                console.log('📊 Запрашиваем данные БЕЗ лимита...');
+                const unlimitedResult = await apiCall('/api/preview-data'); // без ?limit=
+                console.log('📦 Получено записей без лимита:', unlimitedResult.data ? unlimitedResult.data.length : 0);
+
+                // Запрашиваем с большим лимитом
+                console.log('📊 Запрашиваем данные с лимитом 50000...');
+                const result = await apiCall('/api/preview-data?limit=50000');
+                console.log('📦 Получено записей с лимитом 50000:', result.data ? result.data.length : 0);
+                console.log('🔍 Первые 5 записей:', result.data ? result.data.slice(0, 5) : []);
 
                 if (!result.data || result.data.length === 0) {
+                    console.log('❌ Нет данных для отображения');
                     displayEmptyMatrix();
                     return;
                 }
 
+                console.log('🏗️ Начинаем построение матрицы...');
                 buildMatrix(result.data);
+                console.log('✅ Матрица построена');
 
             } catch (error) {
-                console.error('Ошибка загрузки данных:', error);
+                console.error('❌ Ошибка загрузки данных:', error);
                 displayEmptyMatrix();
             }
         }
 
         function buildMatrix(data) {
             try {
+                console.log('🏗️ ДИАГНОСТИКА: Построение матрицы...');
+                console.log('📊 Входных данных:', data.length);
+
                 const matrix = {};
                 const warehouses = new Set();
                 const products = new Set();
 
-                data.forEach(item => {
+                let processedCount = 0;
+
+                data.forEach((item, index) => {
                     const productName = item.title;
                     const warehouseName = item.warehouse_title;
                     const quantity = item.residue;
+
+                    // Логируем каждые 100 записей
+                    if (index % 100 === 0) {
+                        console.log(`📈 Обработано ${index}/${data.length} записей`);
+                    }
 
                     products.add(productName);
                     warehouses.add(warehouseName);
@@ -1085,24 +805,39 @@
                         matrix[productName] = {};
                     }
                     matrix[productName][warehouseName] = quantity;
+                    processedCount++;
                 });
 
+                console.log('📊 Результаты построения матрицы:');
+                console.log(`- Обработано записей: ${processedCount}`);
+                console.log(`- Уникальных товаров: ${products.size}`);
+                console.log(`- Уникальных складов: ${warehouses.size}`);
+                console.log(`- Первые 5 товаров:`, Array.from(products).slice(0, 5));
+                console.log(`- Первые 5 складов:`, Array.from(warehouses).slice(0, 5));
+
+                console.log('🖥️ Начинаем отображение матрицы...');
                 displayMatrix(matrix, Array.from(warehouses), Array.from(products));
-                updateSummaryStats(data.length, warehouses.size, data.reduce((sum, item) => sum + item.residue, 0));
+                updateSummaryStats(products.size, warehouses.size, data.reduce((sum, item) => sum + item.residue, 0));
+                console.log('✅ Отображение матрицы завершено');
 
             } catch (error) {
-                console.error('Ошибка построения матрицы:', error);
+                console.error('❌ Ошибка построения матрицы:', error);
+                console.error('📊 Стек ошибки:', error.stack);
                 alert(`Ошибка построения матрицы: ${error.message}`);
             }
         }
 
         function displayMatrix(matrix, warehouses, products) {
             try {
+                console.log('🖥️ ДИАГНОСТИКА: Отображение матрицы...');
+                console.log(`📊 Товаров для отображения: ${products.length}`);
+                console.log(`📊 Складов для отображения: ${warehouses.length}`);
+
                 const table = safeGetElement('matrixTable');
                 const tbody = safeGetElement('matrixBody');
 
                 if (!table || !tbody) {
-                    console.error('Не найдены элементы таблицы');
+                    console.error('❌ Не найдены элементы таблицы');
                     return;
                 }
 
@@ -1111,8 +846,8 @@
                 headerRow.innerHTML = '<th>Товар</th>' +
                     warehouses.map(warehouse =>
                         `<th title="${warehouse}" onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" style="cursor: pointer;">
-                            ${truncateText(warehouse, 15)}
-                        </th>`
+                    ${truncateText(warehouse, 15)}
+                </th>`
                     ).join('');
 
                 const thead = table.querySelector('thead');
@@ -1123,7 +858,14 @@
 
                 // Создаем строки для товаров
                 tbody.innerHTML = '';
-                products.forEach(product => {
+                let displayedProducts = 0;
+
+                products.forEach((product, index) => {
+                    // Логируем прогресс каждые 50 товаров
+                    if (index % 50 === 0) {
+                        console.log(`🖥️ Отображено товаров: ${index}/${products.length}`);
+                    }
+
                     const row = document.createElement('tr');
 
                     const productCell = document.createElement('td');
@@ -1151,7 +893,10 @@
                     });
 
                     tbody.appendChild(row);
+                    displayedProducts++;
                 });
+
+                console.log(`✅ Отображено товаров в таблице: ${displayedProducts}`);
 
                 matrixData = { matrix, warehouses, products };
                 currentView = 'matrix';
@@ -1162,7 +907,8 @@
                 safeSetDisplay('detailTable', 'none');
 
             } catch (error) {
-                console.error('Ошибка отображения матрицы:', error);
+                console.error('❌ Ошибка отображения матрицы:', error);
+                console.error('📊 Стек ошибки:', error.stack);
                 alert(`Ошибка отображения матрицы: ${error.message}`);
             }
         }
@@ -1297,37 +1043,19 @@
             currentView = 'matrix';
             currentFilter = null;
             searchResults = null;
-            selectedLocation = null;
 
-            // Очищаем поле поиска и выбор локации
+            // Очищаем поле поиска
             const searchInput = safeGetElement('searchInput');
             if (searchInput) {
                 searchInput.value = '';
             }
 
-            const locationSelect = safeGetElement('locationSelect');
-            if (locationSelect) {
-                locationSelect.value = '';
-            }
-
             safeSetText('matrixTitle', 'Матрица остатков товаров');
             safeSetDisplay('backButton', 'none');
-            safeSetDisplay('refreshButton', 'none');
             safeSetDisplay('filterInfo', 'none');
             safeSetDisplay('detailTable', 'none');
             safeSetDisplay('matrixWrapper', 'block');
             safeSetDisplay('summaryStats', 'flex');
-            safeSetDisplay('locationInfoPanel', 'none');
-
-            // Перезагружаем основную матрицу
-            loadMatrixData();
-        }
-
-        // Показать кнопку обновления для всех представлений кроме основной матрицы
-        function showRefreshButton() {
-            if (currentView !== 'matrix') {
-                safeSetDisplay('refreshButton', 'inline-block');
-            }
         }
 
         function displayEmptyMatrix() {
@@ -1543,478 +1271,58 @@
             }
         }
 
-        let currentLocations = [];
-        let selectedLocation = null;
-        let locationMatrix = {};
+        async function runFullDiagnostic() {
+            console.log('🔍 === ЗАПУСК ПОЛНОЙ ДИАГНОСТИКИ ===');
 
-        // Загрузка списка локаций
-        async function loadLocations() {
             try {
-                const result = await apiCall('/api/locations');
+                // Тест 1: Статистика
+                console.log('📊 Тест 1: Получение статистики...');
+                const stats = await apiCall('/api/statistics');
+                console.log('✅ Статистика:', stats);
 
-                if (result.success) {
-                    currentLocations = result.data;
-                    populateLocationSelect(result.data);
-                    console.log('📍 Загружены локации:', result.data.length);
+                // Тест 2: Данные без лимита
+                console.log('📊 Тест 2: Данные без лимита...');
+                const noLimit = await apiCall('/api/preview-data');
+                console.log('✅ Без лимита получено:', noLimit.data?.length || 0);
+
+                // Тест 3: Данные с лимитом 50
+                console.log('📊 Тест 3: Данные с лимитом 50...');
+                const limit50 = await apiCall('/api/preview-data?limit=50');
+                console.log('✅ С лимитом 50 получено:', limit50.data?.length || 0);
+
+                // Тест 4: Данные с лимитом 100
+                console.log('📊 Тест 4: Данные с лимитом 100...');
+                const limit100 = await apiCall('/api/preview-data?limit=100');
+                console.log('✅ С лимитом 100 получено:', limit100.data?.length || 0);
+
+                // Тест 5: Данные с большим лимитом
+                console.log('📊 Тест 5: Данные с лимитом 10000...');
+                const limit10k = await apiCall('/api/preview-data?limit=10000');
+                console.log('✅ С лимитом 10000 получено:', limit10k.data?.length || 0);
+
+                // Анализ
+                console.log('🔍 === РЕЗУЛЬТАТЫ ДИАГНОСТИКИ ===');
+                console.log(`Статистика показывает товаров: ${stats.statistics?.unique_products || 'N/A'}`);
+                console.log(`Без лимита получено: ${noLimit.data?.length || 0}`);
+                console.log(`С лимитом 50: ${limit50.data?.length || 0}`);
+                console.log(`С лимитом 100: ${limit100.data?.length || 0}`);
+                console.log(`С лимитом 10000: ${limit10k.data?.length || 0}`);
+
+                // Определяем проблему
+                if (limit50.data?.length === 50 && limit100.data?.length === 100) {
+                    console.log('❌ ПРОБЛЕМА: API возвращает ровно столько записей, сколько запрашивается');
+                    console.log('💡 РЕШЕНИЕ: Увеличить лимит в loadMatrixData()');
+                } else if (noLimit.data?.length === limit10k.data?.length && limit10k.data?.length < 1000) {
+                    console.log('✅ Проблем с лимитом нет, данных просто мало');
                 } else {
-                    console.error('Ошибка загрузки локаций:', result.error);
+                    console.log('❓ Нестандартная ситуация, нужен дополнительный анализ');
                 }
-            } catch (error) {
-                console.error('Ошибка загрузки локаций:', error);
-            }
-        }
 
-        // Заполнение выпадающего списка локаций
-        function populateLocationSelect(locations) {
-            const select = safeGetElement('locationSelect');
-            if (!select) return;
-
-            // Очищаем существующие опции (кроме первой)
-            select.innerHTML = '<option value="">Выберите локацию...</option>';
-
-            locations.forEach(location => {
-                const option = document.createElement('option');
-                option.value = location.location_name;
-                option.textContent = `${location.location_name} (${location.warehouses_count} складов, ${location.unique_products} товаров)`;
-                select.appendChild(option);
-            });
-        }
-
-        // Обработчик изменения локации
-        function handleLocationChange() {
-            const select = safeGetElement('locationSelect');
-            if (!select) return;
-
-            selectedLocation = select.value;
-
-            if (selectedLocation) {
-                console.log('🏢 Выбрана локация:', selectedLocation);
-
-                // Найти данные по локации
-                const locationData = currentLocations.find(loc => loc.location_name === selectedLocation);
-                if (locationData) {
-                    showLocationInfo(locationData);
-                }
-            } else {
-                hideLocationInfo();
-            }
-        }
-
-        // Показать информацию о локации
-        function showLocationInfo(locationData) {
-            safeSetDisplay('locationInfoPanel', 'block');
-            safeSetHTML('locationInfoContent', `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h4 style="margin: 0; color: #0c4a6e; font-size: 1.2rem;">
-                📍 ${locationData.location_name}
-            </h4>
-            <button class="btn" style="padding: 6px 12px; min-width: auto;" onclick="showLocationMatrix()">
-                Открыть матрицу
-            </button>
-        </div>
-        <div class="warehouse-stats">
-            <div class="warehouse-stat">
-                <strong>Складов:</strong> ${locationData.warehouses_count}
-            </div>
-            <div class="warehouse-stat">
-                <strong>Товаров:</strong> ${locationData.unique_products.toLocaleString()}
-            </div>
-            <div class="warehouse-stat">
-                <strong>Общий остаток:</strong> ${locationData.total_residue.toLocaleString()}
-            </div>
-            <div class="warehouse-stat">
-                <strong>Среднее на склад:</strong> ${Math.round(locationData.total_residue / locationData.warehouses_count).toLocaleString()}
-            </div>
-        </div>
-        <details style="margin-top: 15px;">
-            <summary style="cursor: pointer; color: #0c4a6e; font-weight: 600;">
-                Список складов (${locationData.warehouses_count})
-            </summary>
-            <div style="margin-top: 10px; max-height: 150px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 6px;">
-                ${locationData.warehouses.map(warehouse =>
-                `<div style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" 
-                              style="cursor: pointer; color: #4f46e5; text-decoration: underline;"
-                              title="Показать товары склада">
-                            ${warehouse}
-                        </span>
-                    </div>`
-            ).join('')}
-            </div>
-        </details>
-    `);
-
-            // Плавно скроллим к информации о локации
-            setTimeout(() => {
-                document.getElementById('locationInfoPanel').scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'nearest'
-                });
-            }, 100);
-        }
-
-        // Скрытие панели информации о локации
-        function hideLocationInfo() {
-            if (currentView === 'matrix') {
-                safeSetDisplay('locationInfoPanel', 'none');
-            }
-        }
-
-
-        // Показать матрицу для выбранной локации
-        async function showLocationMatrix() {
-            if (!selectedLocation) {
-                alert('Сначала выберите локацию из списка');
-                return;
-            }
-
-            try {
-                safeSetText('matrixTitle', 'Загрузка матрицы локации...');
-
-                const result = await apiCall(`/api/location-matrix/${encodeURIComponent(selectedLocation)}`);
-
-                if (result.success) {
-                    currentView = 'location';
-                    currentFilter = selectedLocation;
-
-                    safeSetText('matrixTitle', `Матрица локации: ${result.locationName}`);
-                    safeSetDisplay('backButton', 'inline-block');
-                    safeSetDisplay('filterInfo', 'block');
-
-                    const stats = result.statistics;
-                    safeSetHTML('filterInfo', `
-                <div class="warehouse-stats">
-                    <div class="warehouse-stat">
-                        <strong>Локация:</strong> ${result.locationName}
-                    </div>
-                    <div class="warehouse-stat">
-                        <strong>Складов:</strong> ${stats.warehouses_count || 0}
-                    </div>
-                    <div class="warehouse-stat">
-                        <strong>Товаров:</strong> ${stats.unique_products || 0}
-                    </div>
-                    <div class="warehouse-stat">
-                        <strong>Записей:</strong> ${stats.total_records || 0}
-                    </div>
-                    <div class="warehouse-stat">
-                        <strong>Общий остаток:</strong> ${stats.total_residue || 0}
-                    </div>
-                </div>
-            `);
-
-                    // Строим матрицу для локации
-                    buildMatrix(result.data);
-
-                    safeSetDisplay('summaryStats', 'flex');
-                    updateSummaryStats(
-                        stats.unique_products || 0,
-                        stats.warehouses_count || 0,
-                        stats.total_residue || 0
-                    );
-
-                } else {
-                    alert(`Ошибка: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-        // Загрузка группированной матрицы
-        async function loadGroupedMatrix() {
-            try {
-                safeSetText('matrixTitle', 'Загрузка группированной матрицы...');
-
-                const result = await apiCall('/api/grouped-matrix?limit=50000');
-
-                if (result.success && result.data.length > 0) {
-                    currentView = 'grouped';
-                    currentFilter = null;
-
-                    safeSetText('matrixTitle', 'Группированная матрица по локациям');
-                    safeSetDisplay('backButton', 'inline-block');
-                    safeSetDisplay('filterInfo', 'block');
-                    safeSetHTML('filterInfo', `
-                <div class="warehouse-stats">
-                    <div class="warehouse-stat">
-                        <strong>Локаций:</strong> ${result.totalLocations}
-                    </div>
-                    <div class="warehouse-stat">
-                        <strong>Складов:</strong> ${result.totalWarehouses}
-                    </div>
-                    <div class="warehouse-stat">
-                        <strong>Товаров:</strong> ${result.totalProducts}
-                    </div>
-                </div>
-            `);
-
-                    // Строим группированную матрицу
-                    buildGroupedMatrix(result.data, result.locationGroups);
-
-                } else {
-                    alert('Нет данных для группированной матрицы');
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-        // Построение группированной матрицы
-        function buildGroupedMatrix(data, locationGroups) {
-            try {
-                const matrix = {};
-                const products = new Set();
-
-                // Обрабатываем данные
-                data.forEach(item => {
-                    const productName = item.title;
-                    const warehouseName = item.warehouse_title;
-                    const quantity = item.residue;
-
-                    products.add(productName);
-
-                    if (!matrix[productName]) {
-                        matrix[productName] = {};
-                    }
-                    matrix[productName][warehouseName] = quantity;
-                });
-
-                displayGroupedMatrix(matrix, locationGroups, Array.from(products));
-
-                safeSetDisplay('summaryStats', 'flex');
-                updateSummaryStats(
-                    products.size,
-                    Object.keys(locationGroups).length,
-                    data.reduce((sum, item) => sum + item.residue, 0)
-                );
+                alert('Диагностика завершена! Смотрите консоль браузера (F12) для подробностей.');
 
             } catch (error) {
-                console.error('Ошибка построения группированной матрицы:', error);
-                alert(`Ошибка: ${error.message}`);
-            }
-        }
-
-        // Отображение группированной матрицы
-        function displayGroupedMatrix(matrix, locationGroups, products) {
-            try {
-                const table = safeGetElement('matrixTable');
-                const tbody = safeGetElement('matrixBody');
-
-                if (!table || !tbody) {
-                    console.error('Не найдены элементы таблицы');
-                    return;
-                }
-
-                // Создаем сложный заголовок с группировкой
-                const thead = table.querySelector('thead');
-                if (thead) {
-                    thead.innerHTML = '';
-
-                    // Первая строка заголовка - локации
-                    const locationHeaderRow = document.createElement('tr');
-                    locationHeaderRow.innerHTML = '<th rowspan="2" style="vertical-align: middle;">Товар</th>';
-
-                    Object.keys(locationGroups).forEach(location => {
-                        const warehousesCount = locationGroups[location].warehouses.length;
-                        locationHeaderRow.innerHTML += `<th colspan="${warehousesCount}" class="grouped-header" onclick="showLocationDetails('${encodeURIComponent(location)}')" style="cursor: pointer;" title="Показать детали локации ${location}">${location}</th>`;
-                    });
-                    thead.appendChild(locationHeaderRow);
-
-                    // Вторая строка заголовка - склады
-                    const warehouseHeaderRow = document.createElement('tr');
-                    Object.keys(locationGroups).forEach(location => {
-                        locationGroups[location].warehouses.forEach(warehouse => {
-                            const shortName = warehouse.replace(location, '').replace(/^[-\s]+/, '') || warehouse;
-                            warehouseHeaderRow.innerHTML += `<th class="location-subheader" onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" style="cursor: pointer;" title="${warehouse}">${truncateText(shortName, 10)}</th>`;
-                        });
-                    });
-                    thead.appendChild(warehouseHeaderRow);
-                }
-
-                // Создаем строки для товаров
-                tbody.innerHTML = '';
-                products.forEach(product => {
-                    const row = document.createElement('tr');
-
-                    const productCell = document.createElement('td');
-                    productCell.textContent = product;
-                    productCell.title = product;
-                    productCell.onclick = () => showProductDetails(encodeURIComponent(product));
-                    row.appendChild(productCell);
-
-                    // Добавляем ячейки для каждого склада в правильном порядке
-                    Object.keys(locationGroups).forEach(location => {
-                        locationGroups[location].warehouses.forEach(warehouse => {
-                            const quantityCell = document.createElement('td');
-                            const quantity = matrix[product][warehouse] || 0;
-
-                            quantityCell.textContent = quantity || '-';
-                            quantityCell.className = 'quantity-cell';
-
-                            if (quantity === 0) {
-                                quantityCell.className += ' zero';
-                            } else if (quantity >= 10) {
-                                quantityCell.className += ' high';
-                            } else if (quantity >= 5) {
-                                quantityCell.className += ' medium';
-                            }
-
-                            row.appendChild(quantityCell);
-                        });
-                    });
-
-                    tbody.appendChild(row);
-                });
-
-                matrixData = { matrix, warehouses: [], products, locationGroups };
-
-                // Скрываем элементы детализации
-                safeSetDisplay('detailTable', 'none');
-
-            } catch (error) {
-                console.error('Ошибка отображения группированной матрицы:', error);
-                alert(`Ошибка отображения: ${error.message}`);
-            }
-        }
-
-        // Показать детали локации (новый обработчик)
-        async function showLocationDetails(locationName) {
-            const decodedLocation = decodeURIComponent(locationName);
-
-            // Устанавливаем выбранную локацию в селекте
-            const select = safeGetElement('locationSelect');
-            if (select) {
-                select.value = decodedLocation;
-                selectedLocation = decodedLocation;
-            }
-
-            // Показываем матрицу для этой локации
-            await showLocationMatrix();
-        }
-
-        // Обновленная функция showFullMatrix
-        function showFullMatrix() {
-            currentView = 'matrix';
-            currentFilter = null;
-            searchResults = null;
-            selectedLocation = null;
-
-            // Очищаем поле поиска и выбор локации
-            const searchInput = safeGetElement('searchInput');
-            if (searchInput) {
-                searchInput.value = '';
-            }
-
-            const locationSelect = safeGetElement('locationSelect');
-            if (locationSelect) {
-                locationSelect.value = '';
-            }
-
-            safeSetText('matrixTitle', 'Матрица остатков товаров');
-            safeSetDisplay('backButton', 'none');
-            safeSetDisplay('filterInfo', 'none');
-            safeSetDisplay('detailTable', 'none');
-            safeSetDisplay('matrixWrapper', 'block');
-            safeSetDisplay('summaryStats', 'flex');
-
-            // Перезагружаем основную матрицу
-            loadMatrixData();
-        }
-
-        // Обновленная инициализация
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM загружен, инициализация с локациями...');
-            refreshStatus();
-            loadMatrixData();
-            loadLocations(); // Добавляем загрузку локаций
-
-            statusInterval = setInterval(refreshStatus, 30000);
-        });
-
-        // Функция обновления текущего вида
-        async function refreshCurrentView() {
-            const refreshBtn = safeGetElement('refreshButton');
-            if (refreshBtn) {
-                refreshBtn.disabled = true;
-                refreshBtn.innerHTML = '🔄 Обновление...';
-            }
-
-            try {
-                switch (currentView) {
-                    case 'matrix':
-                        await loadMatrixData();
-                        break;
-                    case 'location':
-                        if (currentFilter) {
-                            await showLocationMatrix();
-                        }
-                        break;
-                    case 'grouped':
-                        await loadGroupedMatrix();
-                        break;
-                    case 'warehouse':
-                        if (currentFilter) {
-                            await showWarehouseDetails(encodeURIComponent(currentFilter));
-                        }
-                        break;
-                    case 'product':
-                        if (currentFilter) {
-                            await showProductDetails(encodeURIComponent(currentFilter));
-                        }
-                        break;
-                    case 'search':
-                        if (currentFilter) {
-                            const searchInput = safeGetElement('searchInput');
-                            if (searchInput) {
-                                searchInput.value = currentFilter;
-                            }
-                            await searchProducts();
-                        }
-                        break;
-                    case 'comparison':
-                        await compareLocations();
-                        break;
-                    default:
-                        await loadMatrixData();
-                }
-            } catch (error) {
-                alert(`Ошибка обновления: ${error.message}`);
-            } finally {
-                if (refreshBtn) {
-                    refreshBtn.disabled = false;
-                    refreshBtn.innerHTML = '🔄 Обновить';
-                }
-            }
-        }
-
-        const originalShowLocationMatrix = showLocationMatrix;
-        showLocationMatrix = async function () {
-            await originalShowLocationMatrix.call(this);
-            showRefreshButton();
-        };
-
-        const originalLoadGroupedMatrix = loadGroupedMatrix;
-        loadGroupedMatrix = async function () {
-            await originalLoadGroupedMatrix.call(this);
-            showRefreshButton();
-        };
-
-        const originalCompareLocations = compareLocations;
-        compareLocations = async function () {
-            await originalCompareLocations.call(this);
-            showRefreshButton();
-        };
-
-        // Функция для анимированного скролла к таблице
-        function scrollToMatrix() {
-            const matrixContainer = document.querySelector('.matrix-container');
-            if (matrixContainer) {
-                matrixContainer.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+                console.error('❌ Ошибка диагностики:', error);
+                alert(`Ошибка диагностики: ${error.message}`);
             }
         }
 
