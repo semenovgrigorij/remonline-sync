@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 
 <head>
     <meta charset="UTF-8">
@@ -422,6 +422,7 @@
             <button class="btn" onclick="stopAutoSync()">Остановить синхронизацию</button>
             <button class="btn secondary" onclick="exportMatrix()">Экспорт матрицы</button>
             <button class="btn secondary" onclick="recreateTable()">🔄 Пересоздать таблицу</button>
+            <button class="btn secondary" onclick="runFullDiagnostic()">🔍 Полная диагностика</button>
         </div>
 
         <div class="status-panel">
@@ -739,33 +740,61 @@
         }
 
         async function loadMatrixData() {
-            console.log('Загрузка данных матрицы...');
+            console.log('🔍 ДИАГНОСТИКА: Начинаем загрузку данных матрицы...');
+
             try {
-                const result = await apiCall('/api/preview-data?limit=10000');
+                // Сначала получаем статистику
+                console.log('📊 Запрашиваем статистику...');
+                const statsResult = await apiCall('/api/statistics');
+                console.log('📈 Статистика из БД:', statsResult);
+
+                // Теперь запрашиваем данные БЕЗ лимита для теста
+                console.log('📊 Запрашиваем данные БЕЗ лимита...');
+                const unlimitedResult = await apiCall('/api/preview-data'); // без ?limit=
+                console.log('📦 Получено записей без лимита:', unlimitedResult.data ? unlimitedResult.data.length : 0);
+
+                // Запрашиваем с большим лимитом
+                console.log('📊 Запрашиваем данные с лимитом 50000...');
+                const result = await apiCall('/api/preview-data?limit=50000');
+                console.log('📦 Получено записей с лимитом 50000:', result.data ? result.data.length : 0);
+                console.log('🔍 Первые 5 записей:', result.data ? result.data.slice(0, 5) : []);
 
                 if (!result.data || result.data.length === 0) {
+                    console.log('❌ Нет данных для отображения');
                     displayEmptyMatrix();
                     return;
                 }
 
+                console.log('🏗️ Начинаем построение матрицы...');
                 buildMatrix(result.data);
+                console.log('✅ Матрица построена');
 
             } catch (error) {
-                console.error('Ошибка загрузки данных:', error);
+                console.error('❌ Ошибка загрузки данных:', error);
                 displayEmptyMatrix();
             }
         }
 
         function buildMatrix(data) {
             try {
+                console.log('🏗️ ДИАГНОСТИКА: Построение матрицы...');
+                console.log('📊 Входных данных:', data.length);
+
                 const matrix = {};
                 const warehouses = new Set();
                 const products = new Set();
 
-                data.forEach(item => {
+                let processedCount = 0;
+
+                data.forEach((item, index) => {
                     const productName = item.title;
                     const warehouseName = item.warehouse_title;
                     const quantity = item.residue;
+
+                    // Логируем каждые 100 записей
+                    if (index % 100 === 0) {
+                        console.log(`📈 Обработано ${index}/${data.length} записей`);
+                    }
 
                     products.add(productName);
                     warehouses.add(warehouseName);
@@ -774,24 +803,39 @@
                         matrix[productName] = {};
                     }
                     matrix[productName][warehouseName] = quantity;
+                    processedCount++;
                 });
 
+                console.log('📊 Результаты построения матрицы:');
+                console.log(`- Обработано записей: ${processedCount}`);
+                console.log(`- Уникальных товаров: ${products.size}`);
+                console.log(`- Уникальных складов: ${warehouses.size}`);
+                console.log(`- Первые 5 товаров:`, Array.from(products).slice(0, 5));
+                console.log(`- Первые 5 складов:`, Array.from(warehouses).slice(0, 5));
+
+                console.log('🖥️ Начинаем отображение матрицы...');
                 displayMatrix(matrix, Array.from(warehouses), Array.from(products));
-                updateSummaryStats(data.length, warehouses.size, data.reduce((sum, item) => sum + item.residue, 0));
+                updateSummaryStats(products.size, warehouses.size, data.reduce((sum, item) => sum + item.residue, 0));
+                console.log('✅ Отображение матрицы завершено');
 
             } catch (error) {
-                console.error('Ошибка построения матрицы:', error);
+                console.error('❌ Ошибка построения матрицы:', error);
+                console.error('📊 Стек ошибки:', error.stack);
                 alert(`Ошибка построения матрицы: ${error.message}`);
             }
         }
 
         function displayMatrix(matrix, warehouses, products) {
             try {
+                console.log('🖥️ ДИАГНОСТИКА: Отображение матрицы...');
+                console.log(`📊 Товаров для отображения: ${products.length}`);
+                console.log(`📊 Складов для отображения: ${warehouses.length}`);
+
                 const table = safeGetElement('matrixTable');
                 const tbody = safeGetElement('matrixBody');
 
                 if (!table || !tbody) {
-                    console.error('Не найдены элементы таблицы');
+                    console.error('❌ Не найдены элементы таблицы');
                     return;
                 }
 
@@ -800,8 +844,8 @@
                 headerRow.innerHTML = '<th>Товар</th>' +
                     warehouses.map(warehouse =>
                         `<th title="${warehouse}" onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" style="cursor: pointer;">
-                            ${truncateText(warehouse, 15)}
-                        </th>`
+                    ${truncateText(warehouse, 15)}
+                </th>`
                     ).join('');
 
                 const thead = table.querySelector('thead');
@@ -812,7 +856,14 @@
 
                 // Создаем строки для товаров
                 tbody.innerHTML = '';
-                products.forEach(product => {
+                let displayedProducts = 0;
+
+                products.forEach((product, index) => {
+                    // Логируем прогресс каждые 50 товаров
+                    if (index % 50 === 0) {
+                        console.log(`🖥️ Отображено товаров: ${index}/${products.length}`);
+                    }
+
                     const row = document.createElement('tr');
 
                     const productCell = document.createElement('td');
@@ -840,7 +891,10 @@
                     });
 
                     tbody.appendChild(row);
+                    displayedProducts++;
                 });
+
+                console.log(`✅ Отображено товаров в таблице: ${displayedProducts}`);
 
                 matrixData = { matrix, warehouses, products };
                 currentView = 'matrix';
@@ -851,7 +905,8 @@
                 safeSetDisplay('detailTable', 'none');
 
             } catch (error) {
-                console.error('Ошибка отображения матрицы:', error);
+                console.error('❌ Ошибка отображения матрицы:', error);
+                console.error('📊 Стек ошибки:', error.stack);
                 alert(`Ошибка отображения матрицы: ${error.message}`);
             }
         }
@@ -1211,6 +1266,61 @@
                     valueSpan.textContent = text;
                 }
                 element.className = `status-item ${type}`;
+            }
+        }
+
+        async function runFullDiagnostic() {
+            console.log('🔍 === ЗАПУСК ПОЛНОЙ ДИАГНОСТИКИ ===');
+
+            try {
+                // Тест 1: Статистика
+                console.log('📊 Тест 1: Получение статистики...');
+                const stats = await apiCall('/api/statistics');
+                console.log('✅ Статистика:', stats);
+
+                // Тест 2: Данные без лимита
+                console.log('📊 Тест 2: Данные без лимита...');
+                const noLimit = await apiCall('/api/preview-data');
+                console.log('✅ Без лимита получено:', noLimit.data?.length || 0);
+
+                // Тест 3: Данные с лимитом 50
+                console.log('📊 Тест 3: Данные с лимитом 50...');
+                const limit50 = await apiCall('/api/preview-data?limit=50');
+                console.log('✅ С лимитом 50 получено:', limit50.data?.length || 0);
+
+                // Тест 4: Данные с лимитом 100
+                console.log('📊 Тест 4: Данные с лимитом 100...');
+                const limit100 = await apiCall('/api/preview-data?limit=100');
+                console.log('✅ С лимитом 100 получено:', limit100.data?.length || 0);
+
+                // Тест 5: Данные с большим лимитом
+                console.log('📊 Тест 5: Данные с лимитом 10000...');
+                const limit10k = await apiCall('/api/preview-data?limit=10000');
+                console.log('✅ С лимитом 10000 получено:', limit10k.data?.length || 0);
+
+                // Анализ
+                console.log('🔍 === РЕЗУЛЬТАТЫ ДИАГНОСТИКИ ===');
+                console.log(`Статистика показывает товаров: ${stats.statistics?.unique_products || 'N/A'}`);
+                console.log(`Без лимита получено: ${noLimit.data?.length || 0}`);
+                console.log(`С лимитом 50: ${limit50.data?.length || 0}`);
+                console.log(`С лимитом 100: ${limit100.data?.length || 0}`);
+                console.log(`С лимитом 10000: ${limit10k.data?.length || 0}`);
+
+                // Определяем проблему
+                if (limit50.data?.length === 50 && limit100.data?.length === 100) {
+                    console.log('❌ ПРОБЛЕМА: API возвращает ровно столько записей, сколько запрашивается');
+                    console.log('💡 РЕШЕНИЕ: Увеличить лимит в loadMatrixData()');
+                } else if (noLimit.data?.length === limit10k.data?.length && limit10k.data?.length < 1000) {
+                    console.log('✅ Проблем с лимитом нет, данных просто мало');
+                } else {
+                    console.log('❓ Нестандартная ситуация, нужен дополнительный анализ');
+                }
+
+                alert('Диагностика завершена! Смотрите консоль браузера (F12) для подробностей.');
+
+            } catch (error) {
+                console.error('❌ Ошибка диагностики:', error);
+                alert(`Ошибка диагностики: ${error.message}`);
             }
         }
 
