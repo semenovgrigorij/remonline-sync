@@ -424,7 +424,7 @@
             <button class="btn" onclick="stopAutoSync()">Остановить синхронизацию</button>
             <button class="btn secondary" onclick="exportMatrix()">Экспорт матрицы</button>
             <button class="btn secondary" onclick="recreateTable()">🔄 Пересоздать таблицу</button>
-            <button class="btn secondary" onclick="runFullDiagnostic()">🔍 Полная диагностика</button>
+
         </div>
 
         <div class="status-panel">
@@ -486,7 +486,7 @@
                 </table>
             </div>
 
-            <div class="summary-stats" id="summaryStats" style="display: none;">
+            <!--  <div class="summary-stats" id="summaryStats" style="display: none;">
                 <div class="stat-item">
                     <div class="stat-value" id="totalProducts">0</div>
                     <div class="stat-label">Товаров</div>
@@ -495,11 +495,11 @@
                     <div class="stat-value" id="totalWarehouses">0</div>
                     <div class="stat-label">Складов</div>
                 </div>
-                <!-- <div class="stat-item">
+               <div class="stat-item">
                     <div class="stat-value" id="totalQuantity">0</div>
                     <div class="stat-label">Общий остаток</div>
-                </div> -->
-            </div>
+                </div> 
+            </div>-->
 
             <!-- Детализованная таблица -->
             <div id="detailTable" class="detailed-table">
@@ -742,37 +742,15 @@
         }
 
         async function loadMatrixData() {
-            console.log('🔍 ДИАГНОСТИКА: Начинаем загрузку данных матрицы...');
+            // Показать индикатор загрузки
+            document.getElementById('matrixTitle').textContent = 'Загрузка данных...';
 
             try {
-                // Сначала получаем статистику
-                console.log('📊 Запрашиваем статистику...');
-                const statsResult = await apiCall('/api/statistics');
-                console.log('📈 Статистика из БД:', statsResult);
-
-                // Теперь запрашиваем данные БЕЗ лимита для теста
-                console.log('📊 Запрашиваем данные БЕЗ лимита...');
-                const unlimitedResult = await apiCall('/api/preview-data'); // без ?limit=
-                console.log('📦 Получено записей без лимита:', unlimitedResult.data ? unlimitedResult.data.length : 0);
-
-                // Запрашиваем с большим лимитом
-                console.log('📊 Запрашиваем данные с лимитом 50000...');
                 const result = await apiCall('/api/preview-data?limit=50000');
-                console.log('📦 Получено записей с лимитом 50000:', result.data ? result.data.length : 0);
-                console.log('🔍 Первые 5 записей:', result.data ? result.data.slice(0, 5) : []);
-
-                if (!result.data || result.data.length === 0) {
-                    console.log('❌ Нет данных для отображения');
-                    displayEmptyMatrix();
-                    return;
-                }
-
-                console.log('🏗️ Начинаем построение матрицы...');
                 buildMatrix(result.data);
-                console.log('✅ Матрица построена');
-
+                document.getElementById('matrixTitle').textContent = 'Матрица остатков товаров';
             } catch (error) {
-                console.error('❌ Ошибка загрузки данных:', error);
+                document.getElementById('matrixTitle').textContent = 'Ошибка загрузки данных';
                 displayEmptyMatrix();
             }
         }

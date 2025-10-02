@@ -138,72 +138,6 @@ class RemonlineMatrixSync {
       }
     });
 
-    // НОВЫЕ ЭНДПОИНТЫ ДЛЯ ВЫПАДАЮЩИХ СПИСКОВ
-
-    // Получение складов для конкретной локации (branch_id)
-    this.app.get("/api/branch-warehouses/:branchId", async (req, res) => {
-      try {
-        const branchId = req.params.branchId;
-        const warehouses = await this.fetchWarehousesByBranch(branchId);
-
-        res.json({
-          success: true,
-          branchId,
-          data: warehouses,
-          totalWarehouses: warehouses.length,
-        });
-      } catch (error) {
-        console.error("Ошибка получения складов филиала:", error);
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
-    });
-
-    // Получение товаров конкретного склада напрямую из API
-    this.app.get(
-      "/api/selected-warehouse-goods/:warehouseId",
-      async (req, res) => {
-        try {
-          const warehouseId = req.params.warehouseId;
-
-          // Получаем товары напрямую из API Remonline
-          const goods = await this.fetchWarehouseGoods(warehouseId);
-
-          // Получаем информацию о складе
-          const warehouses = await this.fetchWarehouses();
-          const warehouse = warehouses.find((w) => w.id == warehouseId);
-          const warehouseTitle = warehouse
-            ? warehouse.title
-            : `Склад ID: ${warehouseId}`;
-
-          res.json({
-            success: true,
-            warehouseId,
-            warehouseTitle,
-            data: goods.map((item) => ({
-              title: item.title,
-              residue: item.residue,
-              code: item.code || "",
-              article: item.article || "",
-              category: item.category?.title || "",
-              uom_title: item.uom?.title || "",
-              updated_at: new Date().toISOString(),
-            })),
-            totalItems: goods.length,
-            totalQuantity: goods.reduce((sum, item) => sum + item.residue, 0),
-          });
-        } catch (error) {
-          console.error("Ошибка получения товаров выбранного склада:", error);
-          res.status(500).json({
-            success: false,
-            error: error.message,
-          });
-        }
-      }
-    );
-
     // Запуск синхронизации
     this.app.post("/api/sync-now", async (req, res) => {
       try {
@@ -715,33 +649,6 @@ class RemonlineMatrixSync {
         });
       }
     });
-
-    // Добавьте в setupRoutes() после других эндпоинтов
-    this.app.get("/api/debug-warehouse/:warehouseId", async (req, res) => {
-      try {
-        const warehouseId = req.params.warehouseId;
-        console.log(`🔍 ОТЛАДКА: Получение всех товаров склада ${warehouseId}`);
-
-        const goods = await this.fetchWarehouseGoods(warehouseId);
-
-        res.json({
-          success: true,
-          warehouseId,
-          totalGoods: goods.length,
-          uniqueProducts: new Set(goods.map((g) => g.title)).size,
-          pagesLoaded: Math.ceil(goods.length / 100),
-          sampleGoods: goods.slice(0, 5).map((item) => ({
-            title: item.title,
-            residue: item.residue,
-          })),
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
-    });
   }
 
   initializeBigQuery() {
@@ -795,33 +702,6 @@ class RemonlineMatrixSync {
     return data.data || [];
   }
 
-  // НОВЫЙ МЕТОД: Получение складов по branch_id
-  async fetchWarehousesByBranch(branchId) {
-    const options = {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${process.env.REMONLINE_API_TOKEN}`,
-      },
-    };
-
-    const url = `https://api.roapp.io/warehouse/?branch_id=${branchId}`;
-    console.log(`📡 Запрос складов для филиала ${branchId}: ${url}`);
-
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log(
-      `✅ Получено ${data.data?.length || 0} складов для филиала ${branchId}`
-    );
-
-    return data.data || [];
-  }
-
   async fetchWarehouseGoods(warehouseId) {
     const options = {
       method: "GET",
@@ -833,20 +713,15 @@ class RemonlineMatrixSync {
 
     let allGoods = [];
     let page = 1;
-    const perPage = 100; // Запрашиваем 100, но API может вернуть меньше
+    const perPage = 100; // Максимальный размер страницы
     let hasMore = true;
-    let consecutiveErrors = 0;
-    let totalCountFromAPI = null;
 
-    console.log(
-      `📡 ДИАГНОСТИКА: Получение товаров для склада ${warehouseId}...`
-    );
+    console.log(`   📡 Получение товаров для склада ${warehouseId}...`);
 
-    while (hasMore && consecutiveErrors < 3) {
+    while (hasMore) {
       try {
+        // Запрос с пагинацией и исключением товаров с нулевым остатком
         const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?exclude_zero_residue=true&page=${page}&per_page=${perPage}`;
-
-        console.log(`📄 Запрос страницы ${page}: ${url}`);
 
         const response = await fetch(url, options);
 
@@ -859,73 +734,33 @@ class RemonlineMatrixSync {
         const data = await response.json();
         const goods = data.data || [];
 
-        // Сохраняем общее количество из первого запроса
-        if (page === 1 && data.count) {
-          totalCountFromAPI = data.count;
-        }
-
-        console.log(`📊 Страница ${page}: получено ${goods.length} товаров`);
-        console.log(
-          `📊 Общее количество по API: ${totalCountFromAPI || "неизвестно"}`
-        );
-        console.log(`📊 Успех ответа: ${data.success}`);
-
         if (goods.length === 0) {
-          console.log(`✅ Страница ${page} пустая, завершаем загрузку`);
           hasMore = false;
         } else {
           allGoods = allGoods.concat(goods);
           console.log(
-            `📈 Страница ${page}: добавлено ${goods.length} товаров, всего: ${allGoods.length}`
+            `   📄 Страница ${page}: ${goods.length} товаров (всего: ${allGoods.length})`
           );
 
-          // ИСПРАВЛЕНИЕ: проверяем достигли ли общего количества или получили пустую страницу
-          if (totalCountFromAPI && allGoods.length >= totalCountFromAPI) {
-            console.log(
-              `✅ Получили все товары: ${allGoods.length}/${totalCountFromAPI}`
-            );
-            hasMore = false;
-          } else if (goods.length === 0) {
-            console.log(`✅ Пустая страница, завершаем`);
+          // Если получили меньше товаров чем запрашивали, значит это последняя страница
+          if (goods.length < perPage) {
             hasMore = false;
           } else {
-            // Продолжаем загрузку следующей страницы
             page++;
-            console.log(`⏭️ Переходим к странице ${page}`);
           }
         }
 
-        consecutiveErrors = 0;
+        // Небольшая задержка между запросами страниц
         await this.sleep(100);
       } catch (error) {
-        consecutiveErrors++;
         console.error(
-          `❌ Ошибка получения страницы ${page} (попытка ${consecutiveErrors}/3): ${error.message}`
+          `   ❌ Ошибка получения страницы ${page}: ${error.message}`
         );
-
-        if (consecutiveErrors >= 3) {
-          console.error(
-            `❌ Слишком много ошибок, прекращаем загрузку для склада ${warehouseId}`
-          );
-          hasMore = false;
-        } else {
-          await this.sleep(1000);
-        }
+        hasMore = false;
       }
     }
 
-    console.log(
-      `📊 ИТОГ для склада ${warehouseId}: получено ${allGoods.length} товаров в наличии`
-    );
-    if (totalCountFromAPI) {
-      console.log(
-        `📊 Ожидалось по API: ${totalCountFromAPI}, получено: ${allGoods.length}`
-      );
-    }
-
-    const uniqueTitles = new Set(allGoods.map((item) => item.title));
-    console.log(`📊 Уникальных названий товаров: ${uniqueTitles.size}`);
-
+    console.log(`   ✅ Итого получено: ${allGoods.length} товаров в наличии`);
     return allGoods;
   }
 

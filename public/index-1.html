@@ -16,16 +16,16 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            /* padding: 20px; */
+            padding: 20px;
         }
 
         .container {
             max-width: 100%;
             margin: 0 auto;
             background: white;
-            /* border-radius: 15px; */
+            border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
@@ -33,13 +33,13 @@
         .header {
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             color: white;
-            padding: 10px;
+            padding: 30px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 1.5rem;
-            /* margin-bottom: 10px; */
+            font-size: 2.2rem;
+            margin-bottom: 10px;
             font-weight: 600;
         }
 
@@ -49,9 +49,9 @@
         }
 
         .controls {
-            padding: 10px;
+            padding: 30px;
             display: flex;
-            gap: 5px;
+            gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
             background: #f8fafc;
@@ -59,12 +59,12 @@
         }
 
         .btn {
-            padding: 6px 10px;
+            padding: 12px 24px;
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 0.6rem;
+            font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -95,7 +95,7 @@
 
         /* Стили для новых выпадающих списков */
         .location-selector {
-            padding: 10px 30px;
+            padding: 20px 30px;
             background: white;
             border-bottom: 1px solid #e2e8f0;
         }
@@ -120,14 +120,14 @@
         .selector-label {
             font-weight: 600;
             color: #374151;
-            font-size: 0.7rem;
+            font-size: 0.9rem;
         }
 
         .selector {
-            padding: 6px 8px;
+            padding: 12px 16px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 1rem;
             outline: none;
             transition: border-color 0.2s ease;
             background: white;
@@ -150,8 +150,8 @@
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 6px 10px;
-            font-size: 0.8rem;
+            padding: 12px 20px;
+            font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -170,23 +170,24 @@
         }
 
         .status-panel {
-            padding: 10px;
+            padding: 30px;
             background: white;
             border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+        }
 
+        .status-panel h3 {
+            margin-bottom: 20px;
+            color: #374151;
+            font-size: 1.3rem;
         }
 
         .status-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 5px;
-            gap: 5px;
-            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
             background: #f8fafc;
             border-left: 4px solid #e2e8f0;
             transition: all 0.3s ease;
@@ -208,18 +209,17 @@
         }
 
         .status-label {
-            font-size: 0.6rem;
             font-weight: 600;
             color: #374151;
         }
 
         .status-value {
-            font-size: 0.6rem;
+            font-size: 0.95rem;
             color: #6b7280;
         }
 
         .matrix-container {
-            padding: 10px 0;
+            padding: 30px;
             background: #f8fafc;
             overflow: auto;
         }
@@ -227,21 +227,20 @@
         .matrix-header {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 10px;
-            padding: 0 0 0 105px;
+            gap: 10px;
+            margin-bottom: 20px;
         }
 
         .matrix-container h3 {
             color: #374151;
-            font-size: 1rem;
+            font-size: 1.3rem;
             margin: 0;
         }
 
         .matrix-table-wrapper {
             overflow: auto;
             max-height: 70vh;
-            /* border-radius: 10px; */
+            border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             background: white;
         }
@@ -250,19 +249,6 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 0.85rem;
-        }
-
-        .matrix-table thead tr:first-child th {
-            background: #1e1b4b;
-            font-weight: 700;
-            font-size: 0.95rem;
-            padding: 15px 8px;
-        }
-
-        .matrix-table thead tr:nth-child(2) th {
-            background: #4f46e5;
-            font-size: 0.8rem;
-            padding: 10px 6px;
         }
 
         .matrix-table th {
@@ -467,18 +453,17 @@
 
         .filter-info {
             background: #eff6ff;
-            border-top: 1px solid #3b82f6;
-            border-bottom: 1px solid #3b82f6;
-            padding: 10px 0 10px 105px;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 15px;
             margin-bottom: 20px;
             color: #1e40af;
             font-weight: 500;
             display: none;
-            font-size: 0.8em;
         }
 
         .search-panel {
-            padding: 10px 30px;
+            padding: 20px 30px;
             background: #f8fafc;
             border-bottom: 1px solid #e2e8f0;
         }
@@ -493,10 +478,10 @@
 
         .search-input {
             flex: 1;
-            padding: 6px 8px;
+            padding: 12px 16px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 1rem;
             outline: none;
             transition: border-color 0.2s ease;
             background: white;
@@ -505,34 +490,6 @@
         .search-input:focus {
             border-color: #4f46e5;
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .btn-search {
-            padding: 6px 10px;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 180px;
-        }
-
-        .btn-search:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
-        }
-
-        .btn-search:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-search.secondary {
-            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
         }
 
         @media (max-width: 768px) {
@@ -584,7 +541,7 @@
     <div class="container">
         <div class="header">
             <h1>Матрица товаров по складам</h1>
-            <!-- <p>Остатки товаров на складах в формате таблицы</p> -->
+            <p>Остатки товаров на складах в формате таблицы</p>
         </div>
 
         <!-- Новый блок для выбора локации и склада -->
@@ -609,29 +566,26 @@
         </div>
 
         <div class="controls">
-            <button class="btn" onclick="testConnection()">Тест підключення</button>
-            <button class="btn" onclick="syncNow()">Синхронізувати зараз</button>
-            <button class="btn" onclick="startAutoSync()">Запустити автосинхронізацію</button>
-            <button class="btn" onclick="stopAutoSync()">Зупинити синхронізацію</button>
-            <!-- <button class="btn secondary" onclick="exportMatrix()">Експорт матриці</button> -->
-            <!-- <button class="btn secondary" onclick="recreateTable()">🔄 Перестворити таблицю</button> -->
-            <button class="btn secondary" onclick="syncPostings()">📊 Синхронізувати оприбуткування</button>
-            <button class="btn secondary" onclick="syncMoves()">📦 Синхронізувати переміщення</button>
-            <button class="btn secondary" onclick="syncOutcomes()">🗑️ Синхронізувати списання</button>
-            <button class="btn secondary" onclick="syncSales()">💰 Синхронізувати продажі</button>
+            <button class="btn" onclick="testConnection()">Тест подключения</button>
+            <button class="btn" onclick="syncNow()">Синхронизировать сейчас</button>
+            <button class="btn" onclick="startAutoSync()">Запустить авто-синхронизацию</button>
+            <button class="btn" onclick="stopAutoSync()">Остановить синхронизацию</button>
+            <button class="btn secondary" onclick="exportMatrix()">Экспорт матрицы</button>
+            <button class="btn secondary" onclick="recreateTable()">🔄 Пересоздать таблицу</button>
         </div>
 
         <div class="status-panel">
+            <h3>Статус системы</h3>
             <div class="status-item" id="connectionStatus">
-                <span class="status-label">Статус API:</span>
+                <span class="status-label">Статус API</span>
                 <span class="status-value">Не проверено</span>
             </div>
             <div class="status-item" id="syncStatus">
-                <span class="status-label">Автосинхронизация:</span>
+                <span class="status-label">Автосинхронизация</span>
                 <span class="status-value">Остановлена</span>
             </div>
             <div class="status-item" id="lastSyncStatus">
-                <span class="status-label">Последняя синхронизация:</span>
+                <span class="status-label">Последняя синхронизация</span>
                 <span class="status-value">Никогда</span>
             </div>
         </div>
@@ -641,10 +595,10 @@
             <div class="search-container">
                 <input type="text" id="searchInput" class="search-input" placeholder="Поиск товара по названию..."
                     onkeyup="handleSearchKeyup(event)">
-                <button class="btn-search" onclick="searchProducts()">
+                <button class="btn" onclick="searchProducts()">
                     Поиск
                 </button>
-                <button class="btn-search secondary" onclick="clearSearch()">
+                <button class="btn secondary" onclick="clearSearch()">
                     Очистить
                 </button>
             </div>
@@ -652,7 +606,7 @@
 
         <div class="matrix-container">
             <div class="matrix-header">
-                <h3 id="matrixTitle"></h3>
+                <h3 id="matrixTitle">Матрица остатков товаров</h3>
                 <button class="btn back" id="backButton" onclick="showFullMatrix()" style="display: none;">
                     ← Вернуться к полной матрице
                 </button>
@@ -702,9 +656,9 @@
 
         // Массив локаций
         const branchIds = [
-            // { name: "001_G_CAR_UA", id: 112954 },
-            // { name: "002_G_CAR_PL", id: 123343 },
-            // { name: "003_INSURANCE CASES", id: 178097 },
+            { name: "001_G_CAR_UA", id: 112954 },
+            { name: "002_G_CAR_PL", id: 123343 },
+            { name: "003_INSURANCE CASES", id: 178097 },
             { name: "01.1_G_CAR_KY", id: 134397 },
             { name: "02.1_G_CAR_LV", id: 137783 },
             { name: "02.2_G_CAR_LV", id: 170450 },
@@ -725,9 +679,6 @@
         // Переменные для выпадающих списков
         let currentBranchId = null;
         let currentWarehouseId = null;
-        let currentWarehouseTitle = null;
-        let employeesCache = new Map();
-        let suppliersCache = new Map();
         let branchWarehouses = [];
 
         // Безопасные DOM операции
@@ -827,31 +778,6 @@
             }
         }
 
-        async function syncPostings() {
-            if (!confirm('Синхронизация истории оприходований займет много времени. Продолжить?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізувати оприбуткування';
-
-            try {
-                const result = await apiCall('/api/sync-postings', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронизация истории завершена!\n- Оприходований: ${result.totalPostings}\n- Позиций: ${result.processedProducts}\n- Время: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Ошибка синхронизации: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '📊 Синхронизировать историю';
-            }
-        }
-
         // Обработчик изменения склада
         function onWarehouseChange() {
             const warehouseSelect = safeGetElement('warehouseSelect');
@@ -886,16 +812,17 @@
             try {
                 currentView = 'selected_warehouse';
                 currentFilter = selectedWarehouse.title;
-                currentWarehouseTitle = selectedWarehouse.title;
 
                 safeSetText('matrixTitle', `Товары склада: ${selectedWarehouse.title}`);
                 safeSetDisplay('backButton', 'inline-block');
                 safeSetDisplay('filterInfo', 'block');
 
+                // Получаем товары склада напрямую из API
                 const result = await apiCall(`/api/selected-warehouse-goods/${currentWarehouseId}`);
 
                 if (result.success) {
                     safeSetText('filterInfo', `Найдено ${result.totalItems} товаров, общий остаток: ${result.totalQuantity}`);
+
                     safeSetDisplay('matrixWrapper', 'none');
                     safeSetDisplay('summaryStats', 'none');
 
@@ -906,14 +833,6 @@
             } catch (error) {
                 alert(`Ошибка: ${error.message}`);
                 safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-
-        function closeHistoryModal() {
-            const modal = document.getElementById('historyModal');
-            if (modal) {
-                modal.remove();
             }
         }
 
@@ -951,7 +870,7 @@
                 alert(`Ошибка: ${error.message}`);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Тест підключення';
+                btn.innerHTML = 'Тест подключения';
             }
         }
 
@@ -985,59 +904,7 @@
                 alert(`Ошибка: ${error.message}`);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Синхронізувати зараз';
-            }
-        }
-
-
-
-        // Модификация функции displayWarehouseDetails для добавления кликов по товарам
-        function displayWarehouseDetails(data) {
-            const header = safeGetElement('detailTableHeader');
-            const body = safeGetElement('detailTableBody');
-
-            if (header) {
-                header.innerHTML = `
-            <tr>
-                <th>№</th>
-                <th>Товар</th>
-                <th>Остаток</th>
-                <th>Код</th>
-                <th>Артикул</th>
-                <th>Категория</th>
-                <th>Ед. изм.</th>
-                <th>История</th>
-            </tr>
-        `;
-            }
-
-            if (body) {
-                body.innerHTML = data.map((item, index) => `
-            <tr>
-                <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
-                <td>${item.title}</td>
-                <td style="font-weight: 600; color: #059669;">${item.residue}</td>
-                <td>${item.code || '-'}</td>
-                <td>${item.article || '-'}</td>
-                <td>${item.category || '-'}</td>
-                <td>${item.uom_title || '-'}</td>
-                <td>
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;" 
-                           onclick="showProductHistoryFromSearch('${encodeURIComponent(currentWarehouseTitle)}', '${encodeURIComponent(item.title)}')">
-                        История
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-            }
-
-            safeSetDisplay('detailTable', 'block');
-        }
-
-        function closeHistoryModal() {
-            const modal = document.getElementById('historyModal');
-            if (modal) {
-                modal.remove();
+                btn.innerHTML = 'Синхронизировать сейчас';
             }
         }
 
@@ -1122,22 +989,8 @@
         }
 
         function displaySearchResults(data) {
-            console.log('displaySearchResults получила данные:', data);
-            console.log('Первый элемент данных:', data[0]);
-
             const header = safeGetElement('detailTableHeader');
             const body = safeGetElement('detailTableBody');
-
-            console.log('displaySearchResults - проверка данных:');
-            data.forEach((item, index) => {
-                if (index < 3) {
-                    console.log(`Запись ${index}:`, {
-                        title: item.title,
-                        warehouse_title: item.warehouse_title,
-                        warehouse_title_type: typeof item.warehouse_title
-                    });
-                }
-            });
 
             if (header) {
                 header.innerHTML = `
@@ -1150,17 +1003,13 @@
                 <th>Артикул</th>
                 <th>Категория</th>
                 <th>Ед. изм.</th>
-                <th>История</th>
+                <th>Обновлено</th>
             </tr>
         `;
             }
 
             if (body) {
-                body.innerHTML = data.map((item, index) => {
-                    const safeWarehouseTitle = item.warehouse_title || 'Неизвестный склад';
-                    const safeTitle = item.title || 'Неизвестный товар';
-
-                    return `
+                body.innerHTML = data.map((item, index) => `
             <tr>
                 <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
                 <td style="cursor: pointer;" onclick="showProductDetails('${encodeURIComponent(item.title)}')" title="Показать все склады с этим товаром">${item.title}</td>
@@ -1170,15 +1019,9 @@
                 <td>${item.article || '-'}</td>
                 <td>${item.category || '-'}</td>
                 <td>${item.uom_title || '-'}</td>
-                <td>
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;"
-                            onclick="showProductHistoryFromSearch('${encodeURIComponent(safeWarehouseTitle)}', '${encodeURIComponent(safeTitle)}')">
-                        История
-                    </button>
-                </td>
+                <td>${new Date(item.updated_at).toLocaleString()}</td>
             </tr>
-        `;
-                }).join('');
+        `).join('');
             }
 
             safeSetDisplay('detailTable', 'block');
@@ -1262,93 +1105,19 @@
                     return;
                 }
 
-                // Маппинг префиксов складов на названия локаций
-                const locationMapping = {
-                    '01_': '01.1_G_CAR_KY',
-                    '021_': '02.1_G_CAR_LV',
-                    '022_': '02.2_G_CAR_LV',
-                    '023_': '02.3_G_CAR_LV',
-                    '03_': '03_G_CAR_OD',
-                    '07_': '07_G_CAR_VN',
-                    '08_': '08_G_CAR_PLT',
-                    '09_': '09_G_CAR_IF',
-                    '15_': '15_G_CAR_CK',
-                    '16_': '16_G_CAR_CV',
-                    '181_': '18.1_G_CAR_LU',
-                    '182_': '18.2_G_CAR_LU',
-                    '183_': '18.3_G_CAR_LU',
-                    '191_': '19.1_G_CAR_RV',
-                    '192_': '19.2_G_CAR_RV'
-                };
+                // Создаем заголовок таблицы
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = '<th>№</th><th>Товар</th>' +
+                    warehouses.map(warehouse =>
+                        `<th title="${warehouse}" onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" style="cursor: pointer;">
+                    ${truncateText(warehouse, 15)}
+                </th>`
+                    ).join('');
 
-                // Группируем склады по локациям
-                const warehousesByLocation = {};
-
-                warehouses.forEach(warehouse => {
-                    let location = 'Другие';
-
-                    // Ищем соответствующую локацию по префиксу склада
-                    for (const [prefix, locationName] of Object.entries(locationMapping)) {
-                        if (warehouse.startsWith(prefix)) {
-                            location = locationName;
-                            break;
-                        }
-                    }
-
-                    if (!warehousesByLocation[location]) {
-                        warehousesByLocation[location] = [];
-                    }
-                    warehousesByLocation[location].push(warehouse);
-                });
-
-                console.log(`📊 Найдено локаций: ${Object.keys(warehousesByLocation).length}`);
-                console.log('📊 Локации:', Object.keys(warehousesByLocation));
-
-                // Создаем заголовок таблицы с группировкой
                 const thead = table.querySelector('thead');
                 if (thead) {
                     thead.innerHTML = '';
-
-                    // Первая строка - названия локаций
-                    const locationRow = document.createElement('tr');
-                    locationRow.innerHTML = '<th rowspan="2" style="min-width: 60px; max-width: 60px;">№</th><th rowspan="2" style="min-width: 200px; max-width: 200px;">Товар</th>';
-
-                    Object.keys(warehousesByLocation).sort().forEach(location => {
-                        const warehousesInLocation = warehousesByLocation[location];
-                        locationRow.innerHTML += `
-                    <th colspan="${warehousesInLocation.length}" 
-                        style="background: #1e1b4b; border-right: 3px solid #fff; text-align: center; font-size: 0.85rem; font-weight: 700; padding: 12px 8px;">
-                        ${location}
-                    </th>`;
-                    });
-
-                    // Вторая строка - названия складов (полные названия)
-                    const warehouseRow = document.createElement('tr');
-
-                    Object.keys(warehousesByLocation).sort().forEach(location => {
-                        const warehousesInLocation = warehousesByLocation[location];
-                        warehousesInLocation.forEach((warehouse, idx) => {
-                            const isLast = idx === warehousesInLocation.length - 1;
-
-                            warehouseRow.innerHTML += `
-                        <th title="${warehouse}" 
-                            onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" 
-                            style="cursor: pointer; 
-                                   min-width: 150px; 
-                                   max-width: 200px;
-                                   white-space: normal; 
-                                   word-wrap: break-word; 
-                                   font-size: 0.75rem; 
-                                   padding: 8px 6px; 
-                                   line-height: 1.3;
-                                   ${isLast ? 'border-right: 3px solid #fff;' : ''}">
-                            ${warehouse}
-                        </th>`;
-                        });
-                    });
-
-                    thead.appendChild(locationRow);
-                    thead.appendChild(warehouseRow);
+                    thead.appendChild(headerRow);
                 }
 
                 // Создаем строки для товаров
@@ -1356,13 +1125,14 @@
                 let displayedProducts = 0;
 
                 products.forEach((product, index) => {
+                    // Логируем прогресс каждые 50 товаров
                     if (index % 50 === 0) {
                         console.log(`🖥️ Отображено товаров: ${index}/${products.length}`);
                     }
 
                     const row = document.createElement('tr');
 
-                    // Ячейка с номером
+                    // Добавляем ячейку с номером
                     const numberCell = document.createElement('td');
                     numberCell.textContent = index + 1;
                     numberCell.style.textAlign = 'center';
@@ -1377,41 +1147,33 @@
                     numberCell.style.maxWidth = '60px';
                     row.appendChild(numberCell);
 
-                    // Ячейка с названием товара
                     const productCell = document.createElement('td');
                     productCell.textContent = product;
                     productCell.title = product;
                     productCell.onclick = () => showProductDetails(encodeURIComponent(product));
+                    // Обновляем стили для второго столбца
                     productCell.style.position = 'sticky';
-                    productCell.style.left = '60px';
+                    productCell.style.left = '60px'; // Сдвигаем на ширину столбца номера
                     productCell.style.zIndex = '9';
                     row.appendChild(productCell);
 
-                    // Ячейки с остатками
-                    Object.keys(warehousesByLocation).sort().forEach(location => {
-                        const warehousesInLocation = warehousesByLocation[location];
-                        warehousesInLocation.forEach((warehouse, idx) => {
-                            const quantityCell = document.createElement('td');
-                            const quantity = matrix[product][warehouse] || 0;
+                    // Остальной код без изменений...
+                    warehouses.forEach(warehouse => {
+                        const quantityCell = document.createElement('td');
+                        const quantity = matrix[product][warehouse] || 0;
 
-                            quantityCell.textContent = quantity || '-';
-                            quantityCell.className = 'quantity-cell';
+                        quantityCell.textContent = quantity || '-';
+                        quantityCell.className = 'quantity-cell';
 
-                            if (quantity === 0) {
-                                quantityCell.className += ' zero';
-                            } else if (quantity >= 10) {
-                                quantityCell.className += ' high';
-                            } else if (quantity >= 5) {
-                                quantityCell.className += ' medium';
-                            }
+                        if (quantity === 0) {
+                            quantityCell.className += ' zero';
+                        } else if (quantity >= 10) {
+                            quantityCell.className += ' high';
+                        } else if (quantity >= 5) {
+                            quantityCell.className += ' medium';
+                        }
 
-                            const isLast = idx === warehousesInLocation.length - 1;
-                            if (isLast) {
-                                quantityCell.style.borderRight = '3px solid #d1d5db';
-                            }
-
-                            row.appendChild(quantityCell);
-                        });
+                        row.appendChild(quantityCell);
                     });
 
                     tbody.appendChild(row);
@@ -1423,6 +1185,7 @@
                 matrixData = { matrix, warehouses, products };
                 currentView = 'matrix';
 
+                // Скрываем элементы детализации
                 safeSetDisplay('backButton', 'none');
                 safeSetDisplay('filterInfo', 'none');
                 safeSetDisplay('detailTable', 'none');
@@ -1443,7 +1206,6 @@
                 if (result.success) {
                     currentView = 'warehouse';
                     currentFilter = decodeURIComponent(warehouseTitle);
-                    currentWarehouseTitle = result.warehouseTitle; // ДОДАНО ЦЕЙ РЯДОК
 
                     safeSetText('matrixTitle', `Товары склада: ${result.warehouseTitle}`);
                     safeSetDisplay('backButton', 'inline-block');
@@ -1491,6 +1253,42 @@
             }
         }
 
+        function displayWarehouseDetails(data) {
+            const header = safeGetElement('detailTableHeader');
+            const body = safeGetElement('detailTableBody');
+
+            if (header) {
+                header.innerHTML = `
+                    <tr>
+                        <th>№</th>
+                        <th>Товар</th>
+                        <th>Остаток</th>
+                        <th>Код</th>
+                        <th>Артикул</th>
+                        <th>Категория</th>
+                        <th>Ед. изм.</th>
+                        <th>Обновлено</th>
+                    </tr>
+                `;
+            }
+
+            if (body) {
+                body.innerHTML = data.map((item, index) => `
+        <tr>
+            <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
+            <td>${item.title}</td>
+            <td style="font-weight: 600; color: #059669;">${item.residue}</td>
+            <td>${item.code || '-'}</td>
+            <td>${item.article || '-'}</td>
+            <td>${item.category || '-'}</td>
+            <td>${item.uom_title || '-'}</td>
+            <td>${new Date(item.updated_at).toLocaleString()}</td>
+        </tr>
+    `).join('');
+            }
+
+            safeSetDisplay('detailTable', 'block');
+        }
 
         function displayProductDetails(data) {
             const header = safeGetElement('detailTableHeader');
@@ -1506,6 +1304,7 @@
                         <th>Артикул</th>
                         <th>Категория</th>
                         <th>Ед. изм.</th>
+                        <th>Обновлено</th>
                     </tr>
                 `;
             }
@@ -1520,6 +1319,7 @@
                         <td>${item.article || '-'}</td>
                         <td>${item.category || '-'}</td>
                         <td>${item.uom_title || '-'}</td>
+                        <td>${new Date(item.updated_at).toLocaleString()}</td>
                     </tr>
                 `).join('');
             }
@@ -1646,7 +1446,7 @@
         }
 
         function exportSearchData(data, searchTerm) {
-            const headers = ['Товар', 'Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм'];
+            const headers = ['Товар', 'Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм', 'Обновлено'];
             const rows = [headers.join(',')];
 
             data.forEach(item => {
@@ -1671,7 +1471,7 @@
         }
 
         function exportWarehouseData(data, warehouseName) {
-            const headers = ['Товар', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм'];
+            const headers = ['Товар', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм', 'Обновлено'];
             const rows = [headers.join(',')];
 
             data.forEach(item => {
@@ -1694,7 +1494,7 @@
         }
 
         function exportProductData(data, productName) {
-            const headers = ['Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм'];
+            const headers = ['Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм', 'Обновлено'];
             const rows = [headers.join(',')];
 
             data.forEach(item => {
@@ -1771,307 +1571,9 @@
                 alert(`Ошибка: ${error.message}`);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '🔄 Перестворити таблицю';
+                btn.innerHTML = '🔄 Пересоздать таблицу';
             }
         }
-
-        // Функция для загрузки всех сотрудников
-        async function loadEmployeesCache() {
-            try {
-                const result = await apiCall('/api/employees');
-                if (result.success) {
-                    employeesCache.clear();
-                    result.data.forEach(employee => {
-                        employeesCache.set(employee.id, employee.fullName);
-                    });
-                    console.log(`Загружено ${employeesCache.size} сотрудников в кеш фронтенда`);
-                    return true;
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки сотрудников:', error);
-                return false;
-            }
-        }
-
-        async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
-            console.log('showProductHistoryFromSearch викликана з параметрами:');
-            console.log('warehouseTitle (raw):', warehouseTitle);
-            console.log('productTitle (raw):', productTitle);
-
-            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
-            const decodedProductTitle = decodeURIComponent(productTitle);
-
-            console.log('decodedWarehouseTitle:', decodedWarehouseTitle);
-            console.log('decodedProductTitle:', decodedProductTitle);
-
-            // ДОДАНА ПЕРЕВІРКА
-            if (!warehouseTitle || warehouseTitle === 'null' || warehouseTitle === 'undefined' ||
-                !decodedWarehouseTitle || decodedWarehouseTitle === 'null' || decodedWarehouseTitle === 'undefined') {
-                console.error('Некорректное название склада:', {
-                    warehouseTitle,
-                    decodedWarehouseTitle,
-                    currentWarehouseTitle: currentWarehouseTitle
-                });
-                alert('Ошибка: не указан склад. Пожалуйста, попробуйте снова из другого раздела.');
-                return;
-            }
-
-            try {
-                console.log(`Получение истории для склада "${decodedWarehouseTitle}", товар "${decodedProductTitle}"`);
-
-                const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
-
-                if (warehouseId) {
-                    console.log(`Найден warehouse_id: ${warehouseId}`);
-
-                    const result = await apiCall(`/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`);
-
-                    console.log('Ответ API product-warehouse-history:', result);
-
-                    if (result.success) {
-                        displaySeparatedProductHistory(result.data, decodedProductTitle, decodedWarehouseTitle);
-                    } else {
-                        alert(`Ошибка загрузки истории: ${result.error}`);
-                    }
-                } else {
-                    alert(`Не удалось найти ID склада "${decodedWarehouseTitle}"`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                console.error('Ошибка получения истории:', error);
-            }
-        }
-
-        async function getWarehouseIdByTitle(warehouseTitle) {
-            try {
-                if (!warehouseTitle || warehouseTitle === 'null') {
-                    console.error('Некорректное название склада:', warehouseTitle);
-                    return null;
-                }
-
-                console.log(`Поиск ID для склада: "${warehouseTitle}"`);
-
-                const result = await apiCall('/api/all-warehouses');
-                console.log('Полный ответ API all-warehouses:', result); // ОТЛАДКА
-
-                if (result.success && result.warehouses) {
-                    console.log(`Получено ${result.warehouses.length} складов для поиска`);
-
-                    // Покажем первые 3 склада для отладки
-                    console.log('Первые 3 склада:', result.warehouses.slice(0, 3));
-
-                    const warehouse = result.warehouses.find(w => {
-                        console.log(`Сравниваем: "${w.title}" === "${warehouseTitle}"`);
-                        return w.title === warehouseTitle;
-                    });
-
-                    if (!warehouse) {
-                        console.log('Склад не найден. Все названия складов:');
-                        result.warehouses.forEach((w, index) => {
-                            if (index < 10) { // Показываем первые 10
-                                console.log(`${index + 1}. "${w.title}"`);
-                            }
-                        });
-                    }
-
-                    console.log(`Результат поиска склада:`, warehouse);
-                    return warehouse ? warehouse.id : null;
-                } else {
-                    console.error('API all-warehouses вернул ошибку или пустой результат:', result);
-                    return null;
-                }
-
-            } catch (error) {
-                console.error('Ошибка получения ID склада:', error);
-                return null;
-            }
-        }
-
-        // Функция для загрузки поставщиков
-        async function loadSuppliersCache() {
-            try {
-                const result = await apiCall('/api/suppliers');
-                if (result.success) {
-                    suppliersCache.clear();
-                    result.data.forEach(supplier => {
-                        suppliersCache.set(supplier.id, supplier.name);
-                    });
-                    console.log(`Загружено ${suppliersCache.size} поставщиков в кеш фронтенда`);
-                    return true;
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки поставщиков:', error);
-                return false;
-            }
-        }
-
-        async function syncMoves() {
-            if (!confirm('Синхронизация перемещений займет время. Продолжить?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронизация перемещений...';
-
-            try {
-                const result = await apiCall('/api/sync-moves', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронизация перемещений завершена!\n- Перемещений: ${result.totalMoves}\n- Позиций: ${result.processedProducts}\n- Время: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Ошибка синхронизации: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '📦 Синхронізувати переміщення';
-            }
-        }
-        // Функция дедупликации для сохранения в BigQuery
-        async function savePostingsToBigQuery(data) {
-            if (!this.bigquery || !data.length) return;
-
-            try {
-                await this.createPostingsTable();
-
-                const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-                const tableName = `${process.env.BIGQUERY_TABLE}_postings`;
-                const table = dataset.table(tableName);
-
-                const syncId = Date.now().toString();
-
-                // ДЕДУПЛИКАЦИЯ: создаем уникальный ключ для каждой записи
-                const uniqueRecords = new Map();
-
-                data.forEach(item => {
-                    // Уникальный ключ: posting_id + product_id + warehouse_id
-                    const uniqueKey = `${item.posting_id}_${item.product_id}_${item.warehouse_id}`;
-
-                    // Если запись с таким ключом уже есть, суммируем количество
-                    if (uniqueRecords.has(uniqueKey)) {
-                        const existing = uniqueRecords.get(uniqueKey);
-                        existing.amount += item.amount;
-                    } else {
-                        uniqueRecords.set(uniqueKey, {
-                            ...item,
-                            sync_id: syncId
-                        });
-                    }
-                });
-
-                const enhancedData = Array.from(uniqueRecords.values());
-
-                console.log(`📊 Исходных записей: ${data.length}, уникальных: ${enhancedData.length}`);
-
-                // Удаляем старые данные
-                console.log("🗑️ Удаление старых данных оприходований...");
-                try {
-                    const deleteQuery = `
-                DELETE FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${tableName}\` 
-                WHERE TRUE
-            `;
-
-                    const [deleteJob] = await this.bigquery.createQueryJob({
-                        query: deleteQuery,
-                        location: "EU",
-                    });
-                    await deleteJob.getQueryResults();
-                    console.log("✅ Старые данные оприходований удалены");
-                } catch (deleteError) {
-                    console.log("⚠️ Не удалось удалить старые данные:", deleteError.message);
-                }
-
-                // Вставляем новые данные
-                console.log("📊 Вставка данных оприходований в BigQuery...");
-
-                const batchSize = 500;
-                let insertedCount = 0;
-
-                for (let i = 0; i < enhancedData.length; i += batchSize) {
-                    const batch = enhancedData.slice(i, i + batchSize);
-
-                    try {
-                        await table.insert(batch);
-                        insertedCount += batch.length;
-                        console.log(`📊 Вставлено ${insertedCount}/${enhancedData.length} записей`);
-                    } catch (error) {
-                        console.error(`❌ Ошибка вставки батча: ${error.message}`);
-                    }
-                }
-
-                if (insertedCount > 0) {
-                    console.log(`✅ Сохранено ${insertedCount} уникальных записей оприходований`);
-                }
-            } catch (error) {
-                console.error("❌ Критическая ошибка сохранения оприходований:", error.message);
-                throw error;
-            }
-        }
-
-        async function syncOutcomes() {
-            if (!confirm('Синхронізація списань займе час. Продовжити?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізація списань...';
-
-            try {
-                const result = await apiCall('/api/sync-outcomes', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронізація списань завершена!\n- Списань: ${result.totalOutcomes}\n- Позицій: ${result.processedProducts}\n- Час: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Помилка синхронізації: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Помилка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🗑️ Синхронізувати списання';
-            }
-        }
-
-        async function syncSales() {
-            if (!confirm('Синхронізація продажів займе час. Продовжити?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізація продажів...';
-
-            try {
-                const result = await apiCall('/api/sync-sales', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронізація продажів завершена!\n- Продажів: ${result.totalSales}\n- Позицій: ${result.processedProducts}\n- Час: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Помилка синхронізації: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Помилка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '💰 Синхронізувати продажі';
-            }
-        }
-
-        // Функция для получения имени поставщика
-        function getSupplierName(supplierId) {
-            if (!supplierId) return 'Не указан';
-            return suppliersCache.get(supplierId) || `ID: ${supplierId}`;
-        }
-
-        // Функция для получения имени сотрудника
-        function getEmployeeName(employeeId) {
-            if (!employeeId) return 'Не указан';
-            return employeesCache.get(employeeId) || `ID: ${employeeId}`;
-        }
-
 
         function updateStatus(elementId, text, type) {
             const element = safeGetElement(elementId);
@@ -2084,275 +1586,10 @@
             }
         }
 
-        function displaySeparatedProductHistory(data, productTitle, warehouseTitle) {
-            closeHistoryModal();
-
-            const { postings, moves, outcomes, sales } = data;
-
-            // Об'єднуємо всі операції в один масив
-            const allOperations = [];
-
-            // Додаємо оприбуткування
-            postings?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.posting_created_at.value || item.posting_created_at),
-                    docNumber: item.posting_label,
-                    createdBy: item.created_by_name,
-                    type: 'Оприбуткування',
-                    counterparty: item.supplier_name || '-',
-                    warehouse: item.warehouse_title,
-                    plus: item.amount,
-                    minus: 0,
-                    balance: 0
-                });
-            });
-
-            // Додаємо переміщення - РОЗДІЛЯЄМО НА ДВІ ОПЕРАЦІЇ
-            moves?.forEach(item => {
-                const date = new Date(item.move_created_at.value || item.move_created_at);
-
-                // Операція 1: Списання з вихідного складу
-                allOperations.push({
-                    date: date,
-                    docNumber: item.move_label,
-                    createdBy: item.created_by_name,
-                    type: 'Переміщення',
-                    counterparty: item.target_warehouse_title || '-',
-                    warehouse: item.source_warehouse_title,
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0,
-                    sortOrder: 1 // Спочатку списання
-                });
-
-                // Операція 2: Оприбуткування на цільовий склад
-                allOperations.push({
-                    date: date,
-                    docNumber: item.move_label,
-                    createdBy: item.created_by_name,
-                    type: 'Переміщення',
-                    counterparty: item.source_warehouse_title || '-',
-                    warehouse: item.target_warehouse_title,
-                    plus: item.amount,
-                    minus: 0,
-                    balance: 0,
-                    sortOrder: 2 // Потім оприбуткування
-                });
-            });
-
-            // Додаємо списання
-            outcomes?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.outcome_created_at.value || item.outcome_created_at),
-                    docNumber: item.outcome_label,
-                    createdBy: item.created_by_name,
-                    type: 'Списання',
-                    counterparty: item.outcome_description || '-',
-                    warehouse: item.source_warehouse_title,
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0
-                });
-            });
-
-            // Додаємо продажі
-            sales?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.sale_created_at.value || item.sale_created_at),
-                    docNumber: item.sale_label,
-                    createdBy: item.created_by_name,
-                    type: 'Продажа',
-                    counterparty: 'покупець',
-                    warehouse: '-',
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0
-                });
-            });
-
-            // Сортуємо за датою, потім за sortOrder (щоб спочатку списання, потім оприбуткування)
-            allOperations.sort((a, b) => {
-                const dateDiff = a.date - b.date;
-                if (dateDiff !== 0) return dateDiff;
-                return (a.sortOrder || 0) - (b.sortOrder || 0);
-            });
-
-            // Розраховуємо залишки по складах
-            const warehouseBalances = {};
-
-            // Спочатку знаходимо початкові залишки з першого оприбуткування
-            postings?.forEach(item => {
-                const warehouse = item.warehouse_title;
-                if (!warehouseBalances[warehouse]) {
-                    warehouseBalances[warehouse] = 0;
-                }
-            });
-
-            allOperations.forEach(op => {
-                const warehouse = op.warehouse || 'Невідомий склад';
-
-                // Ініціалізуємо склад, якщо його немає
-                if (warehouseBalances[warehouse] === undefined) {
-                    warehouseBalances[warehouse] = 0;
-                }
-
-                // Додаємо/віднімаємо операцію
-                warehouseBalances[warehouse] += op.plus - op.minus;
-                // Зберігаємо поточний залишок на цьому складі
-                op.balance = warehouseBalances[warehouse];
-                // Якщо залишок від'ємний, це означає що товару не було на складі
-                // Встановлюємо 0 замість від'ємного значення
-                if (op.balance < 0 && op.minus > 0) {
-                    op.balance = 0;
-                    warehouseBalances[warehouse] = 0;
-                }
-            });
-
-            const formatDate = (date) => {
-                return date.toLocaleDateString('uk-UA', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit'
-                });
-            };
-
-            const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center;">
-            <div style="background: white; padding: 30px; border-radius: 15px; max-width: 98%; max-height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
-                    <h3 style="margin: 0; color: #374151; font-size: 1.5rem;">Історія товару "${productTitle}"</h3>
-                    <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
-                </div>
-                
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                        <thead>
-                            <tr style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white;">
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Дата</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">№ документа</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Хто створив</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Тип документа</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Контрагент</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); min-width: 150px;">Склад</th>
-                                <th style="padding: 10px 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">+</th>
-                                <th style="padding: 10px 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">−</th>
-                                <th style="padding: 10px 6px; text-align: center;">Остаток</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${allOperations.length > 0 ? allOperations.map((op, index) => {
-                const rowColor = index % 2 === 0 ? '#f8fafc' : 'white';
-                const typeColor = {
-                    'Оприбуткування': '#059669',
-                    'Переміщення': '#0ea5e9',
-                    'Списання': '#ef4444',
-                    'Продажа': '#8b5cf6'
-                }[op.type] || '#6b7280';
-
-                return `
-                                    <tr style="background: ${rowColor}; border-bottom: 1px solid #e2e8f0;">
-                                        <td style="padding: 8px 6px;">${formatDate(op.date)}</td>
-                                        <td style="padding: 8px 6px; font-family: monospace; font-size: 0.8rem;">${op.docNumber}</td>
-                                        <td style="padding: 8px 6px;">${op.createdBy || '-'}</td>
-                                        <td style="padding: 8px 6px; color: ${typeColor}; font-weight: 600;">${op.type}</td>
-                                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.counterparty}</td>
-                                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.warehouse}</td>
-                                        <td style="padding: 8px 6px; text-align: center; color: #059669; font-weight: 600;">${op.plus || ''}</td>
-                                        <td style="padding: 8px 6px; text-align: center; color: #ef4444; font-weight: 600;">${op.minus || ''}</td>
-                                        <td style="padding: 8px 6px; text-align: center; font-weight: 700; background: #f0f9ff;">${op.balance}</td>
-                                    </tr>
-                                `;
-            }).join('') : '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">Операцій не знайдено</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>
-                
-                ${allOperations.length > 0 ? `
-                    <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                        <strong style="color: #0c4a6e;">Підсумок:</strong> Всього операцій: ${allOperations.length}
-                    </div>
-                ` : ''}
-            </div>
-        </div>
-    `;
-
-            document.body.insertAdjacentHTML('beforeend', historyHtml);
-        }
-
-        function displayCombinedProductHistory(data, productTitle) {
-            closeHistoryModal();
-
-            // Удаляем дубликаты
-            const uniqueData = data.filter((item, index, self) =>
-                index === self.findIndex(t =>
-                    t.operation_id === item.operation_id &&
-                    t.operation_type === item.operation_type
-                )
-            );
-
-            console.log(`Исходных записей: ${data.length}, уникальных: ${uniqueData.length}`);
-
-            const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center;">
-            <div style="background: white; padding: 30px; border-radius: 15px; max-width: 95%; max-height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
-                    <h3 style="margin: 0; color: #374151; font-size: 1.5rem;">История товара: ${productTitle}</h3>
-                    <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрыть</button>
-                </div>
-                
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                        <thead>
-                            <tr style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white;">
-                                <th style="padding: 10px 6px; text-align: left;">Дата</th>
-                                <th style="padding: 10px 6px; text-align: left;">Тип операции</th>
-                                <th style="padding: 10px 6px; text-align: left;">Документ</th>
-                                <th style="padding: 10px 6px; text-align: left;">Кто создал</th>
-                                <th style="padding: 10px 6px; text-align: center;">Количество</th>
-                                <th style="padding: 10px 6px; text-align: left;">Откуда</th>
-                                <th style="padding: 10px 6px; text-align: left;">Куда</th>
-                                <th style="padding: 10px 6px; text-align: left;">Описание</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${uniqueData.length > 0 ? uniqueData.map((item, index) => {
-                const isPosting = item.operation_type === 'posting';
-                const operationType = isPosting ? 'Оприходование' : 'Перемещение';
-                const bgColor = isPosting ? '#f0fdf4' : '#eff6ff';
-
-                return `
-                                <tr style="background: ${index % 2 === 0 ? bgColor : 'white'}; border-bottom: 1px solid #e2e8f0;">
-                                    <td style="padding: 8px 6px; font-weight: 500;">
-                                        ${new Date(item.operation_date).toLocaleString('uk-UA')}
-                                    </td>
-                                    <td style="padding: 8px 6px; font-weight: 600; color: ${isPosting ? '#059669' : '#0ea5e9'};">
-                                        ${operationType}
-                                    </td>
-                                    <td style="padding: 8px 6px; font-family: monospace;">${item.operation_label || '-'}</td>
-                                    <td style="padding: 8px 6px;">${item.created_by_name || 'Неизвестно'}</td>
-                                    <td style="padding: 8px 6px; text-align: center; font-weight: 600;">${item.amount || 0}</td>
-                                    <td style="padding: 8px 6px; max-width: 150px; word-wrap: break-word;">${item.source_warehouse || item.warehouse_info || '-'}</td>
-                                    <td style="padding: 8px 6px; max-width: 150px; word-wrap: break-word;">${item.target_warehouse || '-'}</td>
-                                    <td style="padding: 8px 6px; max-width: 200px; word-wrap: break-word;">${item.description || '-'}</td>
-                                </tr>
-                                `;
-            }).join('') : '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #6b7280;">История не найдена</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    `;
-
-            document.body.insertAdjacentHTML('beforeend', historyHtml);
-        }
-
         // Инициализация
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM загружен, инициализация...');
             initializeSelectors();
-            loadEmployeesCache();
-            loadSuppliersCache();
             refreshStatus();
             loadMatrixData();
 
