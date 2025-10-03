@@ -1797,6 +1797,7 @@
             console.log('showProductHistoryFromSearch викликана з параметрами:');
             console.log('warehouseTitle (raw):', warehouseTitle);
             console.log('productTitle (raw):', productTitle);
+            console.log('showProductHistoryFromSearch викликана:', { warehouseTitle, productTitle });
 
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
@@ -1826,9 +1827,11 @@
 
                     const result = await apiCall(`/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`);
 
+                    console.log('Відповідь API:', result);
                     console.log('Ответ API product-warehouse-history:', result);
 
                     if (result.success) {
+                        console.log('Дані для відображення:', result.data);
                         displaySeparatedProductHistory(result.data, decodedProductTitle, decodedWarehouseTitle);
                     } else {
                         alert(`Ошибка загрузки истории: ${result.error}`);
