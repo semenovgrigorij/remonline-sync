@@ -2094,65 +2094,84 @@
 
             // Додаємо оприбуткування
             postings?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.posting_created_at.value || item.posting_created_at),
-                    docNumber: item.posting_label,
-                    createdBy: item.created_by_name,
-                    type: 'Оприбуткування',
-                    counterparty: item.supplier_name || '-',
-                    warehouse: item.warehouse_title,
-                    plus: item.amount,
-                    minus: 0,
-                    balance: 0
-                });
+                if (item.warehouse_title === warehouseTitle) {
+                    allOperations.push({
+                        date: new Date(item.posting_created_at.value || item.posting_created_at),
+                        docNumber: item.posting_label,
+                        createdBy: item.created_by_name,
+                        type: 'Оприбуткування',
+                        counterparty: item.supplier_name || '-',
+                        warehouse: item.warehouse_title,
+                        plus: item.amount,
+                        minus: 0,
+                        balance: 0,
+                        isMove: false
+                    });
+                }
             });
 
-            // Додаємо переміщення - РОЗДІЛЯЄМО НА ДВІ ОПЕРАЦІЇ
+            // Додаємо переміщення
             moves?.forEach(item => {
                 const date = new Date(item.move_created_at.value || item.move_created_at);
+                const moveId = `move_${item.move_label}_${date.getTime()}`;
+                const isInternalMove = item.source_warehouse_title === warehouseTitle &&
+                    item.target_warehouse_title === warehouseTitle;
 
-                // Операція 1: Списання з вихідного складу
-                allOperations.push({
-                    date: date,
-                    docNumber: item.move_label,
-                    createdBy: item.created_by_name,
-                    type: 'Переміщення',
-                    counterparty: item.target_warehouse_title || '-',
-                    warehouse: item.source_warehouse_title,
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0,
-                    sortOrder: 1 // Спочатку списання
-                });
+                // Списання з поточного складу
+                if (item.source_warehouse_title === warehouseTitle) {
+                    allOperations.push({
+                        date: date,
+                        docNumber: item.move_label,
+                        createdBy: item.created_by_name,
+                        type: 'Переміщення (вихід)',
+                        counterparty: `→ ${item.target_warehouse_title}`,
+                        warehouse: item.source_warehouse_title,
+                        plus: 0,
+                        minus: item.amount,
+                        balance: 0,
+                        sortOrder: 1,
+                        moveId: moveId,
+                        isMove: true,
+                        isInternalMove: isInternalMove
+                    });
+                }
 
-                // Операція 2: Оприбуткування на цільовий склад
-                allOperations.push({
-                    date: date,
-                    docNumber: item.move_label,
-                    createdBy: item.created_by_name,
-                    type: 'Переміщення',
-                    counterparty: item.source_warehouse_title || '-',
-                    warehouse: item.target_warehouse_title,
-                    plus: item.amount,
-                    minus: 0,
-                    balance: 0,
-                    sortOrder: 2 // Потім оприбуткування
-                });
+                // Прихід на поточний склад
+                if (item.target_warehouse_title === warehouseTitle) {
+                    allOperations.push({
+                        date: date,
+                        docNumber: item.move_label,
+                        createdBy: item.created_by_name,
+                        type: 'Переміщення (вхід)',
+                        counterparty: `← ${item.source_warehouse_title}`,
+                        warehouse: item.target_warehouse_title,
+                        plus: item.amount,
+                        minus: 0,
+                        balance: 0,
+                        sortOrder: 2,
+                        moveId: moveId,
+                        isMove: true,
+                        isInternalMove: isInternalMove
+                    });
+                }
             });
 
             // Додаємо списання
             outcomes?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.outcome_created_at.value || item.outcome_created_at),
-                    docNumber: item.outcome_label,
-                    createdBy: item.created_by_name,
-                    type: 'Списання',
-                    counterparty: item.outcome_description || '-',
-                    warehouse: item.source_warehouse_title,
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0
-                });
+                if (item.source_warehouse_title === warehouseTitle) {
+                    allOperations.push({
+                        date: new Date(item.outcome_created_at.value || item.outcome_created_at),
+                        docNumber: item.outcome_label,
+                        createdBy: item.created_by_name,
+                        type: 'Списання',
+                        counterparty: item.outcome_description || '-',
+                        warehouse: item.source_warehouse_title,
+                        plus: 0,
+                        minus: item.amount,
+                        balance: 0,
+                        isMove: false
+                    });
+                }
             });
 
             // Додаємо продажі
@@ -2161,12 +2180,13 @@
                     date: new Date(item.sale_created_at.value || item.sale_created_at),
                     docNumber: item.sale_label,
                     createdBy: item.created_by_name,
-                    type: 'Продажа',
-                    counterparty: 'покупець',
+                    type: 'Продаж',
+                    counterparty: 'Покупець',
                     warehouse: '-',
                     plus: 0,
                     minus: item.amount,
-                    balance: 0
+                    balance: 0,
+                    isMove: false
                 });
             });
 
@@ -2178,7 +2198,32 @@
             });
 
             // Розраховуємо залишки по складах
-            const warehouseBalances = {};
+            let balance = 0;
+
+            for (let i = 0; i < allOperations.length; i++) {
+                const op = allOperations[i];
+
+                // Якщо це внутрішнє переміщення (source === target === поточний склад)
+                if (op.isInternalMove) {
+                    if (op.sortOrder === 1) {
+                        // Для виходу: показуємо залишок ДО операції
+                        op.balance = balance;
+
+                        // Перевіряємо наступну операцію (вхід)
+                        const nextOp = allOperations[i + 1];
+                        if (nextOp && nextOp.moveId === op.moveId && nextOp.sortOrder === 2) {
+                            // Для входу: також показуємо залишок ДО операції (той самий)
+                            nextOp.balance = balance;
+                            i++; // Пропускаємо наступну операцію
+                            continue;
+                        }
+                    }
+                } else {
+                    // Звичайна операція: спочатку застосовуємо зміну, потім показуємо новий залишок
+                    balance += op.plus - op.minus;
+                    op.balance = balance;
+                }
+            }
 
             // Спочатку знаходимо початкові залишки з першого оприбуткування
             postings?.forEach(item => {
