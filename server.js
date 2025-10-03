@@ -1861,7 +1861,7 @@ class RemonlineMatrixSync {
         allWarehouses.push(...warehouses);
 
         // Задержка между запросами
-        await this.sleep(100);
+        // await this.sleep(100);
       } catch (error) {
         console.error(
           `Ошибка получения складов для локации ${branchId}:`,
@@ -1944,7 +1944,7 @@ class RemonlineMatrixSync {
 
     let allGoods = [];
     let page = 1;
-    const perPage = 10000; // Запрашиваем 100, но API может вернуть меньше
+    const perPage = 10000;
     let hasMore = true;
     let consecutiveErrors = 0;
     let totalCountFromAPI = null;
@@ -2008,7 +2008,7 @@ class RemonlineMatrixSync {
         }
 
         consecutiveErrors = 0;
-        await this.sleep(100);
+        // await this.sleep(100);
       } catch (error) {
         consecutiveErrors++;
         console.error(
@@ -2129,7 +2129,7 @@ class RemonlineMatrixSync {
       const warehouses = await this.fetchWarehouses();
       console.log(`📍 Найдено ${warehouses.length} складов для обработки`);
 
-      const batchSize = 5;
+      const batchSize = 20;
 
       for (let i = 0; i < warehouses.length; i += batchSize) {
         const warehouseBatch = warehouses.slice(i, i + batchSize);
