@@ -2088,14 +2088,31 @@
         }
 
         function displaySeparatedProductHistory(data, productTitle, warehouseTitle) {
+            console.log('displaySeparatedProductHistory викликана');
+            console.log('data:', data);
+            console.log('postings:', data.postings);
+            console.log('moves:', data.moves);
+            console.log('outcomes:', data.outcomes);
+            console.log('sales:', data.sales);
+
             closeHistoryModal();
 
             const { postings, moves, outcomes, sales } = data;
+
+            console.log('Після деструктуризації:');
+            console.log('postings:', postings);
+            console.log('moves:', moves);
 
             const allOperations = [];
 
             // Додаємо оприбуткування
             postings?.forEach(item => {
+                console.log('Перевірка оприбуткування:', {
+                    warehouse_title: item.warehouse_title,
+                    warehouseTitle: warehouseTitle,
+                    match: item.warehouse_title === warehouseTitle
+                });
+
                 if (item.warehouse_title === warehouseTitle) {
                     allOperations.push({
                         date: new Date(item.posting_created_at.value || item.posting_created_at),
