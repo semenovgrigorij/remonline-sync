@@ -2126,106 +2126,91 @@ class RemonlineMatrixSync {
     const uniqueProducts = new Set();
 
     try {
-      // Теперь fetchWarehouses() уже возвращает только нужные склады
       const warehouses = await this.fetchWarehouses();
-
       console.log(`📍 Найдено ${warehouses.length} складов для обработки`);
 
-      const allData = [];
+      const batchSize = 5;
 
-      for (const warehouse of warehouses) {
-        try {
-          console.log(
-            `\n📦 [${warehousesProcessed + 1}/${warehouses.length}] Склад: ${
-              warehouse.title
-            }`
-          );
+      for (let i = 0; i < warehouses.length; i += batchSize) {
+        const warehouseBatch = warehouses.slice(i, i + batchSize);
+        const batchData = [];
 
-          const goodsInStock = await this.fetchWarehouseGoods(warehouse.id);
-
-          if (goodsInStock.length > 0) {
-            console.log(`   📊 Обработка ${goodsInStock.length} товаров...`);
-
-            // Анализ уникальных товаров
-            const warehouseUniqueProducts = new Set();
-
-            goodsInStock.forEach((item) => {
-              uniqueProducts.add(item.title);
-              warehouseUniqueProducts.add(item.title);
-
-              // Подготовка данных для BigQuery
-              const processedItem = {
-                warehouse_id: warehouse.id,
-                warehouse_branch_id: warehouse.branch_id || null,
-                warehouse_title: warehouse.title || "Неизвестный склад",
-                warehouse_type: warehouse.type || "product",
-                warehouse_is_global: warehouse.is_global || false,
-                good_id: item.id,
-                product_id: item.product_id || item.id,
-                title: item.title,
-                code: item.code || "",
-                article: item.article || "",
-                residue: item.residue,
-                price_json: JSON.stringify(item.price || {}),
-                category: item.category?.title || "",
-                category_id: item.category?.id || null,
-                description: item.description || "",
-                uom_title: item.uom?.title || "",
-                uom_description: item.uom?.description || "",
-                image_url: Array.isArray(item.image)
-                  ? item.image[0] || ""
-                  : item.image || "",
-                is_serial: item.is_serial || false,
-                warranty: item.warranty || 0,
-                warranty_period: item.warranty_period || 0,
-                updated_at: new Date().toISOString(),
-              };
-              allData.push(processedItem);
-            });
-
-            totalGoods += goodsInStock.length;
-
+        for (const warehouse of warehouseBatch) {
+          try {
             console.log(
-              `   📈 Уникальных товаров на складе: ${warehouseUniqueProducts.size}`
+              `\n📦 [${warehousesProcessed + 1}/${warehouses.length}] Склад: ${
+                warehouse.title
+              }`
             );
-            console.log(
-              `   📦 Общий остаток: ${goodsInStock.reduce(
-                (sum, item) => sum + item.residue,
-                0
-              )}`
-            );
-          } else {
-            console.log(`   ⚪ Нет товаров в наличии`);
+
+            const goodsInStock = await this.fetchWarehouseGoods(warehouse.id);
+
+            if (goodsInStock.length > 0) {
+              console.log(`   📊 Обработка ${goodsInStock.length} товаров...`);
+
+              goodsInStock.forEach((item) => {
+                uniqueProducts.add(item.title);
+
+                const processedItem = {
+                  warehouse_id: warehouse.id,
+                  warehouse_branch_id: warehouse.branch_id || null,
+                  warehouse_title: warehouse.title || "Неизвестный склад",
+                  warehouse_type: warehouse.type || "product",
+                  warehouse_is_global: warehouse.is_global || false,
+                  good_id: item.id,
+                  product_id: item.product_id || item.id,
+                  title: item.title,
+                  code: item.code || "",
+                  article: item.article || "",
+                  residue: item.residue,
+                  price_json: JSON.stringify(item.price || {}),
+                  category: item.category?.title || "",
+                  category_id: item.category?.id || null,
+                  description: item.description || "",
+                  uom_title: item.uom?.title || "",
+                  uom_description: item.uom?.description || "",
+                  image_url: Array.isArray(item.image)
+                    ? item.image[0] || ""
+                    : item.image || "",
+                  is_serial: item.is_serial || false,
+                  warranty: item.warranty || 0,
+                  warranty_period: item.warranty_period || 0,
+                  updated_at: new Date().toISOString(),
+                };
+                batchData.push(processedItem);
+              });
+
+              totalGoods += goodsInStock.length;
+            }
+
+            warehousesProcessed++;
+            await this.sleep(300);
+          } catch (error) {
+            const errorMsg = `Ошибка: ${warehouse.title} - ${error.message}`;
+            console.error(`❌ ${errorMsg}`);
+            errors.push(errorMsg);
+            warehousesProcessed++;
           }
-
-          warehousesProcessed++;
-
-          // Промежуточная статистика каждые 10 складов
-          if (warehousesProcessed % 10 === 0) {
-            console.log(`\n📊 === ПРОМЕЖУТОЧНАЯ СТАТИСТИКА ===`);
-            console.log(
-              `Обработано складов: ${warehousesProcessed}/${warehouses.length}`
-            );
-            console.log(`Найдено товаров: ${totalGoods}`);
-            console.log(`Уникальных товаров: ${uniqueProducts.size}`);
-            console.log(
-              `Прогресс: ${Math.round(
-                (warehousesProcessed / warehouses.length) * 100
-              )}%`
-            );
-          }
-
-          // Задержка между складами
-          await this.sleep(300);
-        } catch (error) {
-          const errorMsg = `Ошибка: ${warehouse.title} - ${error.message}`;
-          console.error(`❌ ${errorMsg}`);
-          errors.push(errorMsg);
-          warehousesProcessed++;
         }
+
+        // Зберігаємо порцію в BigQuery після обробки batch складів
+        if (batchData.length > 0) {
+          console.log(
+            `\n💾 Сохранение порции ${batchData.length} записей в BigQuery...`
+          );
+          await this.saveToBigQuery(batchData);
+
+          if (global.gc) {
+            global.gc();
+          }
+        }
+
+        console.log(
+          `📊 Прогресс: ${warehousesProcessed}/${warehouses.length} складов`
+        );
       }
 
-      // Финальная статистика
+      // Фінальна статистика
       console.log(`\n📊 === ИТОГОВАЯ СТАТИСТИКА ===`);
       console.log(
         `Обработано складов: ${warehousesProcessed}/${warehouses.length}`
@@ -2233,18 +2218,6 @@ class RemonlineMatrixSync {
       console.log(`Найдено товаров в наличии: ${totalGoods}`);
       console.log(`Уникальных товаров: ${uniqueProducts.size}`);
       console.log(`Ошибок: ${errors.length}`);
-      console.log(
-        `Время обработки: ${Math.round((Date.now() - syncStart) / 1000)} секунд`
-      );
-
-      // Сохранение в BigQuery
-      if (allData.length > 0) {
-        console.log(`\n💾 Сохранение ${allData.length} записей в BigQuery...`);
-        await this.saveToBigQuery(allData);
-        console.log(`✅ Данные сохранены в BigQuery`);
-      } else {
-        console.log(`⚠️ Нет данных для сохранения`);
-      }
 
       this.lastSyncData = {
         timestamp: new Date().toISOString(),
@@ -2452,31 +2425,8 @@ class RemonlineMatrixSync {
         sync_id: syncId,
       }));
 
-      // СНАЧАЛА удаляем старые данные
-      console.log("🗑️ Удаление старых данных перед вставкой новых...");
-      try {
-        const deleteQuery = `
-                DELETE FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\` 
-                WHERE sync_id != @current_sync_id OR sync_id IS NULL
-            `;
-
-        const [deleteJob] = await this.bigquery.createQueryJob({
-          query: deleteQuery,
-          params: { current_sync_id: syncId },
-          types: { current_sync_id: "STRING" },
-          location: "EU",
-        });
-        await deleteJob.getQueryResults();
-        console.log("✅ Старые данные удалены");
-      } catch (deleteError) {
-        console.log(
-          "⚠️ Не удалось удалить старые данные:",
-          deleteError.message
-        );
-      }
-
-      // ЗАТЕМ вставляем новые данные
-      console.log("📊 Вставка новых данных в BigQuery...");
+      // Вставляємо порцію без видалення старих даних
+      console.log("📊 Вставка порції даних в BigQuery...");
 
       const batchSize = 500;
       let insertedCount = 0;
@@ -2488,24 +2438,16 @@ class RemonlineMatrixSync {
           await table.insert(batch);
           insertedCount += batch.length;
           console.log(
-            `📊 Успешно вставлено ${insertedCount}/${enhancedData.length} записей`
+            `📊 Вставлено ${insertedCount}/${enhancedData.length} записей`
           );
         } catch (error) {
-          console.error(
-            `❌ Ошибка вставки батча ${i}-${i + batch.length}:`,
-            error.message
-          );
+          console.error(`❌ Ошибка вставки батча:`, error.message);
         }
       }
 
-      if (insertedCount > 0) {
-        console.log(`✅ Успешно сохранено ${insertedCount} записей в BigQuery`);
-      }
+      console.log(`✅ Сохранено ${insertedCount} записей`);
     } catch (error) {
-      console.error(
-        "❌ Критическая ошибка сохранения в BigQuery:",
-        error.message
-      );
+      console.error("❌ Ошибка сохранения в BigQuery:", error.message);
       throw error;
     }
   }
