@@ -2089,7 +2089,6 @@
 
             const { postings, moves, outcomes, sales } = data;
 
-            // Об'єднуємо всі операції в один масив
             const allOperations = [];
 
             // Додаємо оприбуткування
@@ -2190,68 +2189,36 @@
                 });
             });
 
-            // Сортуємо за датою, потім за sortOrder (щоб спочатку списання, потім оприбуткування)
+            // Сортуємо
             allOperations.sort((a, b) => {
                 const dateDiff = a.date - b.date;
                 if (dateDiff !== 0) return dateDiff;
                 return (a.sortOrder || 0) - (b.sortOrder || 0);
             });
 
-            // Розраховуємо залишки по складах
+            // Розрахунок залишку
             let balance = 0;
 
             for (let i = 0; i < allOperations.length; i++) {
                 const op = allOperations[i];
 
                 // Якщо це внутрішнє переміщення (source === target === поточний склад)
-                if (op.isInternalMove) {
-                    if (op.sortOrder === 1) {
-                        // Для виходу: показуємо залишок ДО операції
-                        op.balance = balance;
-
-                        // Перевіряємо наступну операцію (вхід)
-                        const nextOp = allOperations[i + 1];
-                        if (nextOp && nextOp.moveId === op.moveId && nextOp.sortOrder === 2) {
-                            // Для входу: також показуємо залишок ДО операції (той самий)
-                            nextOp.balance = balance;
-                            i++; // Пропускаємо наступну операцію
-                            continue;
-                        }
-                    }
-                } else {
-                    // Звичайна операція: спочатку застосовуємо зміну, потім показуємо новий залишок
-                    balance += op.plus - op.minus;
+                if (op.isInternalMove && op.sortOrder === 1) {
+                    // Для внутрішнього переміщення: показуємо залишок без змін для обох операцій
                     op.balance = balance;
+
+                    const nextOp = allOperations[i + 1];
+                    if (nextOp && nextOp.moveId === op.moveId && nextOp.sortOrder === 2) {
+                        nextOp.balance = balance;
+                        i++; // Пропускаємо наступну
+                        continue;
+                    }
                 }
+
+                // Для всіх інших операцій: застосовуємо зміну
+                balance += op.plus - op.minus;
+                op.balance = balance;
             }
-
-            // Спочатку знаходимо початкові залишки з першого оприбуткування
-            postings?.forEach(item => {
-                const warehouse = item.warehouse_title;
-                if (!warehouseBalances[warehouse]) {
-                    warehouseBalances[warehouse] = 0;
-                }
-            });
-
-            allOperations.forEach(op => {
-                const warehouse = op.warehouse || 'Невідомий склад';
-
-                // Ініціалізуємо склад, якщо його немає
-                if (warehouseBalances[warehouse] === undefined) {
-                    warehouseBalances[warehouse] = 0;
-                }
-
-                // Додаємо/віднімаємо операцію
-                warehouseBalances[warehouse] += op.plus - op.minus;
-                // Зберігаємо поточний залишок на цьому складі
-                op.balance = warehouseBalances[warehouse];
-                // Якщо залишок від'ємний, це означає що товару не було на складі
-                // Встановлюємо 0 замість від'ємного значення
-                if (op.balance < 0 && op.minus > 0) {
-                    op.balance = 0;
-                    warehouseBalances[warehouse] = 0;
-                }
-            });
 
             const formatDate = (date) => {
                 return date.toLocaleDateString('uk-UA', {
@@ -2289,24 +2256,25 @@
                 const rowColor = index % 2 === 0 ? '#f8fafc' : 'white';
                 const typeColor = {
                     'Оприбуткування': '#059669',
-                    'Переміщення': '#0ea5e9',
+                    'Переміщення (вихід)': '#0ea5e9',
+                    'Переміщення (вхід)': '#0ea5e9',
                     'Списання': '#ef4444',
-                    'Продажа': '#8b5cf6'
+                    'Продаж': '#8b5cf6'
                 }[op.type] || '#6b7280';
 
                 return `
-                                    <tr style="background: ${rowColor}; border-bottom: 1px solid #e2e8f0;">
-                                        <td style="padding: 8px 6px;">${formatDate(op.date)}</td>
-                                        <td style="padding: 8px 6px; font-family: monospace; font-size: 0.8rem;">${op.docNumber}</td>
-                                        <td style="padding: 8px 6px;">${op.createdBy || '-'}</td>
-                                        <td style="padding: 8px 6px; color: ${typeColor}; font-weight: 600;">${op.type}</td>
-                                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.counterparty}</td>
-                                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.warehouse}</td>
-                                        <td style="padding: 8px 6px; text-align: center; color: #059669; font-weight: 600;">${op.plus || ''}</td>
-                                        <td style="padding: 8px 6px; text-align: center; color: #ef4444; font-weight: 600;">${op.minus || ''}</td>
-                                        <td style="padding: 8px 6px; text-align: center; font-weight: 700; background: #f0f9ff;">${op.balance}</td>
-                                    </tr>
-                                `;
+                    <tr style="background: ${rowColor}; border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px 6px;">${formatDate(op.date)}</td>
+                        <td style="padding: 8px 6px; font-family: monospace; font-size: 0.8rem;">${op.docNumber}</td>
+                        <td style="padding: 8px 6px;">${op.createdBy || '-'}</td>
+                        <td style="padding: 8px 6px; color: ${typeColor}; font-weight: 600;">${op.type}</td>
+                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.counterparty}</td>
+                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.warehouse}</td>
+                        <td style="padding: 8px 6px; text-align: center; color: #059669; font-weight: 600;">${op.plus || ''}</td>
+                        <td style="padding: 8px 6px; text-align: center; color: #ef4444; font-weight: 600;">${op.minus || ''}</td>
+                        <td style="padding: 8px 6px; text-align: center; font-weight: 700; background: #f0f9ff;">${op.balance}</td>
+                    </tr>
+                `;
             }).join('') : '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">Операцій не знайдено</td></tr>'}
                         </tbody>
                     </table>
