@@ -2107,90 +2107,76 @@
 
             // Додаємо оприбуткування
             postings?.forEach(item => {
-                console.log('Перевірка оприбуткування:', {
-                    warehouse_title: item.warehouse_title,
-                    warehouseTitle: warehouseTitle,
-                    match: item.warehouse_title === warehouseTitle
+                console.log('Додаємо оприбуткування:', item.warehouse_title);
+                allOperations.push({
+                    date: new Date(item.posting_created_at.value || item.posting_created_at),
+                    docNumber: item.posting_label,
+                    createdBy: item.created_by_name,
+                    type: 'Оприбуткування',
+                    counterparty: item.supplier_name || '-',
+                    warehouse: item.warehouse_title,
+                    plus: item.amount,
+                    minus: 0,
+                    balance: 0,
+                    isMove: false
                 });
-
-                if (item.warehouse_title === warehouseTitle) {
-                    allOperations.push({
-                        date: new Date(item.posting_created_at.value || item.posting_created_at),
-                        docNumber: item.posting_label,
-                        createdBy: item.created_by_name,
-                        type: 'Оприбуткування',
-                        counterparty: item.supplier_name || '-',
-                        warehouse: item.warehouse_title,
-                        plus: item.amount,
-                        minus: 0,
-                        balance: 0,
-                        isMove: false
-                    });
-                }
             });
 
             // Додаємо переміщення
             moves?.forEach(item => {
                 const date = new Date(item.move_created_at.value || item.move_created_at);
                 const moveId = `move_${item.move_label}_${date.getTime()}`;
-                const isInternalMove = item.source_warehouse_title === warehouseTitle &&
-                    item.target_warehouse_title === warehouseTitle;
 
-                // Списання з поточного складу
-                if (item.source_warehouse_title === warehouseTitle) {
-                    allOperations.push({
-                        date: date,
-                        docNumber: item.move_label,
-                        createdBy: item.created_by_name,
-                        type: 'Переміщення (вихід)',
-                        counterparty: `→ ${item.target_warehouse_title}`,
-                        warehouse: item.source_warehouse_title,
-                        plus: 0,
-                        minus: item.amount,
-                        balance: 0,
-                        sortOrder: 1,
-                        moveId: moveId,
-                        isMove: true,
-                        isInternalMove: isInternalMove
-                    });
-                }
+                console.log('Додаємо переміщення:', item.source_warehouse_title, '→', item.target_warehouse_title);
 
-                // Прихід на поточний склад
-                if (item.target_warehouse_title === warehouseTitle) {
-                    allOperations.push({
-                        date: date,
-                        docNumber: item.move_label,
-                        createdBy: item.created_by_name,
-                        type: 'Переміщення (вхід)',
-                        counterparty: `← ${item.source_warehouse_title}`,
-                        warehouse: item.target_warehouse_title,
-                        plus: item.amount,
-                        minus: 0,
-                        balance: 0,
-                        sortOrder: 2,
-                        moveId: moveId,
-                        isMove: true,
-                        isInternalMove: isInternalMove
-                    });
-                }
+                // Завжди додаємо обидві операції
+                allOperations.push({
+                    date: date,
+                    docNumber: item.move_label,
+                    createdBy: item.created_by_name,
+                    type: 'Переміщення (вихід)',
+                    counterparty: `→ ${item.target_warehouse_title}`,
+                    warehouse: item.source_warehouse_title,
+                    plus: 0,
+                    minus: item.amount,
+                    balance: 0,
+                    sortOrder: 1,
+                    moveId: moveId,
+                    isMove: true,
+                    isInternalMove: false
+                });
+
+                allOperations.push({
+                    date: date,
+                    docNumber: item.move_label,
+                    createdBy: item.created_by_name,
+                    type: 'Переміщення (вхід)',
+                    counterparty: `← ${item.source_warehouse_title}`,
+                    warehouse: item.target_warehouse_title,
+                    plus: item.amount,
+                    minus: 0,
+                    balance: 0,
+                    sortOrder: 2,
+                    moveId: moveId,
+                    isMove: true,
+                    isInternalMove: false
+                });
             });
 
             // Додаємо списання
             outcomes?.forEach(item => {
-                if (item.source_warehouse_title === warehouseTitle) {
-                    allOperations.push({
-                        date: new Date(item.outcome_created_at.value || item.outcome_created_at),
-                        docNumber: item.outcome_label,
-                        createdBy: item.created_by_name,
-                        type: 'Списання',
-                        counterparty: item.outcome_description || '-',
-                        warehouse: item.source_warehouse_title,
-                        plus: 0,
-                        minus: item.amount,
-                        balance: 0,
-                        isMove: false
-                    });
-                }
+                allOperations.push({
+                    date: new Date(item.outcome_created_at.value || item.outcome_created_at),
+                    docNumber: item.outcome_label,
+                    createdBy: item.created_by_name,
+                    type: 'Списання',
+                    counterparty: item.outcome_description || '-',
+                    warehouse: item.source_warehouse_title,
+                    plus: 0,
+                    minus: item.amount,
+                    balance: 0,
+                    isMove: false
+                });
             });
 
             // Додаємо продажі
