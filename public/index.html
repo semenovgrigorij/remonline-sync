@@ -2123,13 +2123,22 @@
             });
 
             // Додаємо переміщення
+            const processedMoves = new Set();
+
             moves?.forEach(item => {
                 const date = new Date(item.move_created_at.value || item.move_created_at);
-                const moveId = `move_${item.move_label}_${date.getTime()}`;
+                const moveId = `${item.move_label}_${date.getTime()}`;
+
+                // Пропускаємо якщо вже обробили це переміщення
+                if (processedMoves.has(moveId)) {
+                    console.log('Пропускаємо дублікат переміщення:', moveId);
+                    return;
+                }
+                processedMoves.add(moveId);
 
                 console.log('Додаємо переміщення:', item.source_warehouse_title, '→', item.target_warehouse_title);
 
-                // Завжди додаємо обидві операції
+                // Вихід
                 allOperations.push({
                     date: date,
                     docNumber: item.move_label,
@@ -2146,6 +2155,7 @@
                     isInternalMove: false
                 });
 
+                // Вхід
                 allOperations.push({
                     date: date,
                     docNumber: item.move_label,

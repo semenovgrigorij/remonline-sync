@@ -1220,20 +1220,19 @@ class RemonlineMatrixSync {
 
           // Запит переміщень
           const movesQuery = `
-        SELECT 
-            move_created_at,
-            move_label,
-            created_by_name,
-            source_warehouse_title,
-            target_warehouse_title,
-            amount,
-            move_description
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\`
-        WHERE product_id = @product_id 
-          AND (source_warehouse_title LIKE CONCAT('%', @warehouse_title, '%')
-               OR target_warehouse_title LIKE CONCAT('%', @warehouse_title, '%'))
-        ORDER BY move_created_at DESC
-      `;
+    SELECT DISTINCT
+        move_id,
+        move_label,
+        move_created_at,
+        created_by_name,
+        source_warehouse_title,
+        target_warehouse_title,
+        amount,
+        move_description
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\`
+    WHERE product_id = @product_id
+    ORDER BY move_created_at DESC
+`;
 
           const [movesRows] = await this.bigquery.query({
             query: movesQuery,
