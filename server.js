@@ -164,17 +164,55 @@ class RemonlineMatrixSync {
     // Получение складов для конкретной локации (branch_id)
     this.app.get("/api/branch-warehouses/:branchId", async (req, res) => {
       try {
-        const branchId = req.params.branchId;
-        const warehouses = await this.fetchWarehousesByBranch(branchId);
+        const branchId = parseInt(req.params.branchId);
+
+        if (!this.bigquery) {
+          // Fallback на API якщо BigQuery недоступна
+          console.log(
+            `⚠️ BigQuery недоступна, використовуємо API для branch ${branchId}`
+          );
+          const warehouses = await this.fetchWarehousesByBranch(branchId);
+          return res.json({
+            success: true,
+            branchId,
+            data: warehouses,
+            totalWarehouses: warehouses.length,
+          });
+        }
+
+        // Запит до BigQuery
+        const query = `
+            SELECT DISTINCT 
+                warehouse_id as id,
+                warehouse_title as title,
+                warehouse_branch_id as branch_id
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+            WHERE warehouse_branch_id = @branch_id AND residue > 0
+            ORDER BY warehouse_title
+        `;
+
+        const [rows] = await this.bigquery.query({
+          query,
+          location: "EU",
+          params: { branch_id: branchId },
+          types: { branch_id: "INT64" },
+        });
+
+        console.log(
+          `✅ Получено ${rows.length} складов для филиала ${branchId} из BigQuery`
+        );
 
         res.json({
           success: true,
           branchId,
-          data: warehouses,
-          totalWarehouses: warehouses.length,
+          data: rows,
+          totalWarehouses: rows.length,
         });
       } catch (error) {
-        console.error("Ошибка получения складов филиала:", error);
+        console.error(
+          `❌ Ошибка получения складов филиала ${req.params.branchId}:`,
+          error
+        );
         res.status(500).json({
           success: false,
           error: error.message,
@@ -184,38 +222,41 @@ class RemonlineMatrixSync {
 
     this.app.get("/api/all-warehouses", async (req, res) => {
       try {
-        const branchIds = [
-          134397, 137783, 170450, 198255, 171966, 189625, 147848, 186381,
-          185929, 155210, 158504, 177207, 205571, 154905, 184657,
-        ];
-        const allWarehouses = [];
-
-        for (const branchId of branchIds) {
-          try {
-            const warehouses = await this.fetchWarehousesByBranch(branchId);
-            allWarehouses.push(...warehouses);
-            await this.sleep(100);
-          } catch (error) {
-            console.error(
-              `Ошибка получения складов для филиала ${branchId}:`,
-              error.message
-            );
-          }
+        if (!this.bigquery) {
+          return res.json({
+            success: false,
+            error: "BigQuery не настроена",
+            warehouses: [],
+            totalWarehouses: 0,
+          });
         }
 
-        console.log(
-          `Получено ${allWarehouses.length} складов от активных филиалов`
-        );
+        // Беремо унікальні склади з BigQuery
+        const query = `
+            SELECT DISTINCT 
+                warehouse_id as id,
+                warehouse_title as title
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+            WHERE residue > 0
+            ORDER BY warehouse_title
+        `;
+
+        const [rows] = await this.bigquery.query({ query, location: "EU" });
+
+        console.log(`✅ Получено ${rows.length} складов из BigQuery`);
 
         res.json({
           success: true,
-          warehouses: allWarehouses,
-          totalWarehouses: allWarehouses.length,
+          warehouses: rows,
+          totalWarehouses: rows.length,
         });
       } catch (error) {
+        console.error("❌ Ошибка получения складов из BigQuery:", error);
         res.status(500).json({
           success: false,
           error: error.message,
+          warehouses: [],
+          totalWarehouses: 0,
         });
       }
     });
@@ -2089,6 +2130,7 @@ class RemonlineMatrixSync {
               // Подготовка данных для BigQuery
               const processedItem = {
                 warehouse_id: warehouse.id,
+                warehouse_branch_id: warehouse.branch_id || null,
                 warehouse_title: warehouse.title || "Неизвестный склад",
                 warehouse_type: warehouse.type || "product",
                 warehouse_is_global: warehouse.is_global || false,
@@ -2310,6 +2352,7 @@ class RemonlineMatrixSync {
       // ИСПРАВЛЕННАЯ схема с FLOAT для residue
       const schema = [
         { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" },
+        { name: "warehouse_branch_id", type: "INTEGER", mode: "NULLABLE" },
         { name: "warehouse_title", type: "STRING", mode: "REQUIRED" },
         { name: "warehouse_type", type: "STRING", mode: "NULLABLE" },
         { name: "warehouse_is_global", type: "BOOLEAN", mode: "NULLABLE" },
