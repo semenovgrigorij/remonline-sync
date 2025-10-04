@@ -1916,7 +1916,7 @@ class RemonlineMatrixSync {
 
     while (hasMore) {
       try {
-        const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?exclude_zero_residue=true&page=${page}`;
+        const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?exclude_zero_residue=false&page=${page}`;
 
         const response = await fetch(url, options);
 
