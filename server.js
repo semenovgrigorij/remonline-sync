@@ -166,51 +166,18 @@ class RemonlineMatrixSync {
       try {
         const branchId = parseInt(req.params.branchId);
 
-        if (!this.bigquery) {
-          // Fallback на API якщо BigQuery недоступна
-          console.log(
-            `⚠️ BigQuery недоступна, використовуємо API для branch ${branchId}`
-          );
-          const warehouses = await this.fetchWarehousesByBranch(branchId);
-          return res.json({
-            success: true,
-            branchId,
-            data: warehouses,
-            totalWarehouses: warehouses.length,
-          });
-        }
-
-        // Запит до BigQuery
-        const query = `
-            SELECT DISTINCT 
-                warehouse_id as id,
-                warehouse_title as title,
-                warehouse_branch_id as branch_id
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-            WHERE warehouse_branch_id = @branch_id AND residue > 0
-            ORDER BY warehouse_title
-        `;
-
-        const [rows] = await this.bigquery.query({
-          query,
-          location: "EU",
-          params: { branch_id: branchId },
-          types: { branch_id: "INT64" },
-        });
-
-        console.log(
-          `✅ Получено ${rows.length} складов для филиала ${branchId} из BigQuery`
-        );
+        console.log(`📡 Получение складов для филиала ${branchId} через API`);
+        const warehouses = await this.fetchWarehousesByBranch(branchId);
 
         res.json({
           success: true,
           branchId,
-          data: rows,
-          totalWarehouses: rows.length,
+          data: warehouses,
+          totalWarehouses: warehouses.length,
         });
       } catch (error) {
         console.error(
-          `❌ Ошибка получения складов филиала ${req.params.branchId}:`,
+          `❌ Ошибка получения складов филиала ${branchId}:`,
           error
         );
         res.status(500).json({
@@ -2149,7 +2116,6 @@ class RemonlineMatrixSync {
 
                 const processedItem = {
                   warehouse_id: warehouse.id,
-                  warehouse_branch_id: warehouse.branch_id || null,
                   warehouse_title: warehouse.title || "Неизвестный склад",
                   warehouse_type: warehouse.type || "product",
                   warehouse_is_global: warehouse.is_global || false,
@@ -2347,7 +2313,6 @@ class RemonlineMatrixSync {
       // ИСПРАВЛЕННАЯ схема с FLOAT для residue
       const schema = [
         { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" },
-        { name: "warehouse_branch_id", type: "INTEGER", mode: "NULLABLE" },
         { name: "warehouse_title", type: "STRING", mode: "REQUIRED" },
         { name: "warehouse_type", type: "STRING", mode: "NULLABLE" },
         { name: "warehouse_is_global", type: "BOOLEAN", mode: "NULLABLE" },
