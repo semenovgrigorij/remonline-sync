@@ -1910,21 +1910,13 @@ class RemonlineMatrixSync {
 
     let allGoods = [];
     let page = 1;
-    const perPage = 50;
     let hasMore = true;
-    let consecutiveErrors = 0;
-    let totalCountFromAPI = null;
 
-    console.log(
-      `📡 ДИАГНОСТИКА: Получение товаров для склада ${warehouseId}...`
-    );
+    console.log(`📡 Получение товаров для склада ${warehouseId}...`);
 
-    while (hasMore && consecutiveErrors < 3) {
+    while (hasMore) {
       try {
-        // const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?exclude_zero_residue=true&page=${page}&per_page=${perPage}`;
-        const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?page=${page}&per_page=${perPage}`;
-
-        console.log(`📄 Запрос страницы ${page}: ${url}`);
+        const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?exclude_zero_residue=true&page=${page}`;
 
         const response = await fetch(url, options);
 
@@ -1937,25 +1929,14 @@ class RemonlineMatrixSync {
         const data = await response.json();
         const goods = data.data || [];
 
-        // Сохраняем общее количество из первого запроса
-        if (page === 1 && data.count) {
-          totalCountFromAPI = data.count;
-        }
-
-        console.log(`📊 Страница ${page}: получено ${goods.length} товаров`);
-        console.log(
-          `📊 Общее количество по API: ${totalCountFromAPI || "неизвестно"}`
-        );
-        console.log(`📊 Успех ответа: ${data.success}`);
+        console.log(`📄 Страница ${page}: получено ${goods.length} товаров`);
 
         if (goods.length === 0) {
           console.log(`✅ Страница ${page} пустая, завершаем загрузку`);
           hasMore = false;
         } else {
           allGoods = allGoods.concat(goods);
-          console.log(
-            `📈 Страница ${page}: добавлено ${goods.length} товаров, всего: ${allGoods.length}`
-          );
+          console.log(`📈 Всего загружено: ${allGoods.length} товаров`);
 
           // Якщо отримали менше 50 товарів - це остання сторінка
           if (goods.length < 50) {
@@ -1967,38 +1948,15 @@ class RemonlineMatrixSync {
             page++;
           }
         }
-
-        consecutiveErrors = 0;
-        // await this.sleep(100);
       } catch (error) {
-        consecutiveErrors++;
-        console.error(
-          `❌ Ошибка получения страницы ${page} (попытка ${consecutiveErrors}/3): ${error.message}`
-        );
-
-        if (consecutiveErrors >= 3) {
-          console.error(
-            `❌ Слишком много ошибок, прекращаем загрузку для склада ${warehouseId}`
-          );
-          hasMore = false;
-        } else {
-          await this.sleep(100);
-        }
+        console.error(`❌ Ошибка получения страницы ${page}:`, error.message);
+        hasMore = false;
       }
     }
 
     console.log(
-      `📊 ИТОГ для склада ${warehouseId}: получено ${allGoods.length} товаров в наличии`
+      `✅ Склад ${warehouseId}: всего получено ${allGoods.length} товаров`
     );
-    if (totalCountFromAPI) {
-      console.log(
-        `📊 Ожидалось по API: ${totalCountFromAPI}, получено: ${allGoods.length}`
-      );
-    }
-
-    const uniqueTitles = new Set(allGoods.map((item) => item.title));
-    console.log(`📊 Уникальных названий товаров: ${uniqueTitles.size}`);
-
     return allGoods;
   }
 
