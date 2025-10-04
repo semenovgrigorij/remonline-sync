@@ -1600,7 +1600,7 @@ class RemonlineMatrixSync {
           console.log(
             `✅ Склад оброблено: ${warehousePostings.length} оприбуткувань`
           );
-          await this.sleep(800);
+          await this.sleep(100);
         } catch (error) {
           const errorMsg = `Помилка складу ${warehouse.title}: ${error.message}`;
           console.error(`❌ ${errorMsg}`);
@@ -1649,7 +1649,7 @@ class RemonlineMatrixSync {
 
     let allPostings = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = 50;
     let hasMore = true;
     let consecutiveEmptyPages = 0;
 
@@ -1708,7 +1708,7 @@ class RemonlineMatrixSync {
           page++;
         }
 
-        await this.sleep(400);
+        await this.sleep(100);
       } catch (error) {
         console.error(
           `   ❌ Ошибка получения страницы ${page}: ${error.message}`
@@ -1788,7 +1788,6 @@ class RemonlineMatrixSync {
         console.log("⚠️ Не вдалося видалити старі дані:", deleteError.message);
       }
 
-      // ПОТІМ вставляємо нові унікальні дані
       console.log("📊 Вставка унікальних даних оприбуткувань в BigQuery...");
 
       const batchSize = 500;
@@ -1944,7 +1943,7 @@ class RemonlineMatrixSync {
 
     let allGoods = [];
     let page = 1;
-    const perPage = 10000;
+    const perPage = 50;
     let hasMore = true;
     let consecutiveErrors = 0;
     let totalCountFromAPI = null;
@@ -2018,7 +2017,7 @@ class RemonlineMatrixSync {
           );
           hasMore = false;
         } else {
-          await this.sleep(1000);
+          await this.sleep(100);
         }
       }
     }
@@ -2181,7 +2180,7 @@ class RemonlineMatrixSync {
             }
 
             warehousesProcessed++;
-            await this.sleep(300);
+            await this.sleep(100);
           } catch (error) {
             const errorMsg = `Ошибка: ${warehouse.title} - ${error.message}`;
             console.error(`❌ ${errorMsg}`);
@@ -2592,7 +2591,7 @@ class RemonlineMatrixSync {
           }
 
           // Задержка между запросами
-          await this.sleep(200);
+          await this.sleep(100);
         }
       }
 
@@ -2728,7 +2727,7 @@ class RemonlineMatrixSync {
             totalMoves += branchMoves.length;
           }
 
-          await this.sleep(300);
+          await this.sleep(100);
         } catch (error) {
           const errorMsg = `Ошибка: ${branch.name} - ${error.message}`;
           console.error(`❌ ${errorMsg}`);
@@ -2774,7 +2773,7 @@ class RemonlineMatrixSync {
 
     let allMoves = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = 50;
     let hasMore = true;
     let consecutiveEmptyPages = 0;
 
@@ -2829,7 +2828,7 @@ class RemonlineMatrixSync {
           page++;
         }
 
-        await this.sleep(400);
+        await this.sleep(100);
       } catch (error) {
         console.error(
           `   ❌ Ошибка получения страницы ${page}: ${error.message}`
@@ -3179,7 +3178,7 @@ class RemonlineMatrixSync {
             totalOutcomes += branchOutcomes.length;
           }
 
-          await this.sleep(300);
+          await this.sleep(100);
         } catch (error) {
           const errorMsg = `Помилка: ${branch.name} - ${error.message}`;
           console.error(`❌ ${errorMsg}`);
@@ -3224,7 +3223,7 @@ class RemonlineMatrixSync {
 
     let allOutcomes = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = 50;
     let hasMore = true;
     let consecutiveEmptyPages = 0;
 
@@ -3280,7 +3279,7 @@ class RemonlineMatrixSync {
           page++;
         }
 
-        await this.sleep(400);
+        await this.sleep(100);
       } catch (error) {
         console.error(
           `   ❌ Помилка отримання сторінки ${page}: ${error.message}`
@@ -3387,7 +3386,7 @@ class RemonlineMatrixSync {
 
     let allSales = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = 50;
     let hasMore = true;
     let consecutiveEmptyPages = 0;
 
@@ -3439,7 +3438,7 @@ class RemonlineMatrixSync {
           page++;
         }
 
-        await this.sleep(400);
+        await this.sleep(100);
       } catch (error) {
         console.error(
           `   ❌ Помилка отримання сторінки ${page}: ${error.message}`
