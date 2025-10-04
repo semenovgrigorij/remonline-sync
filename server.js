@@ -2040,132 +2040,73 @@ class RemonlineMatrixSync {
 
     const syncStart = Date.now();
     const errors = [];
-    let totalGoods = 0;
-    let warehousesProcessed = 0;
-    const uniqueProducts = new Set();
 
     try {
+      // ЗАВАНТАЖУЄМО ВСІ ТОВАРИ ОДИН РАЗ
+      console.log("📡 Получение всех товаров из первого склада...");
+      const firstWarehouse = (await this.fetchWarehouses())[0];
+      const allGoods = await this.fetchWarehouseGoods(firstWarehouse.id);
+
+      console.log(`✅ Получено ${allGoods.length} товаров всей системы`);
+
+      // Отримуємо список складів
       const warehouses = await this.fetchWarehouses();
-      console.log(`📍 Найдено ${warehouses.length} складов для обработки`);
+      console.log(`📍 Найдено ${warehouses.length} складов`);
 
-      const batchSize = 20;
+      const allData = [];
 
-      for (let i = 0; i < warehouses.length; i += batchSize) {
-        const warehouseBatch = warehouses.slice(i, i + batchSize);
-        const batchData = [];
+      // Для кожного складу фільтруємо товари які на ньому є
+      for (const warehouse of warehouses) {
+        console.log(`📦 Обробка складу: ${warehouse.title}`);
 
-        for (const warehouse of warehouseBatch) {
-          try {
-            console.log(
-              `\n📦 [${warehousesProcessed + 1}/${warehouses.length}] Склад: ${
-                warehouse.title
-              }`
-            );
+        const warehouseGoods = allGoods.filter((item) => {
+          // Перевіряємо чи price містить ID цього складу
+          return item.price && item.price[warehouse.id] !== undefined;
+        });
 
-            const goodsInStock = await this.fetchWarehouseGoods(warehouse.id);
+        console.log(`   Знайдено ${warehouseGoods.length} товарів на складі`);
 
-            if (goodsInStock.length > 0) {
-              console.log(`   📊 Обработка ${goodsInStock.length} товаров...`);
-
-              goodsInStock.forEach((item) => {
-                uniqueProducts.add(item.title);
-
-                const processedItem = {
-                  warehouse_id: warehouse.id,
-                  warehouse_title: warehouse.title || "Неизвестный склад",
-                  warehouse_type: warehouse.type || "product",
-                  warehouse_is_global: warehouse.is_global || false,
-                  good_id: item.id,
-                  product_id: item.product_id || item.id,
-                  title: item.title,
-                  code: item.code || "",
-                  article: item.article || "",
-                  residue: item.residue,
-                  price_json: JSON.stringify(item.price || {}),
-                  category: item.category?.title || "",
-                  category_id: item.category?.id || null,
-                  description: item.description || "",
-                  uom_title: item.uom?.title || "",
-                  uom_description: item.uom?.description || "",
-                  image_url: Array.isArray(item.image)
-                    ? item.image[0] || ""
-                    : item.image || "",
-                  is_serial: item.is_serial || false,
-                  warranty: item.warranty || 0,
-                  warranty_period: item.warranty_period || 0,
-                  updated_at: new Date().toISOString(),
-                };
-                batchData.push(processedItem);
-              });
-
-              totalGoods += goodsInStock.length;
-            }
-
-            warehousesProcessed++;
-            await this.sleep(100);
-          } catch (error) {
-            const errorMsg = `Ошибка: ${warehouse.title} - ${error.message}`;
-            console.error(`❌ ${errorMsg}`);
-            errors.push(errorMsg);
-            warehousesProcessed++;
-          }
-        }
-
-        // Зберігаємо порцію в BigQuery після обробки batch складів
-        if (batchData.length > 0) {
-          console.log(
-            `\n💾 Сохранение порции ${batchData.length} записей в BigQuery...`
-          );
-          await this.saveToBigQuery(batchData);
-
-          if (global.gc) {
-            global.gc();
-          }
-        }
-
-        console.log(
-          `📊 Прогресс: ${warehousesProcessed}/${warehouses.length} складов`
-        );
+        warehouseGoods.forEach((item) => {
+          const processedItem = {
+            warehouse_id: warehouse.id,
+            warehouse_title: warehouse.title,
+            warehouse_type: warehouse.type || "product",
+            warehouse_is_global: warehouse.is_global || false,
+            good_id: item.id,
+            product_id: item.product_id || item.id,
+            title: item.title,
+            code: item.code || "",
+            article: item.article || "",
+            residue: item.residue,
+            price_json: JSON.stringify(item.price || {}),
+            category: item.category?.title || "",
+            category_id: item.category?.id || null,
+            description: item.description || "",
+            uom_title: item.uom?.title || "",
+            uom_description: item.uom?.description || "",
+            image_url: Array.isArray(item.image)
+              ? item.image[0] || ""
+              : item.image || "",
+            is_serial: item.is_serial || false,
+            warranty: item.warranty || 0,
+            warranty_period: item.warranty_period || 0,
+            updated_at: new Date().toISOString(),
+          };
+          allData.push(processedItem);
+        });
       }
 
-      // Фінальна статистика
-      console.log(`\n📊 === ИТОГОВАЯ СТАТИСТИКА ===`);
-      console.log(
-        `Обработано складов: ${warehousesProcessed}/${warehouses.length}`
-      );
-      console.log(`Найдено товаров в наличии: ${totalGoods}`);
-      console.log(`Уникальных товаров: ${uniqueProducts.size}`);
-      console.log(`Ошибок: ${errors.length}`);
+      console.log(`💾 Сохранение ${allData.length} записей в BigQuery...`);
+      await this.saveToBigQuery(allData);
 
-      this.lastSyncData = {
-        timestamp: new Date().toISOString(),
-        warehousesProcessed,
-        goodsFound: totalGoods,
-        uniqueProducts: uniqueProducts.size,
-        errors,
+      return {
+        success: true,
+        warehousesProcessed: warehouses.length,
+        goodsFound: allData.length,
         duration: Date.now() - syncStart,
       };
-
-      console.log(
-        `✅ Синхронизация завершена за ${Math.round(
-          this.lastSyncData.duration / 1000
-        )} секунд`
-      );
-
-      return this.lastSyncData;
     } catch (error) {
-      const errorMsg = `Критическая ошибка синхронизации: ${error.message}`;
-      console.error(`❌ ${errorMsg}`);
-
-      this.lastSyncData = {
-        timestamp: new Date().toISOString(),
-        warehousesProcessed,
-        goodsFound: totalGoods,
-        uniqueProducts: uniqueProducts.size,
-        errors: [...errors, errorMsg],
-        duration: Date.now() - syncStart,
-      };
-
+      console.error("❌ Ошибка синхронизации:", error);
       throw error;
     }
   }
