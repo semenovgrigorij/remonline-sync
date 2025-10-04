@@ -2045,7 +2045,18 @@ class RemonlineMatrixSync {
     const uniqueProducts = new Set();
 
     try {
-      const warehouses = await this.fetchWarehouses();
+      // Виключаємо проблемний склад
+      const excludedWarehouseIds = [2975730];
+
+      const warehouses = (await this.fetchWarehouses()).filter(
+        (w) => !excludedWarehouseIds.includes(w.id)
+      );
+
+      console.log(
+        `📍 Обробляємо ${warehouses.length} складів (виключено склад ${excludedWarehouseIds[0]})`
+      );
+
+      // const warehouses = await this.fetchWarehouses();
       console.log(`📍 Найдено ${warehouses.length} складов для обработки`);
 
       const batchSize = 20;
