@@ -2337,8 +2337,8 @@
             };
 
             const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center;">
-            <div style="background: white; padding: 30px; border-radius: 5px; width: 90%; height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
+            <div style="background: white; padding: 30px; border-radius: 5px; width: 90%; height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); cursor: default;" onclick="event.stopPropagation()">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
                     <h3 style="margin: 0; color: #374151; font-size: 1.5rem;">Історія товару "${productTitle}"</h3>
                     <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
@@ -2414,8 +2414,8 @@
             console.log(`Исходных записей: ${data.length}, уникальных: ${uniqueData.length}`);
 
             const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center;">
-            <div style="background: white; padding: 30px; border-radius: 15px; max-width: 95%; max-height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
+            <div style="background: white; padding: 30px; border-radius: 15px; max-width: 95%; max-height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); cursor: default;" onclick="event.stopPropagation()">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
                     <h3 style="margin: 0; color: #374151; font-size: 1.5rem;">История товара: ${productTitle}</h3>
                     <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрыть</button>
@@ -2476,11 +2476,17 @@
 
         // Закриття меню при кліку поза ним
         window.onclick = function (event) {
+            // Закриття адмін-меню
             if (!event.target.matches('.admin-toggle')) {
                 const dropdown = document.getElementById('adminDropdown');
                 if (dropdown && dropdown.classList.contains('show')) {
                     dropdown.classList.remove('show');
                 }
+            }
+
+            // Закриття модального вікна при кліку на фон
+            if (event.target.id === 'historyModal') {
+                closeHistoryModal();
             }
         }
 
