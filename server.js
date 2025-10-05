@@ -1165,7 +1165,7 @@ class RemonlineMatrixSync {
 
           // Запит оприбуткувань
           const postingsQuery = `
-  SELECT 
+  SELECT DISTINCT
       posting_created_at,
       posting_label,
       created_by_name,
@@ -3491,24 +3491,24 @@ class RemonlineMatrixSync {
   // Створює SQL view для розрахунку остатків
   async createStockCalculationView() {
     if (!this.bigquery) {
-        console.log("❌ BigQuery не інціалізована");
-        return false;
+      console.log("❌ BigQuery не інціалізована");
+      return false;
     }
 
     try {
-        const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-        const viewName = `${process.env.BIGQUERY_TABLE}_calculated_stock`;
+      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
+      const viewName = `${process.env.BIGQUERY_TABLE}_calculated_stock`;
 
-        console.log(`🔨 Створення view ${viewName}...`);
+      console.log(`🔨 Створення view ${viewName}...`);
 
-        // Перевіряємо чи існує view і видаляємо
-        const [exists] = await dataset.table(viewName).exists();
-        if (exists) {
-            await dataset.table(viewName).delete();
-            console.log(`🗑️ Старий view видалено`);
-        }
+      // Перевіряємо чи існує view і видаляємо
+      const [exists] = await dataset.table(viewName).exists();
+      if (exists) {
+        await dataset.table(viewName).delete();
+        console.log(`🗑️ Старий view видалено`);
+      }
 
-        const viewQuery = `
+      const viewQuery = `
             WITH initial_stock AS (
                 -- Початкові остатки з повної синхронізації
                 SELECT 
@@ -3652,23 +3652,23 @@ class RemonlineMatrixSync {
             HAVING SUM(movement) > 0
         `;
 
-        const metadata = {
-            view: {
-                query: viewQuery,
-                useLegacySql: false
-            },
-            location: 'EU'
-        };
+      const metadata = {
+        view: {
+          query: viewQuery,
+          useLegacySql: false,
+        },
+        location: "EU",
+      };
 
-        await dataset.createTable(viewName, metadata);
+      await dataset.createTable(viewName, metadata);
 
-        console.log(`✅ View ${viewName} успішно створено`);
-        return true;
+      console.log(`✅ View ${viewName} успішно створено`);
+      return true;
     } catch (error) {
-        console.error('❌ Помилка створення view:', error.message);
-        return false;
+      console.error("❌ Помилка створення view:", error.message);
+      return false;
     }
-}
+  }
 
   startAutoSync() {
     this.isRunning = true;
