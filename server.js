@@ -203,7 +203,7 @@ class RemonlineMatrixSync {
             SELECT DISTINCT 
                 warehouse_id as id,
                 warehouse_title as title
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
             WHERE residue > 0
             ORDER BY warehouse_title
         `;
@@ -372,6 +372,18 @@ class RemonlineMatrixSync {
       }
     });
 
+    // Створює ендпоінт для створення view
+    this.app.post("/api/create-stock-view", async (req, res) => {
+      try {
+        const success = await this.createStockCalculationView();
+        res.json({
+          success,
+          message: success ? "View створено успішно" : "Помилка створення view",
+        });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
     // Получение данных для матрицы
     this.app.get("/api/preview-data", async (req, res) => {
       try {
@@ -387,7 +399,7 @@ class RemonlineMatrixSync {
                         title,
                         residue,
                         updated_at
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
                     WHERE residue > 0
                     ORDER BY title, warehouse_title
                     LIMIT ${limit}
@@ -419,7 +431,7 @@ class RemonlineMatrixSync {
                         COUNT(DISTINCT title) as unique_products,
                         SUM(residue) as total_residues,
                         MAX(updated_at) as last_update
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
                     WHERE residue > 0
                 `;
 
@@ -449,7 +461,7 @@ class RemonlineMatrixSync {
         STRING_AGG(DISTINCT category, ', ') as category,
         STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
         MAX(updated_at) as updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE warehouse_title = @warehouse_title AND residue > 0
       GROUP BY title
       ORDER BY residue DESC, title
@@ -496,7 +508,7 @@ class RemonlineMatrixSync {
         STRING_AGG(DISTINCT category, ', ') as category,
         STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
         MAX(updated_at) as updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE title = @product_title AND residue > 0
       GROUP BY warehouse_title
       ORDER BY residue DESC, warehouse_title
@@ -545,7 +557,7 @@ class RemonlineMatrixSync {
         STRING_AGG(DISTINCT category, ', ') as category,
         STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
         MAX(updated_at) as updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE LOWER(title) LIKE LOWER(@search_term) AND residue > 0
       GROUP BY title, warehouse_title
       ORDER BY title, warehouse_title
@@ -588,7 +600,7 @@ class RemonlineMatrixSync {
         COUNT(DISTINCT title) as unique_products,
         SUM(residue) as total_residue,
         STRING_AGG(DISTINCT warehouse_title, ', ' ORDER BY warehouse_title) as warehouses_list
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE residue > 0 
         AND warehouse_title IS NOT NULL 
         AND warehouse_title != ''
@@ -638,7 +650,7 @@ class RemonlineMatrixSync {
         article,
         category,
         uom_title
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE residue > 0 
         AND REGEXP_EXTRACT(warehouse_title, r'^([^-]+)') = @location_name
       ORDER BY title, warehouse_title
@@ -659,7 +671,7 @@ class RemonlineMatrixSync {
         COUNT(DISTINCT title) as unique_products,
         SUM(residue) as total_residue,
         COUNT(*) as total_records
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE residue > 0 
         AND REGEXP_EXTRACT(warehouse_title, r'^([^-]+)') = @location_name
     `;
@@ -702,7 +714,7 @@ class RemonlineMatrixSync {
         COUNT(DISTINCT title) as unique_products,
         SUM(residue) as total_residue,
         MAX(updated_at) as last_updated
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE residue > 0 
         AND REGEXP_EXTRACT(warehouse_title, r'^([^-]+)') = @location_name
       GROUP BY warehouse_title
@@ -747,7 +759,7 @@ class RemonlineMatrixSync {
         title,
         residue,
         updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE residue > 0
       ORDER BY location_name, warehouse_title, title
       LIMIT ${limit}
@@ -990,7 +1002,7 @@ class RemonlineMatrixSync {
           // Получаем product_id
           const productIdQuery = `
     SELECT DISTINCT product_id 
-    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
     WHERE title = @product_title
     LIMIT 1
 `;
@@ -1123,7 +1135,7 @@ class RemonlineMatrixSync {
             // Якщо не знайшли - шукаємо в основній таблиці
             const productFromGoodsQuery = `
           SELECT DISTINCT product_id, warehouse_title
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
           WHERE warehouse_id = @warehouse_id 
             AND LOWER(title) = LOWER(@product_title)
           LIMIT 1
@@ -1268,7 +1280,7 @@ class RemonlineMatrixSync {
   SELECT 
       warehouse_title,
       SUM(residue) as current_balance
-  FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+  FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
   WHERE product_id = @product_id
   GROUP BY warehouse_title
 `;
@@ -1370,12 +1382,12 @@ class RemonlineMatrixSync {
 
   setupScheduledSync() {
     // Остатки товарів - щогодини о 00 хвилині
-    cron.schedule("0 * * * *", async () => {
-      if (this.isRunning) {
-        console.log("🔄 Запуск запланированной синхронизации остатков...");
-        await this.performFullSync();
-      }
-    });
+    // cron.schedule("0 * * * *", async () => {
+    //   if (this.isRunning) {
+    //     console.log("🔄 Запуск запланированной синхронизации остатков...");
+    //     await this.performFullSync();
+    //   }
+    // });
 
     // Оприбуткування - щогодини о 30 хвилині
     cron.schedule("30 * * * *", async () => {
@@ -2045,12 +2057,7 @@ class RemonlineMatrixSync {
     const uniqueProducts = new Set();
 
     try {
-      // Виключаємо проблемний склад
-      const excludedWarehouseIds = [2975730];
-
-      const warehouses = (await this.fetchWarehouses()).filter(
-        (w) => !excludedWarehouseIds.includes(w.id)
-      );
+      const warehouses = await this.fetchWarehouses();
 
       console.log(
         `📍 Обробляємо ${warehouses.length} складів (виключено склад ${excludedWarehouseIds[0]})`
@@ -3484,6 +3491,127 @@ class RemonlineMatrixSync {
     } catch (error) {
       console.error("❌ Критична помилка збереження продажів:", error.message);
       throw error;
+    }
+  }
+
+  // Створює SQL view для розрахунку остатків
+  async createStockCalculationView() {
+    if (!this.bigquery) return false;
+
+    try {
+      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
+      const viewName = `${process.env.BIGQUERY_TABLE}_calculated_stock`;
+
+      const viewQuery = `
+            WITH stock_movements AS (
+                -- Оприбуткування (додаємо)
+                SELECT 
+                    warehouse_id,
+                    warehouse_title,
+                    product_id,
+                    product_title,
+                    product_code,
+                    product_article,
+                    uom_title,
+                    amount as movement,
+                    posting_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                
+                UNION ALL
+                
+                -- Вхідні переміщення (додаємо)
+                SELECT 
+                    (SELECT warehouse_id FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` WHERE warehouse_title = m.target_warehouse_title LIMIT 1) as warehouse_id,
+                    target_warehouse_title as warehouse_title,
+                    product_id,
+                    product_title,
+                    product_code,
+                    product_article,
+                    uom_title,
+                    amount as movement,
+                    move_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+                
+                UNION ALL
+                
+                -- Вихідні переміщення (віднімаємо)
+                SELECT 
+                    (SELECT warehouse_id FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` WHERE warehouse_title = m.source_warehouse_title LIMIT 1) as warehouse_id,
+                    source_warehouse_title as warehouse_title,
+                    product_id,
+                    product_title,
+                    product_code,
+                    product_article,
+                    uom_title,
+                    -amount as movement,
+                    move_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+                
+                UNION ALL
+                
+                -- Списання (віднімаємо)
+                SELECT 
+                    (SELECT warehouse_id FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` WHERE warehouse_title = o.source_warehouse_title LIMIT 1) as warehouse_id,
+                    source_warehouse_title as warehouse_title,
+                    product_id,
+                    product_title,
+                    product_code,
+                    product_article,
+                    uom_title,
+                    -amount as movement,
+                    outcome_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
+                
+                UNION ALL
+                
+                -- Продажі (віднімаємо)
+                SELECT 
+                    warehouse_id,
+                    '' as warehouse_title,
+                    NULL as product_id,
+                    product_title,
+                    product_code,
+                    product_article,
+                    uom_title,
+                    -amount as movement,
+                    sale_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\`
+            )
+            
+            SELECT 
+                warehouse_id,
+                warehouse_title,
+                product_id,
+                product_title,
+                product_code,
+                product_article,
+                uom_title,
+                SUM(movement) as residue,
+                MAX(operation_date) as last_updated
+            FROM stock_movements
+            WHERE warehouse_id IS NOT NULL
+            GROUP BY warehouse_id, warehouse_title, product_id, product_title, product_code, product_article, uom_title
+            HAVING SUM(movement) != 0
+        `;
+
+      // Видаляємо view якщо існує
+      try {
+        await dataset.table(viewName).delete();
+      } catch (e) {
+        // View не існує, продовжуємо
+      }
+
+      // Створюємо view
+      await dataset.createTable(viewName, {
+        view: viewQuery,
+        location: "EU",
+      });
+
+      console.log(`✅ View ${viewName} створено`);
+      return true;
+    } catch (error) {
+      console.error("❌ Помилка створення view:", error);
+      return false;
     }
   }
 

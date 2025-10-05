@@ -619,6 +619,7 @@
             <button class="btn secondary" onclick="syncMoves()">📦 Синхронізувати переміщення</button>
             <button class="btn secondary" onclick="syncOutcomes()">🗑️ Синхронізувати списання</button>
             <button class="btn secondary" onclick="syncSales()">💰 Синхронізувати продажі</button>
+            <button class="btn secondary" onclick="createStockView()">📊 Створити view остатків</button>
         </div>
 
         <div class="status-panel">
@@ -2057,6 +2058,30 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '💰 Синхронізувати продажі';
+            }
+        }
+
+        async function createStockView() {
+            if (!confirm('Створити view для автоматичного розрахунку остатків?')) {
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Створення view...';
+
+            try {
+                const result = await apiCall('/api/create-stock-view', 'POST');
+                if (result.success) {
+                    alert('✅ View створено! Тепер остатки розраховуються автоматично на основі операцій.');
+                } else {
+                    alert(`Помилка: ${result.message}`);
+                }
+            } catch (error) {
+                alert(`Помилка: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📊 Створити view остатків';
             }
         }
 
