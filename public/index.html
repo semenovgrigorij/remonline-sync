@@ -620,10 +620,6 @@
         </div>
 
         <div class="status-panel">
-            <div class="status-item" id="connectionStatus">
-                <span class="status-label">Статус API:</span>
-                <span class="status-value">Не проверено</span>
-            </div>
             <div class="status-item" id="syncStatus">
                 <span class="status-label">Автосинхронизация:</span>
                 <span class="status-value">Остановлена</span>
@@ -929,30 +925,6 @@
 
             const response = await fetch(endpoint, options);
             return await response.json();
-        }
-
-        async function testConnection() {
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Тестирование...';
-
-            try {
-                const result = await apiCall('/api/test-connection', 'POST');
-
-                if (result.success) {
-                    updateStatus('connectionStatus', `Подключено (${result.warehousesCount} складов)`, 'success');
-                    alert(`Подключение успешно! Найдено ${result.warehousesCount} складов.`);
-                } else {
-                    updateStatus('connectionStatus', `Ошибка: ${result.error}`, 'error');
-                    alert(`Ошибка: ${result.error}`);
-                }
-            } catch (error) {
-                updateStatus('connectionStatus', `Ошибка: ${error.message}`, 'error');
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'Тест підключення';
-            }
         }
 
         async function syncNow() {
