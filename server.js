@@ -1272,12 +1272,11 @@ class RemonlineMatrixSync {
           console.log(`💰 Знайдено продажів: ${salesRows.length}`);
 
           const currentBalanceQuery = `
-  SELECT 
-      warehouse_title,
-      SUM(residue) as current_balance
-  FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-  WHERE product_id = @product_id
-  GROUP BY warehouse_title
+    SELECT 
+        warehouse_title,
+        residue as current_balance
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+    WHERE product_id = @product_id
 `;
 
           const [balanceRows] = await this.bigquery.query({
