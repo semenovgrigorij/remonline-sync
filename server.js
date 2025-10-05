@@ -200,14 +200,13 @@ class RemonlineMatrixSync {
 
         // Беремо унікальні склади з BigQuery
         const query = `
-            SELECT DISTINCT 
-                warehouse_id as id,
-                warehouse_title as title
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-            WHERE residue > 0
-            ORDER BY warehouse_title
-        `;
-
+    SELECT DISTINCT 
+        warehouse_id as id,
+        warehouse_title as title
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+    WHERE residue > 0
+    ORDER BY warehouse_title
+`;
         const [rows] = await this.bigquery.query({ query, location: "EU" });
 
         console.log(`✅ Получено ${rows.length} складов из BigQuery`);
@@ -394,16 +393,16 @@ class RemonlineMatrixSync {
         const limit = parseInt(req.query.limit) || 10000;
 
         const query = `
-                    SELECT 
-                        warehouse_title,
-                        title,
-                        residue,
-                        updated_at
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-                    WHERE residue > 0
-                    ORDER BY title, warehouse_title
-                    LIMIT ${limit}
-                `;
+    SELECT 
+        warehouse_title,
+        title,
+        residue,
+        updated_at
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+    WHERE residue > 0
+    ORDER BY title, warehouse_title
+    LIMIT ${limit}
+`;
 
         const [rows] = await this.bigquery.query({ query, location: "EU" });
 
@@ -425,15 +424,15 @@ class RemonlineMatrixSync {
         }
 
         const query = `
-                    SELECT 
-                        COUNT(*) as total_records,
-                        COUNT(DISTINCT warehouse_title) as total_warehouses,
-                        COUNT(DISTINCT title) as unique_products,
-                        SUM(residue) as total_residues,
-                        MAX(updated_at) as last_update
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-                    WHERE residue > 0
-                `;
+    SELECT 
+        COUNT(*) as total_records,
+        COUNT(DISTINCT warehouse_title) as total_warehouses,
+        COUNT(DISTINCT title) as unique_products,
+        SUM(residue) as total_residues,
+        MAX(updated_at) as last_update
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+    WHERE residue > 0
+`;
 
         const [rows] = await this.bigquery.query({ query, location: "EU" });
         res.json({ success: true, statistics: rows[0] || {} });
@@ -453,19 +452,17 @@ class RemonlineMatrixSync {
         const warehouseTitle = decodeURIComponent(req.params.warehouseTitle);
 
         const query = `
-      SELECT 
+    SELECT 
         title,
-        SUM(residue) as residue,
-        STRING_AGG(DISTINCT code, ', ') as code,
-        STRING_AGG(DISTINCT article, ', ') as article,
-        STRING_AGG(DISTINCT category, ', ') as category,
-        STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
-        MAX(updated_at) as updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-      WHERE warehouse_title = @warehouse_title AND residue > 0
-      GROUP BY title
-      ORDER BY residue DESC, title
-    `;
+        residue,
+        code,
+        article,
+        uom_title,
+        updated_at
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+    WHERE warehouse_title = @warehouse_title AND residue > 0
+    ORDER BY residue DESC, title
+`;
 
         const [rows] = await this.bigquery.query({
           query,
@@ -500,19 +497,17 @@ class RemonlineMatrixSync {
         const productTitle = decodeURIComponent(req.params.productTitle);
 
         const query = `
-      SELECT 
+    SELECT 
         warehouse_title,
-        SUM(residue) as residue,
-        STRING_AGG(DISTINCT code, ', ') as code,
-        STRING_AGG(DISTINCT article, ', ') as article,
-        STRING_AGG(DISTINCT category, ', ') as category,
-        STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
-        MAX(updated_at) as updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-      WHERE title = @product_title AND residue > 0
-      GROUP BY warehouse_title
-      ORDER BY residue DESC, warehouse_title
-    `;
+        residue,
+        code,
+        article,
+        uom_title,
+        updated_at
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+    WHERE title = @product_title AND residue > 0
+    ORDER BY residue DESC, warehouse_title
+`;
 
         const [rows] = await this.bigquery.query({
           query,
@@ -548,7 +543,7 @@ class RemonlineMatrixSync {
         const searchTerm = decodeURIComponent(req.params.searchTerm);
 
         const query = `
-      SELECT 
+    SELECT 
         title,
         warehouse_title,
         SUM(residue) as residue,
@@ -557,11 +552,11 @@ class RemonlineMatrixSync {
         STRING_AGG(DISTINCT category, ', ') as category,
         STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
         MAX(updated_at) as updated_at
-      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-      WHERE LOWER(title) LIKE LOWER(@search_term) AND residue > 0
-      GROUP BY title, warehouse_title
-      ORDER BY title, warehouse_title
-    `;
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+    WHERE LOWER(title) LIKE LOWER(@search_term) AND residue > 0
+    GROUP BY title, warehouse_title
+    ORDER BY title, warehouse_title
+`;
 
         const [rows] = await this.bigquery.query({
           query,
@@ -3496,15 +3491,20 @@ class RemonlineMatrixSync {
 
   // Створює SQL view для розрахунку остатків
   async createStockCalculationView() {
-    if (!this.bigquery) return false;
+    if (!this.bigquery) {
+      console.log("❌ BigQuery не інціалізована");
+      return false;
+    }
 
     try {
       const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
       const viewName = `${process.env.BIGQUERY_TABLE}_calculated_stock`;
 
+      console.log(`🔨 Створення view ${viewName}...`);
+
       const viewQuery = `
             WITH stock_movements AS (
-                -- Оприбуткування (додаємо)
+                -- Оприбуткування (+)
                 SELECT 
                     warehouse_id,
                     warehouse_title,
@@ -3519,98 +3519,112 @@ class RemonlineMatrixSync {
                 
                 UNION ALL
                 
-                -- Вхідні переміщення (додаємо)
+                -- Вхідні переміщення (+)
                 SELECT 
-                    (SELECT warehouse_id FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` WHERE warehouse_title = m.target_warehouse_title LIMIT 1) as warehouse_id,
-                    target_warehouse_title as warehouse_title,
-                    product_id,
-                    product_title,
-                    product_code,
-                    product_article,
-                    uom_title,
-                    amount as movement,
-                    move_created_at as operation_date
+                    w.warehouse_id,
+                    m.target_warehouse_title as warehouse_title,
+                    m.product_id,
+                    m.product_title,
+                    m.product_code,
+                    m.product_article,
+                    m.uom_title,
+                    m.amount as movement,
+                    m.move_created_at as operation_date
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+                ) w ON m.target_warehouse_title = w.warehouse_title
                 
                 UNION ALL
                 
-                -- Вихідні переміщення (віднімаємо)
+                -- Вихідні переміщення (-)
                 SELECT 
-                    (SELECT warehouse_id FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` WHERE warehouse_title = m.source_warehouse_title LIMIT 1) as warehouse_id,
-                    source_warehouse_title as warehouse_title,
-                    product_id,
-                    product_title,
-                    product_code,
-                    product_article,
-                    uom_title,
-                    -amount as movement,
-                    move_created_at as operation_date
+                    w.warehouse_id,
+                    m.source_warehouse_title as warehouse_title,
+                    m.product_id,
+                    m.product_title,
+                    m.product_code,
+                    m.product_article,
+                    m.uom_title,
+                    -m.amount as movement,
+                    m.move_created_at as operation_date
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+                ) w ON m.source_warehouse_title = w.warehouse_title
                 
                 UNION ALL
                 
-                -- Списання (віднімаємо)
+                -- Списання (-)
                 SELECT 
-                    (SELECT warehouse_id FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` WHERE warehouse_title = o.source_warehouse_title LIMIT 1) as warehouse_id,
-                    source_warehouse_title as warehouse_title,
-                    product_id,
-                    product_title,
-                    product_code,
-                    product_article,
-                    uom_title,
-                    -amount as movement,
-                    outcome_created_at as operation_date
+                    w.warehouse_id,
+                    o.source_warehouse_title as warehouse_title,
+                    o.product_id,
+                    o.product_title,
+                    o.product_code,
+                    o.product_article,
+                    o.uom_title,
+                    -o.amount as movement,
+                    o.outcome_created_at as operation_date
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+                ) w ON o.source_warehouse_title = w.warehouse_title
                 
                 UNION ALL
                 
-                -- Продажі (віднімаємо)
+                -- Продажі (-)
                 SELECT 
-                    warehouse_id,
-                    '' as warehouse_title,
+                    s.warehouse_id,
+                    w.warehouse_title,
                     NULL as product_id,
-                    product_title,
-                    product_code,
-                    product_article,
-                    uom_title,
-                    -amount as movement,
-                    sale_created_at as operation_date
-                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\`
+                    s.product_title,
+                    s.product_code,
+                    s.product_article,
+                    s.uom_title,
+                    -s.amount as movement,
+                    s.sale_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\` s
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+                ) w ON s.warehouse_id = w.warehouse_id
             )
             
             SELECT 
                 warehouse_id,
-                warehouse_title,
+                MAX(warehouse_title) as warehouse_title,
                 product_id,
-                product_title,
-                product_code,
-                product_article,
-                uom_title,
+                MAX(product_title) as title,
+                MAX(product_code) as code,
+                MAX(product_article) as article,
+                MAX(uom_title) as uom_title,
                 SUM(movement) as residue,
-                MAX(operation_date) as last_updated
+                MAX(operation_date) as updated_at
             FROM stock_movements
             WHERE warehouse_id IS NOT NULL
-            GROUP BY warehouse_id, warehouse_title, product_id, product_title, product_code, product_article, uom_title
-            HAVING SUM(movement) != 0
+            GROUP BY warehouse_id, product_id
+            HAVING SUM(movement) > 0
         `;
 
-      // Видаляємо view якщо існує
-      try {
-        await dataset.table(viewName).delete();
-      } catch (e) {
-        // View не існує, продовжуємо
-      }
-
-      // Створюємо view
-      await dataset.createTable(viewName, {
-        view: viewQuery,
+      // Створюємо view з правильними метаданими
+      const metadata = {
+        view: {
+          query: viewQuery,
+          useLegacySql: false,
+        },
         location: "EU",
-      });
+      };
 
-      console.log(`✅ View ${viewName} створено`);
+      await dataset.createTable(viewName, metadata);
+
+      console.log(`✅ View ${viewName} успішно створено`);
       return true;
     } catch (error) {
-      console.error("❌ Помилка створення view:", error);
+      console.error("❌ Помилка створення view:", error.message);
       return false;
     }
   }
