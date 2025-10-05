@@ -535,6 +535,8 @@
             background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
         }
 
+
+
         @media (max-width: 768px) {
             .controls {
                 flex-direction: column;
@@ -577,6 +579,80 @@
                 max-width: 120px;
             }
         }
+
+        /* Адміністративне меню */
+        .admin-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .btn.admin-toggle {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            min-width: 200px;
+        }
+
+        .btn.admin-toggle:hover {
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .admin-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 5px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            min-width: 280px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .admin-dropdown.show {
+            display: block;
+        }
+
+        .admin-btn {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            background: white;
+            color: #374151;
+            border: none;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .admin-btn:last-child {
+            border-bottom: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .admin-btn:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .admin-btn:hover {
+            background: #f3f4f6;
+        }
+
+        .admin-btn:active {
+            background: #e5e7eb;
+        }
+
+        /* Закриття меню при кліку поза ним */
+        @media (max-width: 768px) {
+            .admin-dropdown {
+                right: auto;
+                left: 0;
+            }
+        }
     </style>
 </head>
 
@@ -609,16 +685,25 @@
         </div>
 
         <div class="controls">
-            <button class="btn" onclick="startAutoSync()">Запустити автосинхронізацію</button>
-            <button class="btn" onclick="stopAutoSync()">Зупинити синхронізацію</button>
             <button class="btn secondary" onclick="exportMatrix()">Експорт матриці</button>
-            <button class="btn secondary" onclick="syncPostings()">📊 Синхронізувати оприбуткування</button>
-            <button class="btn secondary" onclick="syncMoves()">📦 Синхронізувати переміщення</button>
-            <button class="btn secondary" onclick="syncOutcomes()">🗑️ Синхронізувати списання</button>
-            <button class="btn secondary" onclick="syncSales()">💰 Синхронізувати продажі</button>
-            <button class="btn secondary" onclick="createStockView()">📊 Створити view остатків</button>
-            <button class="btn" onclick="syncNow()">Синхронізувати остатки</button>
-        </div>
+
+            <!-- Випадаюче меню адміністрування -->
+            <div class="admin-menu">
+                <button class="btn admin-toggle" onclick="toggleAdminMenu()">
+                    ⚙️ Адміністрування ▼
+                </button>
+                <div class="admin-dropdown" id="adminDropdown">
+                    <button class="admin-btn" onclick="startAutoSync()">▶ Запустити автосинхронізацію</button>
+                    <button class="admin-btn" onclick="stopAutoSync()">⏹ Зупинити синхронізацію</button>
+                    <button class="admin-btn" onclick="syncNow()">🔄 Синхронізувати остатки</button>
+                    <button class="admin-btn" onclick="syncPostings()">📊 Синхронізувати оприбуткування</button>
+                    <button class="admin-btn" onclick="syncMoves()">📦 Синхронізувати переміщення</button>
+                    <button class="admin-btn" onclick="syncOutcomes()">🗑️ Синхронізувати списання</button>
+                    <button class="admin-btn" onclick="syncSales()">💰 Синхронізувати продажі</button>
+                    <button class="admin-btn" onclick="createStockView()">📊 Створити view остатків</button>
+                </div>
+            </div>
+        </div>>
 
         <div class="status-panel">
             <div class="status-item" id="syncStatus">
@@ -2381,6 +2466,22 @@
     `;
 
             document.body.insertAdjacentHTML('beforeend', historyHtml);
+        }
+
+        // Функція для відкриття/закриття адмін меню
+        function toggleAdminMenu() {
+            const dropdown = document.getElementById('adminDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Закриття меню при кліку поза ним
+        window.onclick = function (event) {
+            if (!event.target.matches('.admin-toggle')) {
+                const dropdown = document.getElementById('adminDropdown');
+                if (dropdown && dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
         }
 
         // Инициализация
