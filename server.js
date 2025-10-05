@@ -226,38 +226,59 @@ class RemonlineMatrixSync {
         });
       }
     });
-    // Получение товаров конкретного склада напрямую из API
+    // Получение товаров конкретного склада
     this.app.get(
       "/api/selected-warehouse-goods/:warehouseId",
       async (req, res) => {
         try {
-          const warehouseId = req.params.warehouseId;
+          if (!this.bigquery) {
+            return res.json({
+              success: false,
+              error: "BigQuery не настроена",
+            });
+          }
 
-          // Получаем товары напрямую из API Remonline
-          const goods = await this.fetchWarehouseGoods(warehouseId);
+          const warehouseId = parseInt(req.params.warehouseId);
 
-          // Получаем информацию о складе
-          const warehouses = await this.fetchWarehouses();
-          const warehouse = warehouses.find((w) => w.id == warehouseId);
-          const warehouseTitle = warehouse
-            ? warehouse.title
-            : `Склад ID: ${warehouseId}`;
+          const query = `
+            SELECT 
+                warehouse_title,
+                title,
+                residue,
+                code,
+                article,
+                uom_title,
+                updated_at
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+            WHERE warehouse_id = @warehouse_id AND residue > 0
+            ORDER BY title
+        `;
+
+          const [rows] = await this.bigquery.query({
+            query,
+            location: "EU",
+            params: { warehouse_id: warehouseId },
+          });
+
+          const warehouseTitle =
+            rows.length > 0
+              ? rows[0].warehouse_title
+              : `Склад ID: ${warehouseId}`;
 
           res.json({
             success: true,
             warehouseId,
             warehouseTitle,
-            data: goods.map((item) => ({
+            data: rows.map((item) => ({
               title: item.title,
               residue: item.residue,
               code: item.code || "",
               article: item.article || "",
-              category: item.category?.title || "",
-              uom_title: item.uom?.title || "",
-              updated_at: new Date().toISOString(),
+              uom_title: item.uom_title || "",
+              updated_at: item.updated_at,
             })),
-            totalItems: goods.length,
-            totalQuantity: goods.reduce((sum, item) => sum + item.residue, 0),
+            totalItems: rows.length,
+            totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
           });
         } catch (error) {
           console.error("Ошибка получения товаров выбранного склада:", error);
@@ -1221,7 +1242,7 @@ class RemonlineMatrixSync {
 
           // Запит списань
           const outcomesQuery = `
-        SELECT 
+        SELECT DISTINCT
             outcome_created_at,
             outcome_label,
             created_by_name,
@@ -1246,7 +1267,7 @@ class RemonlineMatrixSync {
 
           // Запит продажів
           const salesQuery = `
-  SELECT 
+  SELECT DISTINCT
       sale_created_at,
       sale_label,
       created_by_name,
