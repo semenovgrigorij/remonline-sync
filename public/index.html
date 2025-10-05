@@ -2204,27 +2204,42 @@
             });
 
             // Розрахунок залишку
-            let balance = 0;
+            // let balance = 0;
 
-            for (let i = 0; i < allOperations.length; i++) {
-                const op = allOperations[i];
+            // for (let i = 0; i < allOperations.length; i++) {
+            //     const op = allOperations[i];
 
-                // Якщо це внутрішнє переміщення (source === target === поточний склад)
-                if (op.isInternalMove && op.sortOrder === 1) {
-                    // Для внутрішнього переміщення: показуємо залишок без змін для обох операцій
-                    op.balance = balance;
+            //     // Якщо це внутрішнє переміщення (source === target === поточний склад)
+            //     if (op.isInternalMove && op.sortOrder === 1) {
+            //         // Для внутрішнього переміщення: показуємо залишок без змін для обох операцій
+            //         op.balance = balance;
 
-                    const nextOp = allOperations[i + 1];
-                    if (nextOp && nextOp.moveId === op.moveId && nextOp.sortOrder === 2) {
-                        nextOp.balance = balance;
-                        i++; // Пропускаємо наступну
-                        continue;
-                    }
+            //         const nextOp = allOperations[i + 1];
+            //         if (nextOp && nextOp.moveId === op.moveId && nextOp.sortOrder === 2) {
+            //             nextOp.balance = balance;
+            //             i++; // Пропускаємо наступну
+            //             continue;
+            //         }
+            //     }
+
+            //     // Для всіх інших операцій: застосовуємо зміну
+            //     balance += op.plus - op.minus;
+            //     op.balance = balance;
+            // }
+
+            // Розрахунок загального системного залишку
+            let systemBalance = 0;
+
+            for (const op of allOperations) {
+                // Для системного балансу враховуємо тільки операції що змінюють загальну кількість
+                if (op.type === 'Оприбуткування') {
+                    systemBalance += op.plus;
+                } else if (op.type === 'Списання' || op.type === 'Продаж') {
+                    systemBalance -= op.minus;
                 }
+                // Переміщення НЕ змінюють загальний баланс системи
 
-                // Для всіх інших операцій: застосовуємо зміну
-                balance += op.plus - op.minus;
-                op.balance = balance;
+                op.balance = systemBalance;
             }
 
             const formatDate = (date) => {
