@@ -103,8 +103,13 @@ class RemonlineMatrixSync {
     this.setupScheduledSync();
     this.browser = null;
     this.userCookies = new Map();
-
     this.autoLogin();
+    this.loginServiceUrl = process.env.LOGIN_SERVICE_URL;
+
+    // Отримуємо cookies при старті (відкладено)
+    setTimeout(() => {
+      this.refreshCookiesAutomatically();
+    }, 5000); // Через 5 секунд після старту
   }
 
   // async autoLogin() {
@@ -1549,6 +1554,13 @@ class RemonlineMatrixSync {
       }
     });
 
+    // Оновлення cookies кожні 10 хвилин
+    cron.schedule("*/10 * * * *", async () => {
+      console.log("⏰ Планове оновлення cookies...");
+      await this.refreshCookiesAutomatically();
+    });
+
+    console.log("   - Оновлення cookies: кожні 10 хвилин");
     console.log("⏰ Планировщик настроен:");
     console.log("   - Остатки: каждый час");
     console.log("   - Оприходования: каждый час (+30 мин)");
@@ -3942,6 +3954,37 @@ class RemonlineMatrixSync {
       throw error;
     } finally {
       await page.close();
+    }
+  }
+
+  async refreshCookiesAutomatically() {
+    if (!this.loginServiceUrl) {
+      console.log("⚠️ LOGIN_SERVICE_URL не налаштовано");
+      return;
+    }
+
+    try {
+      console.log("🔄 Запит нових cookies з login-service...");
+
+      const response = await fetch(`${this.loginServiceUrl}/get-cookies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: process.env.REMONLINE_EMAIL,
+          password: process.env.REMONLINE_PASSWORD,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.userCookies.set("shared_user", result.cookies);
+        console.log(`✅ Cookies оновлено (cached: ${result.cached})`);
+      } else {
+        console.error("❌ Помилка оновлення:", result.error);
+      }
+    } catch (error) {
+      console.error("❌ Помилка зв'язку з login-service:", error.message);
     }
   }
   startAutoSync() {
