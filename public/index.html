@@ -2206,7 +2206,7 @@
                     date: new Date(item.created_at),
                     docNumber: item.relation_id_label,
                     createdBy: '-',
-                    type: '📝 Замовлення',
+                    type: 'Замовлення',
                     counterparty: item.client_name || '-',
                     warehouse: item.warehouse_title,
                     plus: 0,
@@ -2222,7 +2222,7 @@
                     date: new Date(item.created_at),
                     docNumber: item.relation_id_label,
                     createdBy: '-',
-                    type: '↩️ Повернення постачальнику',
+                    type: 'Повернення постачальнику',
                     counterparty: item.client_name || '-',
                     warehouse: item.warehouse_title,
                     plus: 0,
@@ -2401,7 +2401,9 @@
                     'Переміщення (вихід)': '#0ea5e9',
                     'Переміщення (вхід)': '#0ea5e9',
                     'Списання': '#ef4444',
-                    'Продаж': '#8b5cf6'
+                    'Продаж': '#8b5cf6',
+                    'Замовлення': '#f59e0b',
+                    'Повернення постачальнику': '#ec4899'
                 }[op.type] || '#6b7280';
 
                 return `
@@ -2421,12 +2423,6 @@
                         </tbody>
                     </table>
                 </div>
-                
-            <!--    ${allOperations.length > 0 ? `
-                    <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                        <strong style="color: #0c4a6e;">Підсумок:</strong> Всього операцій: ${allOperations.length}
-                    </div>
-                ` : ''}-->
             </div>
         </div>
     `;
