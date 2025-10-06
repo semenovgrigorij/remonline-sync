@@ -1847,54 +1847,55 @@
         }
 
         async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
-            console.log('showProductHistoryFromSearch викликана з параметрами:');
-            console.log('warehouseTitle (raw):', warehouseTitle);
-            console.log('productTitle (raw):', productTitle);
-            console.log('showProductHistoryFromSearch викликана:', { warehouseTitle, productTitle });
-
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
 
-            console.log('decodedWarehouseTitle:', decodedWarehouseTitle);
-            console.log('decodedProductTitle:', decodedProductTitle);
-
-            // ДОДАНА ПЕРЕВІРКА
-            if (!warehouseTitle || warehouseTitle === 'null' || warehouseTitle === 'undefined' ||
-                !decodedWarehouseTitle || decodedWarehouseTitle === 'null' || decodedWarehouseTitle === 'undefined') {
-                console.error('Некорректное название склада:', {
-                    warehouseTitle,
-                    decodedWarehouseTitle,
-                    currentWarehouseTitle: currentWarehouseTitle
-                });
-                alert('Ошибка: не указан склад. Пожалуйста, попробуйте снова из другого раздела.');
+            if (!warehouseTitle || warehouseTitle === 'null' || warehouseTitle === 'undefined') {
+                alert('Помилка: не вказано склад');
                 return;
             }
 
             try {
-                console.log(`Получение истории для склада "${decodedWarehouseTitle}", товар "${decodedProductTitle}"`);
+                console.log(`Отримання історії для складу "${decodedWarehouseTitle}", товар "${decodedProductTitle}"`);
 
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
 
                 if (warehouseId) {
-                    console.log(`Найден warehouse_id: ${warehouseId}`);
+                    // Отримуємо стандартну історію
+                    const standardHistory = await apiCall(
+                        `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
+                    );
 
-                    const result = await apiCall(`/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`);
+                    // Отримуємо product_id
+                    const productId = standardHistory.productId;
 
-                    console.log('Відповідь API:', result);
-                    console.log('Ответ API product-warehouse-history:', result);
+                    // НОВИЙ ЗАПИТ: Отримуємо замовлення та повернення
+                    const goodsFlowResult = await apiCall(
+                        `/api/goods-flow-items/${productId}`
+                    );
 
-                    if (result.success) {
-                        console.log('Дані для відображення:', result.data);
-                        displaySeparatedProductHistory(result.data, decodedProductTitle, decodedWarehouseTitle);
+                    if (standardHistory.success && goodsFlowResult.success) {
+                        // Об'єднуємо дані
+                        const combinedData = {
+                            ...standardHistory.data,
+                            orders: goodsFlowResult.data.filter(item => item.relation_type === 0),
+                            returns: goodsFlowResult.data.filter(item => item.relation_type === 7)
+                        };
+
+                        displaySeparatedProductHistory(
+                            combinedData,
+                            decodedProductTitle,
+                            decodedWarehouseTitle
+                        );
                     } else {
-                        alert(`Ошибка загрузки истории: ${result.error}`);
+                        alert(`Помилка завантаження історії`);
                     }
                 } else {
-                    alert(`Не удалось найти ID склада "${decodedWarehouseTitle}"`);
+                    alert(`Не вдалося знайти ID складу "${decodedWarehouseTitle}"`);
                 }
             } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                console.error('Ошибка получения истории:', error);
+                alert(`Помилка: ${error.message}`);
+                console.error('Помилка отримання історії:', error);
             }
         }
 
@@ -2174,7 +2175,7 @@
 
             closeHistoryModal();
 
-            const { postings, moves, outcomes, sales } = data;
+            const { postings, moves, outcomes, sales, orders, returns } = data;
 
             console.log('Після деструктуризації:');
             console.log('postings:', postings);
@@ -2194,6 +2195,38 @@
                     warehouse: item.warehouse_title,
                     plus: item.amount,
                     minus: 0,
+                    balance: 0,
+                    isMove: false
+                });
+            });
+
+            // Додаємо замовлення
+            orders?.forEach(item => {
+                allOperations.push({
+                    date: new Date(item.created_at),
+                    docNumber: item.relation_id_label,
+                    createdBy: '-',
+                    type: '📝 Замовлення',
+                    counterparty: item.client_name || '-',
+                    warehouse: item.warehouse_title,
+                    plus: 0,
+                    minus: item.outcome || 0,
+                    balance: 0,
+                    isMove: false
+                });
+            });
+
+            //  Додаємо повернення постачальнику
+            returns?.forEach(item => {
+                allOperations.push({
+                    date: new Date(item.created_at),
+                    docNumber: item.relation_id_label,
+                    createdBy: '-',
+                    type: '↩️ Повернення постачальнику',
+                    counterparty: item.client_name || '-',
+                    warehouse: item.warehouse_title,
+                    plus: 0,
+                    minus: item.outcome || 0,
                     balance: 0,
                     isMove: false
                 });
@@ -2317,13 +2350,14 @@
             let systemBalance = 0;
 
             for (const op of allOperations) {
-                // Для системного балансу враховуємо тільки операції що змінюють загальну кількість
                 if (op.type === 'Оприбуткування') {
                     systemBalance += op.plus;
-                } else if (op.type === 'Списання' || op.type === 'Продаж') {
+                } else if (op.type === '📝 Замовлення' ||
+                    op.type === '↩️ Повернення постачальнику' ||
+                    op.type === 'Списання' ||
+                    op.type === 'Продаж') {
                     systemBalance -= op.minus;
                 }
-                // Переміщення НЕ змінюють загальний баланс системи
 
                 op.balance = systemBalance;
             }

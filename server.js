@@ -101,6 +101,26 @@ class RemonlineMatrixSync {
     this.setupRoutes();
     this.initializeBigQuery();
     this.setupScheduledSync();
+    this.browser = null;
+    this.userCookies = new Map();
+
+    this.autoLogin();
+  }
+
+  async autoLogin() {
+    if (process.env.REMONLINE_EMAIL && process.env.REMONLINE_PASSWORD) {
+      try {
+        console.log("🔐 Автоматичний логін в RemOnline...");
+        const cookies = await this.loginToRemOnline(
+          process.env.REMONLINE_EMAIL,
+          process.env.REMONLINE_PASSWORD
+        );
+        this.userCookies.set("main_user", cookies);
+        console.log("✅ Автологін успішний");
+      } catch (error) {
+        console.error("❌ Помилка автологіну:", error.message);
+      }
+    }
   }
 
   setupMiddleware() {
@@ -402,6 +422,28 @@ class RemonlineMatrixSync {
         });
       } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    //  Endpoint для логіну
+    this.app.post("/api/login-remonline", async (req, res) => {
+      try {
+        const { email, password } = req.body;
+
+        const cookies = await this.loginToRemOnline(email, password);
+
+        // Зберігаємо cookies в пам'яті
+        this.userCookies.set("main_user", cookies);
+
+        res.json({
+          success: true,
+          message: "Успішний вхід",
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
       }
     });
     // Получение данных для матрицы
@@ -1373,6 +1415,50 @@ class RemonlineMatrixSync {
         sample: allPostings.slice(0, 5),
       });
     });
+
+    // Endpoint для отримання історії товару (замовлення + повернення)
+    this.app.get("/api/goods-flow-items/:productId", async (req, res) => {
+      try {
+        const productId = req.params.productId;
+        const startDate =
+          req.query.startDate || new Date("2022-05-01").getTime();
+        const endDate = req.query.endDate || Date.now();
+
+        // Отримуємо збережені cookies
+        const cookies = this.userCookies.get("main_user");
+
+        if (!cookies) {
+          return res.status(401).json({
+            success: false,
+            error:
+              "Необхідна авторизація. Спочатку виконайте POST /api/login-remonline",
+          });
+        }
+
+        const flowItems = await this.fetchGoodsFlowForProduct(
+          productId,
+          startDate,
+          endDate,
+          cookies
+        );
+
+        const filtered = flowItems.filter(
+          (item) => item.relation_type === 0 || item.relation_type === 7
+        );
+
+        res.json({
+          success: true,
+          productId,
+          data: filtered,
+          totalRecords: filtered.length,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
   }
 
   initializeBigQuery() {
@@ -1987,6 +2073,56 @@ class RemonlineMatrixSync {
     return allGoods;
   }
 
+  async fetchGoodsFlowForProduct(productId, startDate, endDate, cookies) {
+    if (!cookies) {
+      throw new Error("Потрібні cookies для доступу до цього endpoint");
+    }
+
+    const options = {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        cookie: cookies,
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    };
+
+    let allItems = [];
+    let page = 1;
+    const pageSize = 100;
+
+    while (true) {
+      try {
+        const url = `https://web.roapp.io/app/warehouse/get-goods-flow-items?page=${page}&pageSize=${pageSize}&id=${productId}&startDate=${startDate}&endDate=${endDate}`;
+
+        const response = await fetch(url, options);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const items = result.data || [];
+
+        if (items.length === 0) break;
+
+        allItems = allItems.concat(items);
+
+        if (items.length < pageSize) break;
+
+        page++;
+        if (page > 100) break;
+
+        await this.sleep(300);
+      } catch (error) {
+        console.error(`❌ Помилка на сторінці ${page}:`, error.message);
+        break;
+      }
+    }
+
+    return allItems;
+  }
   async fetchEmployees() {
     const options = {
       method: "GET",
@@ -3691,6 +3827,72 @@ class RemonlineMatrixSync {
     }
   }
 
+  // Метод ініціалізації браузера:
+  async initBrowser() {
+    if (!this.browser) {
+      const puppeteer = require("puppeteer");
+      this.browser = await puppeteer.launch({
+        headless: "new",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+      console.log("🌐 Puppeteer браузер ініціалізовано");
+    }
+    return this.browser;
+  }
+
+  // Метод логіну:
+  async loginToRemOnline(email, password) {
+    const browserInstance = await this.initBrowser();
+    const page = await browserInstance.newPage();
+
+    try {
+      await page.goto("https://web.roapp.io/login", {
+        waitUntil: "networkidle0",
+        timeout: 30000,
+      });
+
+      const usernameInput = await page.waitForSelector('input[type="text"]', {
+        visible: true,
+        timeout: 10000,
+      });
+
+      const passwordInput = await page.waitForSelector(
+        'input[type="password"]',
+        {
+          visible: true,
+          timeout: 5000,
+        }
+      );
+
+      await usernameInput.type(email, { delay: 100 });
+      await passwordInput.type(password, { delay: 100 });
+
+      const submitButton = await page.$('button[type="submit"]');
+
+      await Promise.all([
+        submitButton.click(),
+        page.waitForFunction(() => !window.location.href.includes("/login"), {
+          timeout: 15000,
+        }),
+      ]);
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const cookies = await page.cookies();
+      const cookieString = cookies
+        .map((cookie) => `${cookie.name}=${cookie.value}`)
+        .join("; ");
+
+      console.log("✅ Успішний логін, отримано cookies");
+
+      return cookieString;
+    } catch (error) {
+      console.error("❌ Помилка логіну:", error.message);
+      throw error;
+    } finally {
+      await page.close();
+    }
+  }
   startAutoSync() {
     this.isRunning = true;
     console.log("🚀 Автоматическая синхронизация запущена");
