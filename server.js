@@ -107,22 +107,26 @@ class RemonlineMatrixSync {
     this.autoLogin();
   }
 
-  async autoLogin() {
-    if (process.env.REMONLINE_EMAIL && process.env.REMONLINE_PASSWORD) {
-      try {
-        console.log("🔐 Автоматичний логін в RemOnline...");
-        const cookies = await this.loginToRemOnline(
-          process.env.REMONLINE_EMAIL,
-          process.env.REMONLINE_PASSWORD
-        );
-        this.userCookies.set("main_user", cookies);
-        console.log("✅ Автологін успішний");
-      } catch (error) {
-        console.error("❌ Помилка автологіну:", error.message);
-      }
-    }
-  }
+  // async autoLogin() {
+  //   if (process.env.REMONLINE_EMAIL && process.env.REMONLINE_PASSWORD) {
+  //     try {
+  //       console.log("🔐 Автоматичний логін в RemOnline...");
+  //       const cookies = await this.loginToRemOnline(
+  //         process.env.REMONLINE_EMAIL,
+  //         process.env.REMONLINE_PASSWORD
+  //       );
+  //       this.userCookies.set("main_user", cookies);
+  //       console.log("✅ Автологін успішний");
+  //     } catch (error) {
+  //       console.error("❌ Помилка автологіну:", error.message);
+  //     }
+  //   }
+  // }
 
+  async autoLogin() {
+    // НЕ логінимось при старті сервера, щоб не блокувати запуск
+    console.log("⏳ Автологін буде виконано при першому запиті goods-flow");
+  }
   setupMiddleware() {
     this.app.use(express.json());
     this.app.use(express.static("public"));
@@ -1424,14 +1428,36 @@ class RemonlineMatrixSync {
           req.query.startDate || new Date("2022-05-01").getTime();
         const endDate = req.query.endDate || Date.now();
 
-        // Отримуємо збережені cookies
-        const cookies = this.userCookies.get("main_user");
+        // Перевіряємо чи є cookies
+        let cookies = this.userCookies.get("main_user");
+
+        // Якщо немає - логінимось ЗАРАЗ (ліниво)
+        if (
+          !cookies &&
+          process.env.REMONLINE_EMAIL &&
+          process.env.REMONLINE_PASSWORD
+        ) {
+          console.log("🔐 Виконується відкладений логін...");
+          try {
+            cookies = await this.loginToRemOnline(
+              process.env.REMONLINE_EMAIL,
+              process.env.REMONLINE_PASSWORD
+            );
+            this.userCookies.set("main_user", cookies);
+            console.log("✅ Логін успішний");
+          } catch (error) {
+            console.error("❌ Помилка логіну:", error);
+            return res.status(500).json({
+              success: false,
+              error: `Помилка автологіну: ${error.message}. Puppeteer може бути ще не готовий. Спробуйте через хвилину.`,
+            });
+          }
+        }
 
         if (!cookies) {
           return res.status(401).json({
             success: false,
-            error:
-              "Необхідна авторизація. Спочатку виконайте POST /api/login-remonline",
+            error: "Необхідна авторизація. Credentials не налаштовані.",
           });
         }
 
@@ -1453,6 +1479,7 @@ class RemonlineMatrixSync {
           totalRecords: filtered.length,
         });
       } catch (error) {
+        console.error("❌ Помилка goods-flow:", error);
         res.status(500).json({
           success: false,
           error: error.message,
@@ -3831,11 +3858,35 @@ class RemonlineMatrixSync {
   async initBrowser() {
     if (!this.browser) {
       const puppeteer = require("puppeteer");
-      this.browser = await puppeteer.launch({
+
+      // Для Render та інших Linux середовищ
+      const browserOptions = {
         headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
-      console.log("🌐 Puppeteer браузер ініціалізовано");
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--disable-gpu",
+          "--disable-software-rasterizer",
+        ],
+      };
+
+      // Не вказуємо executablePath - Puppeteer сам знайде Chrome
+      try {
+        this.browser = await puppeteer.launch(browserOptions);
+        console.log("🌐 Puppeteer браузер ініціалізовано");
+      } catch (error) {
+        console.error("❌ Помилка запуску Puppeteer:", error.message);
+        console.log("💡 Спроба використати системний Chrome...");
+
+        // Якщо не вдалось, пробуємо з вказаним шляхом
+        browserOptions.executablePath = "/usr/bin/chromium-browser";
+        this.browser = await puppeteer.launch(browserOptions);
+        console.log("🌐 Puppeteer підключено до системного Chrome");
+      }
     }
     return this.browser;
   }
