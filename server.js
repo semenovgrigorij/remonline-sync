@@ -614,21 +614,47 @@ class RemonlineMatrixSync {
 
         const searchTerm = decodeURIComponent(req.params.searchTerm);
 
+        // Об'єднаний запит: поточні остатки + історичні записи
         const query = `
-    SELECT 
-        title,
-        warehouse_title,
-        SUM(residue) as residue,
-        STRING_AGG(DISTINCT code, ', ') as code,
-        STRING_AGG(DISTINCT article, ', ') as article,
-        STRING_AGG(DISTINCT category, ', ') as category,
-        STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
-        MAX(updated_at) as updated_at
-    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-    WHERE LOWER(title) LIKE LOWER(@search_term) AND residue > 0
-    GROUP BY title, warehouse_title
-    ORDER BY title, warehouse_title
-`;
+      WITH current_stock AS (
+        SELECT 
+            title,
+            warehouse_title,
+            SUM(residue) as residue,
+            STRING_AGG(DISTINCT code, ', ') as code,
+            STRING_AGG(DISTINCT article, ', ') as article,
+            STRING_AGG(DISTINCT category, ', ') as category,
+            STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
+            MAX(updated_at) as updated_at
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+        WHERE LOWER(title) LIKE LOWER(@search_term)
+        GROUP BY title, warehouse_title
+      ),
+      historical_stock AS (
+        SELECT DISTINCT
+            product_title as title,
+            warehouse_title,
+            0 as residue,
+            '' as code,
+            '' as article,
+            '' as category,
+            '' as uom_title,
+            MAX(posting_created_at) as updated_at
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+        WHERE LOWER(product_title) LIKE LOWER(@search_term)
+        GROUP BY product_title, warehouse_title
+      )
+      
+      SELECT * FROM current_stock
+      UNION ALL
+      SELECT h.* 
+      FROM historical_stock h
+      WHERE NOT EXISTS (
+        SELECT 1 FROM current_stock c 
+        WHERE c.title = h.title AND c.warehouse_title = h.warehouse_title
+      )
+      ORDER BY title, warehouse_title
+    `;
 
         const [rows] = await this.bigquery.query({
           query,
@@ -637,12 +663,19 @@ class RemonlineMatrixSync {
           types: { search_term: "STRING" },
         });
 
+        console.log(
+          `🔍 Пошук "${searchTerm}": знайдено ${rows.length} результатів`
+        );
+
         res.json({
           success: true,
           searchTerm,
           data: rows,
           totalResults: rows.length,
-          totalQuantity: rows.reduce((sum, item) => sum + item.residue, 0),
+          totalQuantity: rows.reduce(
+            (sum, item) => sum + (item.residue || 0),
+            0
+          ),
         });
       } catch (error) {
         console.error("Ошибка поиска товаров:", error);
