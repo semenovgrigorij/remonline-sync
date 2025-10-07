@@ -1859,6 +1859,7 @@
                 console.log(`Отримання історії для складу "${decodedWarehouseTitle}", товар "${decodedProductTitle}"`);
 
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
+                console.log(`🔍 DEBUG: warehouseId = ${warehouseId}, warehouseTitle = "${decodedWarehouseTitle}"`);
 
                 if (warehouseId) {
                     // Отримуємо стандартну історію
@@ -1909,32 +1910,18 @@
                 console.log(`Поиск ID для склада: "${warehouseTitle}"`);
 
                 const result = await apiCall('/api/all-warehouses');
-                console.log('Полный ответ API all-warehouses:', result); // ОТЛАДКА
 
                 if (result.success && result.warehouses) {
                     console.log(`Получено ${result.warehouses.length} складов для поиска`);
 
-                    // Покажем первые 3 склада для отладки
-                    console.log('Первые 3 склада:', result.warehouses.slice(0, 3));
-
                     const warehouse = result.warehouses.find(w => {
-                        console.log(`Сравниваем: "${w.title}" === "${warehouseTitle}"`);
                         return w.title === warehouseTitle;
                     });
-
-                    if (!warehouse) {
-                        console.log('Склад не найден. Все названия складов:');
-                        result.warehouses.forEach((w, index) => {
-                            if (index < 10) { // Показываем первые 10
-                                console.log(`${index + 1}. "${w.title}"`);
-                            }
-                        });
-                    }
 
                     console.log(`Результат поиска склада:`, warehouse);
                     return warehouse ? warehouse.id : null;
                 } else {
-                    console.error('API all-warehouses вернул ошибку или пустой результат:', result);
+                    console.error('API all-warehouses вернул ошибку:', result);
                     return null;
                 }
 
