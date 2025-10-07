@@ -635,10 +635,10 @@ class RemonlineMatrixSync {
             product_title as title,
             warehouse_title,
             0 as residue,
-            '' as code,
-            '' as article,
+            STRING_AGG(DISTINCT product_code, ', ') as code,
+            STRING_AGG(DISTINCT product_article, ', ') as article,
             '' as category,
-            '' as uom_title,
+            STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
             MAX(posting_created_at) as updated_at
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
         WHERE LOWER(product_title) LIKE LOWER(@search_term)
