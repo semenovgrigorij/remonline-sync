@@ -1433,36 +1433,15 @@ class RemonlineMatrixSync {
           req.query.startDate || new Date("2022-05-01").getTime();
         const endDate = req.query.endDate || Date.now();
 
-        // Перевіряємо чи є cookies
-        let cookies = this.userCookies.get("main_user");
-
-        // Якщо немає - логінимось ЗАРАЗ (ліниво)
-        if (
-          !cookies &&
-          process.env.REMONLINE_EMAIL &&
-          process.env.REMONLINE_PASSWORD
-        ) {
-          console.log("🔐 Виконується відкладений логін...");
-          try {
-            cookies = await this.loginToRemOnline(
-              process.env.REMONLINE_EMAIL,
-              process.env.REMONLINE_PASSWORD
-            );
-            this.userCookies.set("main_user", cookies);
-            console.log("✅ Логін успішний");
-          } catch (error) {
-            console.error("❌ Помилка логіну:", error);
-            return res.status(500).json({
-              success: false,
-              error: `Помилка автологіну: ${error.message}. Puppeteer може бути ще не готовий. Спробуйте через хвилину.`,
-            });
-          }
-        }
+        // Використовуємо спільні cookies з Railway login-service
+        const cookies = this.userCookies.get("shared_user");
 
         if (!cookies) {
-          return res.status(401).json({
+          return res.status(503).json({
             success: false,
-            error: "Необхідна авторизація. Credentials не налаштовані.",
+            error:
+              "Сервіс тимчасово недоступний. Очікуємо оновлення автентифікації...",
+            needAdminAction: false,
           });
         }
 
@@ -3863,97 +3842,6 @@ class RemonlineMatrixSync {
     } catch (error) {
       console.error("❌ Помилка створення view:", error.message);
       return false;
-    }
-  }
-
-  // Метод ініціалізації браузера:
-  async initBrowser() {
-    if (!this.browser) {
-      const puppeteer = require("puppeteer");
-
-      // Для Render та інших Linux середовищ
-      const browserOptions = {
-        headless: "new",
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-accelerated-2d-canvas",
-          "--no-first-run",
-          "--no-zygote",
-          "--disable-gpu",
-          "--disable-software-rasterizer",
-        ],
-      };
-
-      // Не вказуємо executablePath - Puppeteer сам знайде Chrome
-      try {
-        this.browser = await puppeteer.launch(browserOptions);
-        console.log("🌐 Puppeteer браузер ініціалізовано");
-      } catch (error) {
-        console.error("❌ Помилка запуску Puppeteer:", error.message);
-        console.log("💡 Спроба використати системний Chrome...");
-
-        // Якщо не вдалось, пробуємо з вказаним шляхом
-        browserOptions.executablePath = "/usr/bin/chromium-browser";
-        this.browser = await puppeteer.launch(browserOptions);
-        console.log("🌐 Puppeteer підключено до системного Chrome");
-      }
-    }
-    return this.browser;
-  }
-
-  // Метод логіну:
-  async loginToRemOnline(email, password) {
-    const browserInstance = await this.initBrowser();
-    const page = await browserInstance.newPage();
-
-    try {
-      await page.goto("https://web.roapp.io/login", {
-        waitUntil: "networkidle0",
-        timeout: 30000,
-      });
-
-      const usernameInput = await page.waitForSelector('input[type="text"]', {
-        visible: true,
-        timeout: 10000,
-      });
-
-      const passwordInput = await page.waitForSelector(
-        'input[type="password"]',
-        {
-          visible: true,
-          timeout: 5000,
-        }
-      );
-
-      await usernameInput.type(email, { delay: 100 });
-      await passwordInput.type(password, { delay: 100 });
-
-      const submitButton = await page.$('button[type="submit"]');
-
-      await Promise.all([
-        submitButton.click(),
-        page.waitForFunction(() => !window.location.href.includes("/login"), {
-          timeout: 15000,
-        }),
-      ]);
-
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      const cookies = await page.cookies();
-      const cookieString = cookies
-        .map((cookie) => `${cookie.name}=${cookie.value}`)
-        .join("; ");
-
-      console.log("✅ Успішний логін, отримано cookies");
-
-      return cookieString;
-    } catch (error) {
-      console.error("❌ Помилка логіну:", error.message);
-      throw error;
-    } finally {
-      await page.close();
     }
   }
 
