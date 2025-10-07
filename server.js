@@ -614,8 +614,8 @@ class RemonlineMatrixSync {
 
         const searchTerm = decodeURIComponent(req.params.searchTerm);
 
-        // Спрощений запит без складних агрегацій
-        const query = `
+        // Два окремі запити
+        const currentStockQuery = `
       SELECT 
           title,
           warehouse_title,
@@ -628,50 +628,66 @@ class RemonlineMatrixSync {
       FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
       WHERE LOWER(title) LIKE LOWER(@search_term)
       GROUP BY title, warehouse_title
-      
-      UNION ALL
-      
+      ORDER BY title, warehouse_title
+    `;
+
+        const [currentRows] = await this.bigquery.query({
+          query: currentStockQuery,
+          location: "EU",
+          params: { search_term: `%${searchTerm}%` },
+        });
+
+        // Якщо знайшли в поточних остатках - повертаємо їх
+        if (currentRows.length > 0) {
+          console.log(
+            `🔍 Пошук "${searchTerm}": знайдено ${currentRows.length} результатів (в наявності)`
+          );
+
+          return res.json({
+            success: true,
+            searchTerm,
+            data: currentRows,
+            totalResults: currentRows.length,
+            totalQuantity: currentRows.reduce(
+              (sum, item) => sum + (item.residue || 0),
+              0
+            ),
+          });
+        }
+
+        // Якщо не знайшли - шукаємо в історії
+        const historicalQuery = `
       SELECT DISTINCT
           product_title as title,
           warehouse_title,
           0 as residue,
           product_code as code,
           product_article as article,
-          CAST(NULL AS STRING) as category,
+          '' as category,
           uom_title,
           posting_created_at as updated_at
       FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
       WHERE LOWER(product_title) LIKE LOWER(@search_term)
-        AND NOT EXISTS (
-          SELECT 1 
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` c
-          WHERE c.title = product_title 
-            AND c.warehouse_title = \`${process.env.BIGQUERY_TABLE}_postings\`.warehouse_title
-        )
-      
-      ORDER BY title, warehouse_title
+      ORDER BY product_title, warehouse_title
+      LIMIT 100
     `;
 
-        const [rows] = await this.bigquery.query({
-          query,
+        const [historicalRows] = await this.bigquery.query({
+          query: historicalQuery,
           location: "EU",
           params: { search_term: `%${searchTerm}%` },
-          types: { search_term: "STRING" },
         });
 
         console.log(
-          `🔍 Пошук "${searchTerm}": знайдено ${rows.length} результатів`
+          `🔍 Пошук "${searchTerm}": знайдено ${historicalRows.length} результатів (історія)`
         );
 
         res.json({
           success: true,
           searchTerm,
-          data: rows,
-          totalResults: rows.length,
-          totalQuantity: rows.reduce(
-            (sum, item) => sum + (item.residue || 0),
-            0
-          ),
+          data: historicalRows,
+          totalResults: historicalRows.length,
+          totalQuantity: 0,
         });
       } catch (error) {
         console.error("Ошибка поиска товаров:", error);
