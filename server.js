@@ -614,45 +614,41 @@ class RemonlineMatrixSync {
 
         const searchTerm = decodeURIComponent(req.params.searchTerm);
 
-        // Об'єднаний запит: поточні остатки + історичні записи
+        // Спрощений запит без складних агрегацій
         const query = `
-      WITH current_stock AS (
-        SELECT 
-            title,
-            warehouse_title,
-            SUM(residue) as residue,
-            STRING_AGG(DISTINCT code, ', ') as code,
-            STRING_AGG(DISTINCT article, ', ') as article,
-            STRING_AGG(DISTINCT category, ', ') as category,
-            STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
-            MAX(updated_at) as updated_at
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-        WHERE LOWER(title) LIKE LOWER(@search_term)
-        GROUP BY title, warehouse_title
-      ),
-      historical_stock AS (
-        SELECT DISTINCT
-            product_title as title,
-            warehouse_title,
-            0 as residue,
-            STRING_AGG(DISTINCT product_code, ', ') as code,
-            STRING_AGG(DISTINCT product_article, ', ') as article,
-            '' as category,
-            STRING_AGG(DISTINCT uom_title, ', ') as uom_title,
-            MAX(posting_created_at) as updated_at
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-        WHERE LOWER(product_title) LIKE LOWER(@search_term)
-        GROUP BY product_title, warehouse_title
-      )
+      SELECT 
+          title,
+          warehouse_title,
+          SUM(residue) as residue,
+          MAX(code) as code,
+          MAX(article) as article,
+          MAX(category) as category,
+          MAX(uom_title) as uom_title,
+          MAX(updated_at) as updated_at
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+      WHERE LOWER(title) LIKE LOWER(@search_term)
+      GROUP BY title, warehouse_title
       
-      SELECT * FROM current_stock
       UNION ALL
-      SELECT h.* 
-      FROM historical_stock h
-      WHERE NOT EXISTS (
-        SELECT 1 FROM current_stock c 
-        WHERE c.title = h.title AND c.warehouse_title = h.warehouse_title
-      )
+      
+      SELECT DISTINCT
+          product_title as title,
+          warehouse_title,
+          0 as residue,
+          product_code as code,
+          product_article as article,
+          CAST(NULL AS STRING) as category,
+          uom_title,
+          posting_created_at as updated_at
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+      WHERE LOWER(product_title) LIKE LOWER(@search_term)
+        AND NOT EXISTS (
+          SELECT 1 
+          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\` c
+          WHERE c.title = product_title 
+            AND c.warehouse_title = \`${process.env.BIGQUERY_TABLE}_postings\`.warehouse_title
+        )
+      
       ORDER BY title, warehouse_title
     `;
 
