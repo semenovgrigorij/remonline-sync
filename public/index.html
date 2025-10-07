@@ -51,6 +51,7 @@
         .controls {
             padding: 10px;
             display: flex;
+            align-items: center;
             gap: 5px;
             flex-wrap: wrap;
             justify-content: center;
@@ -703,18 +704,20 @@
                     <button class="admin-btn" onclick="createStockView()">📊 Створити view остатків</button>
                 </div>
             </div>
-        </div>>
 
-        <div class="status-panel">
-            <div class="status-item" id="syncStatus">
-                <span class="status-label">Автосинхронизация:</span>
-                <span class="status-value">Остановлена</span>
-            </div>
-            <div class="status-item" id="lastSyncStatus">
-                <span class="status-label">Последняя синхронизация:</span>
-                <span class="status-value">Никогда</span>
+            <div class="status-panel">
+                <div class="status-item" id="syncStatus">
+                    <span class="status-label">Автосинхронизация:</span>
+                    <span class="status-value">Остановлена</span>
+                </div>
+                <div class="status-item" id="lastSyncStatus">
+                    <span class="status-label">Последняя синхронизация:</span>
+                    <span class="status-value">Никогда</span>
+                </div>
             </div>
         </div>
+
+
 
         <!-- Поле поиска -->
         <div class="search-panel">
