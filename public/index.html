@@ -1844,6 +1844,7 @@
         }
 
         async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
+            console.log('=== showProductHistoryFromSearch ===');
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
 
@@ -1853,47 +1854,52 @@
             }
 
             try {
-                console.log(`Отримання історії для складу "${decodedWarehouseTitle}", товар "${decodedProductTitle}"`);
-
+                console.log('🔍 Отримання warehouse_id...');
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
-                console.log(`🔍 DEBUG: warehouseId = ${warehouseId}, warehouseTitle = "${decodedWarehouseTitle}"`);
 
                 if (warehouseId) {
-                    // Отримуємо стандартну історію
+                    console.log('📡 Запит історії...');
                     const standardHistory = await apiCall(
                         `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
                     );
 
-                    // Отримуємо product_id
                     const productId = standardHistory.productId;
 
-                    // НОВИЙ ЗАПИТ: Отримуємо замовлення та повернення
-                    const goodsFlowResult = await apiCall(
-                        `/api/goods-flow-items/${productId}`
-                    );
+                    if (productId) {
+                        console.log('📡 Запит goods-flow...');
 
-                    if (standardHistory.success && goodsFlowResult.success) {
-                        // Об'єднуємо дані
-                        const combinedData = {
-                            ...standardHistory.data,
-                            orders: goodsFlowResult.data.filter(item => item.relation_type === 0),
-                            returns: goodsFlowResult.data.filter(item => item.relation_type === 7)
-                        };
+                        // Перша спроба
+                        let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
 
-                        displaySeparatedProductHistory(
-                            combinedData,
-                            decodedProductTitle,
-                            decodedWarehouseTitle
-                        );
+                        // Якщо 503 - чекаємо 2 секунди і повторюємо
+                        if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
+                            console.log('⏳ Чекаємо оновлення cookies...');
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+
+                            console.log('🔄 Повторний запит...');
+                            goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+                        }
+
+                        if (standardHistory.success && goodsFlowResult.success) {
+                            const combinedData = {
+                                ...standardHistory.data,
+                                orders: goodsFlowResult.data.filter(item => item.relation_type === 0),
+                                returns: goodsFlowResult.data.filter(item => item.relation_type === 7)
+                            };
+
+                            displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
+                        } else {
+                            alert(`Помилка завантаження історії: ${goodsFlowResult.error || 'Невідома помилка'}`);
+                        }
                     } else {
-                        alert(`Помилка завантаження історії`);
+                        alert('Не вдалось знайти ID товару');
                     }
                 } else {
                     alert(`Не вдалося знайти ID складу "${decodedWarehouseTitle}"`);
                 }
             } catch (error) {
+                console.error('❌ ПОМИЛКА:', error);
                 alert(`Помилка: ${error.message}`);
-                console.error('Помилка отримання історії:', error);
             }
         }
 
@@ -2124,68 +2130,7 @@
                 btn.innerHTML = '📊 Створити view остатків';
             }
         }
-        // Отладочная функция
-        async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
-            console.log('=== DEBUG showProductHistoryFromSearch ===');
-            console.log('warehouseTitle (raw):', warehouseTitle);
-            console.log('productTitle (raw):', productTitle);
 
-            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
-            const decodedProductTitle = decodeURIComponent(productTitle);
-
-            console.log('decodedWarehouseTitle:', decodedWarehouseTitle);
-            console.log('decodedProductTitle:', decodedProductTitle);
-
-            if (!warehouseTitle || warehouseTitle === 'null' || warehouseTitle === 'undefined') {
-                console.error('❌ Некорректное название склада');
-                alert('Помилка: не вказано склад');
-                return;
-            }
-
-            try {
-                console.log('🔍 Получение warehouse_id...');
-                const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
-                console.log('✅ warehouse_id:', warehouseId);
-
-                if (warehouseId) {
-                    console.log('📡 Запрос истории...');
-                    const standardHistory = await apiCall(
-                        `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
-                    );
-
-                    console.log('📊 Результат API:', standardHistory);
-
-                    const productId = standardHistory.productId;
-                    console.log('📦 product_id:', productId);
-
-                    if (productId) {
-                        console.log('📡 Запрос goods-flow...');
-                        const goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
-                        console.log('📊 Результат goods-flow:', goodsFlowResult);
-
-                        if (standardHistory.success && goodsFlowResult.success) {
-                            const combinedData = {
-                                ...standardHistory.data,
-                                orders: goodsFlowResult.data.filter(item => item.relation_type === 0),
-                                returns: goodsFlowResult.data.filter(item => item.relation_type === 7)
-                            };
-
-                            console.log('✅ Отображение истории');
-                            displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
-                        } else {
-                            alert(`Помилка завантаження історії`);
-                        }
-                    } else {
-                        alert('Не вдалось знайти ID товару');
-                    }
-                } else {
-                    alert(`Не вдалося знайти ID складу "${decodedWarehouseTitle}"`);
-                }
-            } catch (error) {
-                console.error('❌ ПОМИЛКА:', error);
-                alert(`Помилка: ${error.message}`);
-            }
-        }
         // Функция для получения имени поставщика
         function getSupplierName(supplierId) {
             if (!supplierId) return 'Не указан';

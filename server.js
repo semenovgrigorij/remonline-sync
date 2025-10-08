@@ -1500,16 +1500,24 @@ class RemonlineMatrixSync {
           req.query.startDate || new Date("2022-05-01").getTime();
         const endDate = req.query.endDate || Date.now();
 
-        // Використовуємо спільні cookies з Railway login-service
-        const cookies = this.userCookies.get("shared_user");
+        // Спробувати отримати cookies
+        let cookies = this.userCookies.get("shared_user");
 
+        // Якщо cookies немає - оновити їх
         if (!cookies) {
-          return res.status(503).json({
-            success: false,
-            error:
-              "Сервіс тимчасово недоступний. Очікуємо оновлення автентифікації...",
-            needAdminAction: false,
-          });
+          console.log("⚠️ Cookies відсутні, оновлюємо...");
+          await this.refreshCookiesAutomatically();
+          cookies = this.userCookies.get("shared_user");
+
+          // Якщо все одно немає - помилка
+          if (!cookies) {
+            return res.status(503).json({
+              success: false,
+              error:
+                "Сервіс автентифікації тимчасово недоступний. Спробуйте через хвилину.",
+              needRetry: true,
+            });
+          }
         }
 
         const flowItems = await this.fetchGoodsFlowForProduct(
@@ -1531,6 +1539,16 @@ class RemonlineMatrixSync {
         });
       } catch (error) {
         console.error("❌ Помилка goods-flow:", error);
+
+        // Якщо помилка 401 - cookies застаріли
+        if (error.message.includes("401")) {
+          return res.status(503).json({
+            success: false,
+            error: "Автентифікація застаріла. Оновлюємо...",
+            needRetry: true,
+          });
+        }
+
         res.status(500).json({
           success: false,
           error: error.message,
