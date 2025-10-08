@@ -1854,42 +1854,44 @@
             }
 
             try {
-                console.log('🔍 Отримання warehouse_id...');
+                console.log('📡 Запит історії...');
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
 
                 if (warehouseId) {
-                    console.log('📡 Запит історії...');
                     const standardHistory = await apiCall(
                         `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
                     );
+
+                    console.log('✅ Отримано standardHistory:', standardHistory);
 
                     const productId = standardHistory.productId;
 
                     if (productId) {
                         console.log('📡 Запит goods-flow...');
 
-                        // Перша спроба
                         let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
 
-                        // Якщо 503 - чекаємо 2 секунди і повторюємо
+                        console.log('✅ Отримано goodsFlowResult:', goodsFlowResult);
+
+                        // Якщо 503 - чекаємо і повторюємо
                         if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
                             console.log('⏳ Чекаємо оновлення cookies...');
                             await new Promise(resolve => setTimeout(resolve, 2000));
-
-                            console.log('🔄 Повторний запит...');
                             goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
                         }
 
                         if (standardHistory.success && goodsFlowResult.success) {
+                            // ОНОВЛЕНИЙ ФОРМАТ ДАНИХ
                             const combinedData = {
-                                ...standardHistory.data,
-                                orders: goodsFlowResult.data.filter(item => item.relation_type === 0),
-                                returns: goodsFlowResult.data.filter(item => item.relation_type === 7)
+                                ...standardHistory.data,  // postings, moves, outcomes, sales
+                                data: goodsFlowResult.data // goods-flow операції (нова структура)
                             };
 
+                            console.log('📊 Відображаємо історію з даними:', combinedData);
                             displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
                         } else {
-                            alert(`Помилка завантаження історії: ${goodsFlowResult.error || 'Невідома помилка'}`);
+                            console.error('❌ Помилка в даних:', { standardHistory, goodsFlowResult });
+                            alert(`Помилка завантаження історії: ${goodsFlowResult.error || standardHistory.error || 'Невідома помилка'}`);
                         }
                     } else {
                         alert('Не вдалось знайти ID товару');
@@ -1898,7 +1900,7 @@
                     alert(`Не вдалося знайти ID складу "${decodedWarehouseTitle}"`);
                 }
             } catch (error) {
-                console.error('❌ ПОМИЛКА:', error);
+                console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
                 alert(`Помилка: ${error.message}`);
             }
         }
@@ -2262,7 +2264,6 @@
                 });
             }
 
-            // ЗАМІНІТЬ orders та returns на це:
             // Goods-flow операції (всі типи з RemOnline API)
             if (data.data && Array.isArray(data.data)) {
                 data.data.forEach(item => {
