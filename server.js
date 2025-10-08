@@ -1495,9 +1495,6 @@ class RemonlineMatrixSync {
     // Endpoint для отримання історії товару (замовлення + повернення)
     this.app.get("/api/goods-flow-items/:productId", async (req, res) => {
       console.log("🚀 === ПОЧАТОК ЗАПИТУ GOODS-FLOW ===");
-      console.log("📝 productId:", req.params.productId);
-      console.log("📝 startDate:", req.query.startDate);
-      console.log("📝 endDate:", req.query.endDate);
 
       req.setTimeout(30000);
 
@@ -1508,15 +1505,8 @@ class RemonlineMatrixSync {
         const endDate = req.query.endDate || Date.now();
 
         console.log(`🔍 Запит goods-flow для product_id: ${productId}`);
-        console.log(
-          `📅 Період: ${new Date(startDate).toLocaleDateString()} - ${new Date(
-            endDate
-          ).toLocaleDateString()}`
-        );
 
-        console.log("🔐 Перевірка cookies...");
         let cookies = this.userCookies.get("shared_user");
-        console.log("🔐 Cookies знайдено:", !!cookies);
 
         if (!cookies) {
           console.log("⚠️ Cookies відсутні, оновлюємо...");
@@ -1524,17 +1514,13 @@ class RemonlineMatrixSync {
           cookies = this.userCookies.get("shared_user");
 
           if (!cookies) {
-            console.log("❌ Не вдалось отримати cookies після оновлення");
             return res.status(503).json({
               success: false,
               error: "Сервіс автентифікації тимчасово недоступний",
               needRetry: true,
             });
           }
-          console.log("✅ Cookies оновлено");
         }
-
-        console.log("📡 Викликаємо fetchGoodsFlowForProduct...");
 
         const flowItems = await this.fetchGoodsFlowForProduct(
           productId,
@@ -1545,25 +1531,32 @@ class RemonlineMatrixSync {
 
         console.log(`📦 Отримано ${flowItems.length} записів`);
 
+        // ДОДАЙТЕ ВІДЛАГОДЖЕННЯ
+        flowItems.forEach((item, index) => {
+          console.log(
+            `📋 Запис ${index + 1}: relation_type = ${
+              item.relation_type
+            }, relation_label = ${item.relation_label}`
+          );
+        });
+
         const filtered = flowItems.filter(
           (item) => item.relation_type === 0 || item.relation_type === 7
         );
 
-        console.log(
-          `✅ Відфільтровано ${filtered.length} записів (замовлення та повернення)`
-        );
+        console.log(`✅ Відфільтровано ${filtered.length} записів`);
 
+        // ПОВЕРНІТЬ ВСІ ЗАПИСИ ДЛЯ ТЕСТУВАННЯ
         res.json({
           success: true,
           productId,
-          data: filtered,
-          totalRecords: filtered.length,
+          data: flowItems, // Повертаємо ВСІ записи, не тільки відфільтровані
+          filtered: filtered, // Окремо відфільтровані
+          totalRecords: flowItems.length,
+          filteredRecords: filtered.length,
         });
-
-        console.log("🏁 === КІНЕЦЬ ЗАПИТУ GOODS-FLOW ===");
       } catch (error) {
-        console.error("❌ КРИТИЧНА ПОМИЛКА goods-flow:", error);
-        console.error("❌ Stack trace:", error.stack);
+        console.error("❌ ПОМИЛКА goods-flow:", error);
 
         if (!res.headersSent) {
           res.status(500).json({
