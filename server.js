@@ -1494,31 +1494,47 @@ class RemonlineMatrixSync {
 
     // Endpoint для отримання історії товару (замовлення + повернення)
     this.app.get("/api/goods-flow-items/:productId", async (req, res) => {
+      console.log("🚀 === ПОЧАТОК ЗАПИТУ GOODS-FLOW ===");
+      console.log("📝 productId:", req.params.productId);
+      console.log("📝 startDate:", req.query.startDate);
+      console.log("📝 endDate:", req.query.endDate);
+
+      req.setTimeout(30000);
+
       try {
         const productId = req.params.productId;
         const startDate =
           req.query.startDate || new Date("2022-05-01").getTime();
         const endDate = req.query.endDate || Date.now();
 
-        // Спробувати отримати cookies
-        let cookies = this.userCookies.get("shared_user");
+        console.log(`🔍 Запит goods-flow для product_id: ${productId}`);
+        console.log(
+          `📅 Період: ${new Date(startDate).toLocaleDateString()} - ${new Date(
+            endDate
+          ).toLocaleDateString()}`
+        );
 
-        // Якщо cookies немає - оновити їх
+        console.log("🔐 Перевірка cookies...");
+        let cookies = this.userCookies.get("shared_user");
+        console.log("🔐 Cookies знайдено:", !!cookies);
+
         if (!cookies) {
           console.log("⚠️ Cookies відсутні, оновлюємо...");
           await this.refreshCookiesAutomatically();
           cookies = this.userCookies.get("shared_user");
 
-          // Якщо все одно немає - помилка
           if (!cookies) {
+            console.log("❌ Не вдалось отримати cookies після оновлення");
             return res.status(503).json({
               success: false,
-              error:
-                "Сервіс автентифікації тимчасово недоступний. Спробуйте через хвилину.",
+              error: "Сервіс автентифікації тимчасово недоступний",
               needRetry: true,
             });
           }
+          console.log("✅ Cookies оновлено");
         }
+
+        console.log("📡 Викликаємо fetchGoodsFlowForProduct...");
 
         const flowItems = await this.fetchGoodsFlowForProduct(
           productId,
@@ -1527,8 +1543,14 @@ class RemonlineMatrixSync {
           cookies
         );
 
+        console.log(`📦 Отримано ${flowItems.length} записів`);
+
         const filtered = flowItems.filter(
           (item) => item.relation_type === 0 || item.relation_type === 7
+        );
+
+        console.log(
+          `✅ Відфільтровано ${filtered.length} записів (замовлення та повернення)`
         );
 
         res.json({
@@ -1537,22 +1559,18 @@ class RemonlineMatrixSync {
           data: filtered,
           totalRecords: filtered.length,
         });
-      } catch (error) {
-        console.error("❌ Помилка goods-flow:", error);
 
-        // Якщо помилка 401 - cookies застаріли
-        if (error.message.includes("401")) {
-          return res.status(503).json({
+        console.log("🏁 === КІНЕЦЬ ЗАПИТУ GOODS-FLOW ===");
+      } catch (error) {
+        console.error("❌ КРИТИЧНА ПОМИЛКА goods-flow:", error);
+        console.error("❌ Stack trace:", error.stack);
+
+        if (!res.headersSent) {
+          res.status(500).json({
             success: false,
-            error: "Автентифікація застаріла. Оновлюємо...",
-            needRetry: true,
+            error: error.message,
           });
         }
-
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
       }
     });
   }
