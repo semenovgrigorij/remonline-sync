@@ -2156,268 +2156,227 @@
         }
 
         function displaySeparatedProductHistory(data, productTitle, warehouseTitle) {
-            console.log('displaySeparatedProductHistory викликана');
-            console.log('data:', data);
-            console.log('postings:', data.postings);
-            console.log('moves:', data.moves);
-            console.log('outcomes:', data.outcomes);
-            console.log('sales:', data.sales);
+            const modal = safeGetElement('productHistoryModal');
+            const detailsDiv = safeGetElement('productHistoryDetails');
 
-            closeHistoryModal();
-
-            const { postings, moves, outcomes, sales, orders, returns } = data;
-
-            console.log('Після деструктуризації:');
-            console.log('postings:', postings);
-            console.log('moves:', moves);
+            if (!modal || !detailsDiv) return;
 
             const allOperations = [];
 
-            // Додаємо оприбуткування
-            postings?.forEach(item => {
-                console.log('Додаємо оприбуткування:', item.warehouse_title);
-                allOperations.push({
-                    date: new Date(item.posting_created_at.value || item.posting_created_at),
-                    docNumber: item.posting_label,
-                    createdBy: item.created_by_name,
-                    type: 'Оприбуткування',
-                    counterparty: item.supplier_name || '-',
-                    warehouse: item.warehouse_title,
-                    plus: item.amount,
-                    minus: 0,
-                    balance: 0,
-                    isMove: false
+            // Оприбуткування (+)
+            if (data.postings) {
+                data.postings.forEach(item => {
+                    allOperations.push({
+                        date: new Date(item.posting_created_at?.value || item.posting_created_at),
+                        type: 'posting',
+                        label: item.posting_label || '-',
+                        user: item.created_by_name || '-',
+                        warehouse: item.warehouse_title || warehouseTitle,
+                        amount: item.amount || 0,
+                        price: item.price || 0,
+                        description: item.posting_description || '-',
+                        supplier: item.supplier_name || '-',
+                        delta: +item.amount  // Додає до залишку
+                    });
                 });
-            });
-
-            // Додаємо замовлення
-            orders?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.created_at),
-                    docNumber: item.relation_id_label,
-                    createdBy: '-',
-                    type: 'Замовлення',
-                    counterparty: item.client_name || '-',
-                    warehouse: item.warehouse_title,
-                    plus: 0,
-                    minus: item.outcome || 0,
-                    balance: 0,
-                    isMove: false
-                });
-            });
-
-            //  Додаємо повернення постачальнику
-            returns?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.created_at),
-                    docNumber: item.relation_id_label,
-                    createdBy: '-',
-                    type: 'Повернення постачальнику',
-                    counterparty: item.client_name || '-',
-                    warehouse: item.warehouse_title,
-                    plus: 0,
-                    minus: item.outcome || 0,
-                    balance: 0,
-                    isMove: false
-                });
-            });
-
-            // Додаємо переміщення
-            const processedMoves = new Set();
-
-            moves?.forEach(item => {
-                const date = new Date(item.move_created_at.value || item.move_created_at);
-                const moveId = `${item.move_label}_${date.getTime()}`;
-
-                // Пропускаємо якщо вже обробили це переміщення
-                if (processedMoves.has(moveId)) {
-                    console.log('Пропускаємо дублікат переміщення:', moveId);
-                    return;
-                }
-                processedMoves.add(moveId);
-
-                console.log('Додаємо переміщення:', item.source_warehouse_title, '→', item.target_warehouse_title);
-
-                // Вихід
-                allOperations.push({
-                    date: date,
-                    docNumber: item.move_label,
-                    createdBy: item.created_by_name,
-                    type: 'Переміщення (вихід)',
-                    counterparty: `→ ${item.target_warehouse_title}`,
-                    warehouse: item.source_warehouse_title,
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0,
-                    sortOrder: 1,
-                    moveId: moveId,
-                    isMove: true,
-                    isInternalMove: false
-                });
-
-                // Вхід
-                allOperations.push({
-                    date: date,
-                    docNumber: item.move_label,
-                    createdBy: item.created_by_name,
-                    type: 'Переміщення (вхід)',
-                    counterparty: `← ${item.source_warehouse_title}`,
-                    warehouse: item.target_warehouse_title,
-                    plus: item.amount,
-                    minus: 0,
-                    balance: 0,
-                    sortOrder: 2,
-                    moveId: moveId,
-                    isMove: true,
-                    isInternalMove: false
-                });
-            });
-
-            // Додаємо списання
-            outcomes?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.outcome_created_at.value || item.outcome_created_at),
-                    docNumber: item.outcome_label,
-                    createdBy: item.created_by_name,
-                    type: 'Списання',
-                    counterparty: item.outcome_description || '-',
-                    warehouse: item.source_warehouse_title,
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0,
-                    isMove: false
-                });
-            });
-
-            // Додаємо продажі
-            sales?.forEach(item => {
-                allOperations.push({
-                    date: new Date(item.sale_created_at.value || item.sale_created_at),
-                    docNumber: item.sale_label,
-                    createdBy: item.created_by_name,
-                    type: 'Продаж',
-                    counterparty: 'Покупець',
-                    warehouse: '-',
-                    plus: 0,
-                    minus: item.amount,
-                    balance: 0,
-                    isMove: false
-                });
-            });
-
-            // Сортуємо
-            allOperations.sort((a, b) => {
-                const dateDiff = a.date - b.date;
-                if (dateDiff !== 0) return dateDiff;
-                return (a.sortOrder || 0) - (b.sortOrder || 0);
-            });
-
-            // Розрахунок залишку для окремого складу
-            // let balance = 0;
-
-            // for (let i = 0; i < allOperations.length; i++) {
-            //     const op = allOperations[i];
-
-            //     // Якщо це внутрішнє переміщення (source === target === поточний склад)
-            //     if (op.isInternalMove && op.sortOrder === 1) {
-            //         // Для внутрішнього переміщення: показуємо залишок без змін для обох операцій
-            //         op.balance = balance;
-
-            //         const nextOp = allOperations[i + 1];
-            //         if (nextOp && nextOp.moveId === op.moveId && nextOp.sortOrder === 2) {
-            //             nextOp.balance = balance;
-            //             i++; // Пропускаємо наступну
-            //             continue;
-            //         }
-            //     }
-
-            //     // Для всіх інших операцій: застосовуємо зміну
-            //     balance += op.plus - op.minus;
-            //     op.balance = balance;
-            // }
-
-            // Розрахунок загального системного залишку
-            let systemBalance = 0;
-
-            for (const op of allOperations) {
-                if (op.type === 'Оприбуткування') {
-                    systemBalance += op.plus;
-                } else if (op.type === '📝 Замовлення' ||
-                    op.type === '↩️ Повернення постачальнику' ||
-                    op.type === 'Списання' ||
-                    op.type === 'Продаж') {
-                    systemBalance -= op.minus;
-                }
-
-                op.balance = systemBalance;
             }
 
-            const formatDate = (date) => {
-                return date.toLocaleDateString('uk-UA', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit'
+            // Переміщення
+            if (data.moves) {
+                data.moves.forEach(item => {
+                    const date = new Date(item.move_created_at?.value || item.move_created_at);
+
+                    // Вихідне переміщення (-)
+                    if (item.source_warehouse_title === warehouseTitle) {
+                        allOperations.push({
+                            date,
+                            type: 'move_out',
+                            label: item.move_label || '-',
+                            user: item.created_by_name || '-',
+                            warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
+                            amount: item.amount || 0,
+                            description: item.move_description || '-',
+                            delta: -item.amount  // Віднімає від залишку
+                        });
+                    }
+
+                    // Вхідне переміщення (+)
+                    if (item.target_warehouse_title === warehouseTitle) {
+                        allOperations.push({
+                            date,
+                            type: 'move_in',
+                            label: item.move_label || '-',
+                            user: item.created_by_name || '-',
+                            warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
+                            amount: item.amount || 0,
+                            description: item.move_description || '-',
+                            delta: +item.amount  // Додає до залишку
+                        });
+                    }
                 });
+            }
+
+            // Списання (-)
+            if (data.outcomes) {
+                data.outcomes.forEach(item => {
+                    allOperations.push({
+                        date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
+                        type: 'outcome',
+                        label: item.outcome_label || '-',
+                        user: item.created_by_name || '-',
+                        warehouse: item.source_warehouse_title || warehouseTitle,
+                        amount: item.amount || 0,
+                        cost: item.outcome_cost || 0,
+                        description: item.outcome_description || '-',
+                        delta: -item.amount  // Віднімає від залишку
+                    });
+                });
+            }
+
+            // Продажі (-)
+            if (data.sales) {
+                data.sales.forEach(item => {
+                    allOperations.push({
+                        date: new Date(item.sale_created_at?.value || item.sale_created_at),
+                        type: 'sale',
+                        label: item.sale_label || '-',
+                        user: item.created_by_name || '-',
+                        warehouse: warehouseTitle,
+                        amount: item.amount || 0,
+                        price: item.price || 0,
+                        cost: item.cost || 0,
+                        discount: item.discount_value || 0,
+                        description: item.sale_description || '-',
+                        delta: -item.amount  // Віднімає від залишку
+                    });
+                });
+            }
+
+            // Замовлення (-)
+            if (data.orders) {
+                data.orders.forEach(item => {
+                    allOperations.push({
+                        date: new Date(item.created_at?.value || item.created_at),
+                        type: 'order',
+                        label: item.relation_label || '-',
+                        user: '-',
+                        warehouse: warehouseTitle,
+                        amount: item.amount || 0,
+                        description: item.comment || '-',
+                        delta: -item.amount  // ВИПРАВЛЕНО: Віднімає від залишку
+                    });
+                });
+            }
+
+            // Повернення постачальнику (-)
+            if (data.returns) {
+                data.returns.forEach(item => {
+                    allOperations.push({
+                        date: new Date(item.created_at?.value || item.created_at),
+                        type: 'return',
+                        label: item.relation_label || '-',
+                        user: '-',
+                        warehouse: warehouseTitle,
+                        amount: item.amount || 0,
+                        description: item.comment || '-',
+                        delta: -item.amount  // ВИПРАВЛЕНО: Віднімає від залишку
+                    });
+                });
+            }
+
+            // Сортування за датою (від найстарішої до найновішої)
+            allOperations.sort((a, b) => a.date - b.date);
+
+            // Розрахунок накопичувального залишку
+            let runningBalance = 0;
+            allOperations.forEach(op => {
+                runningBalance += op.delta;
+                op.balance = runningBalance;
+            });
+
+            // Реверс для відображення (нові зверху)
+            allOperations.reverse();
+
+            // Генерація HTML таблиці
+            const typeColors = {
+                posting: '#059669',
+                move_in: '#3b82f6',
+                move_out: '#f59e0b',
+                outcome: '#ef4444',
+                sale: '#8b5cf6',
+                order: '#f97316',  // Помаранчевий
+                return: '#ec4899'   // Рожевий
             };
 
-            const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
-            <div style="background: white; padding: 30px; border-radius: 5px; width: 90%; height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); cursor: default;" onclick="event.stopPropagation()">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
-                    <h3 style="margin: 0; color: #374151; font-size: 1.5rem;">Історія товару "${productTitle}"</h3>
-                    <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
-                </div>
-                
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                        <thead>
-                            <tr style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white;">
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Дата</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">№ документа</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Хто створив</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Тип документа</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2);">Контрагент</th>
-                                <th style="padding: 10px 6px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); min-width: 150px;">Склад</th>
-                                <th style="padding: 10px 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">+</th>
-                                <th style="padding: 10px 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">−</th>
-                                <th style="padding: 10px 6px; text-align: center;">Остаток</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${allOperations.length > 0 ? allOperations.map((op, index) => {
-                const rowColor = index % 2 === 0 ? '#f8fafc' : 'white';
-                const typeColor = {
-                    'Оприбуткування': '#059669',
-                    'Переміщення (вихід)': '#0ea5e9',
-                    'Переміщення (вхід)': '#0ea5e9',
-                    'Списання': '#ef4444',
-                    'Продаж': '#8b5cf6',
-                    'Замовлення': '#f59e0b',
-                    'Повернення постачальнику': '#ec4899'
-                }[op.type] || '#6b7280';
+            const typeNames = {
+                posting: '📦 Оприбуткування',
+                move_in: '⬅️ Переміщення (вхід)',
+                move_out: '➡️ Переміщення (вихід)',
+                outcome: '🗑️ Списання',
+                sale: '💰 Продаж',
+                order: '🛒 Замовлення',
+                return: '↩️ Повернення постачальнику'
+            };
 
-                return `
-                    <tr style="background: ${rowColor}; border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 8px 6px;">${formatDate(op.date)}</td>
-                        <td style="padding: 8px 6px; font-family: monospace; font-size: 0.8rem;">${op.docNumber}</td>
-                        <td style="padding: 8px 6px;">${op.createdBy || '-'}</td>
-                        <td style="padding: 8px 6px; color: ${typeColor}; font-weight: 600;">${op.type}</td>
-                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.counterparty}</td>
-                        <td style="padding: 8px 6px; max-width: 180px; word-wrap: break-word; font-size: 0.8rem;">${op.warehouse}</td>
-                        <td style="padding: 8px 6px; text-align: center; color: #059669; font-weight: 600;">${op.plus || ''}</td>
-                        <td style="padding: 8px 6px; text-align: center; color: #ef4444; font-weight: 600;">${op.minus || ''}</td>
-                        <td style="padding: 8px 6px; text-align: center; font-weight: 700; background: #f0f9ff;">${op.balance}</td>
+            let html = `
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin: 0 0 10px 0;">Історія операцій: ${productTitle}</h3>
+            <p style="margin: 0; color: #6b7280;">Склад: ${warehouseTitle}</p>
+            <p style="margin: 5px 0 0 0; color: #6b7280;">Всього операцій: ${allOperations.length}</p>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="background: #f3f4f6;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Дата</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Тип операції</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Номер</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e5e7eb;">Кількість</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e5e7eb;">Залишок</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Деталі</th>
                     </tr>
-                `;
-            }).join('') : '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">Операцій не знайдено</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                </thead>
+                <tbody>
+    `;
+
+            allOperations.forEach((op, index) => {
+                const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+                const amountColor = op.delta > 0 ? '#059669' : '#ef4444';
+                const amountSign = op.delta > 0 ? '+' : '';
+
+                html += `
+            <tr style="background: ${bgColor};">
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; white-space: nowrap;">
+                    ${op.date.toLocaleDateString('uk-UA')} ${op.date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
+                    <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; background: ${typeColors[op.type]}20; color: ${typeColors[op.type]}; font-weight: 600; font-size: 0.85rem;">
+                        ${typeNames[op.type]}
+                    </span>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${op.label}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: ${amountColor};">
+                    ${amountSign}${op.amount}
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 700; font-size: 1.1rem;">
+                    ${op.balance}
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 0.85rem; color: #6b7280;">
+                    ${op.description}
+                </td>
+            </tr>
+        `;
+            });
+
+            html += `
+                </tbody>
+            </table>
         </div>
     `;
 
-            document.body.insertAdjacentHTML('beforeend', historyHtml);
+            detailsDiv.innerHTML = html;
+            modal.style.display = 'flex';
         }
 
         function displayCombinedProductHistory(data, productTitle) {
