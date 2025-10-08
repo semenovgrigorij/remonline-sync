@@ -1204,7 +1204,6 @@
                 <th>Остаток</th>
                 <th>Код</th>
                 <th>Артикул</th>
-                <th>Категория</th>
                 <th>Ед. изм.</th>
                 <th>История</th>
             </tr>
@@ -1213,27 +1212,22 @@
 
             if (body) {
                 body.innerHTML = data.map((item, index) => {
-                    const safeWarehouseTitle = item.warehouse_title || 'Неизвестный склад';
-                    const safeTitle = item.title || 'Неизвестный товар';
-
                     return `
-            <tr>
-                <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
-                <td style="cursor: pointer;" onclick="showProductDetails('${encodeURIComponent(item.title)}')" title="Показать все склады с этим товаром">${item.title}</td>
-                <td style="cursor: pointer;" onclick="showWarehouseDetails('${encodeURIComponent(item.warehouse_title)}')" title="Показать все товары этого склада">${item.warehouse_title}</td>
-                <td style="font-weight: 600; color: #059669;">${item.residue}</td>
-                <td>${item.code || '-'}</td>
-                <td>${item.article || '-'}</td>
-                <td>${item.category || '-'}</td>
-                <td>${item.uom_title || '-'}</td>
-                <td>
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;"
-                            onclick="showProductHistoryFromSearch('${encodeURIComponent(safeWarehouseTitle)}', '${encodeURIComponent(safeTitle)}')">
-                        История
-                    </button>
-                </td>
-            </tr>
-        `;
+                <tr>
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td onclick="showProductDetails('${encodeURIComponent(item.title)}')">${item.title}</td>
+                    <td onclick="showWarehouseDetails('${encodeURIComponent(item.warehouse_title)}')">${item.warehouse_title}</td>
+                    <td style="font-weight: 600;">${item.residue}</td>
+                    <td>${item.code || '-'}</td>
+                    <td>${item.article || '-'}</td>
+                    <td>${item.uom_title || '-'}</td>
+                    <td>
+                        <button class="btn" onclick="showProductHistoryFromSearch('${encodeURIComponent(item.warehouse_title)}', '${encodeURIComponent(item.title)}')">
+                            История
+                        </button>
+                    </td>
+                </tr>
+            `;
                 }).join('');
             }
 

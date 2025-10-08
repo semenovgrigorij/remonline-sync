@@ -614,7 +614,7 @@ class RemonlineMatrixSync {
 
         const searchTerm = decodeURIComponent(req.params.searchTerm);
 
-        // Два окремі запити
+        // Запит БЕЗ category якщо його немає в таблиці
         const currentStockQuery = `
       SELECT 
           title,
@@ -622,7 +622,6 @@ class RemonlineMatrixSync {
           SUM(residue) as residue,
           MAX(code) as code,
           MAX(article) as article,
-          MAX(category) as category,
           MAX(uom_title) as uom_title,
           MAX(updated_at) as updated_at
       FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
@@ -663,7 +662,6 @@ class RemonlineMatrixSync {
           0 as residue,
           product_code as code,
           product_article as article,
-          '' as category,
           uom_title,
           posting_created_at as updated_at
       FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
