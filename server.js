@@ -1494,22 +1494,15 @@ class RemonlineMatrixSync {
 
     // Endpoint для отримання історії товару (замовлення + повернення)
     this.app.get("/api/goods-flow-items/:productId", async (req, res) => {
-      console.log("🚀 === ПОЧАТОК ЗАПИТУ GOODS-FLOW ===");
-
-      req.setTimeout(30000);
-
       try {
         const productId = req.params.productId;
         const startDate =
           req.query.startDate || new Date("2022-05-01").getTime();
         const endDate = req.query.endDate || Date.now();
 
-        console.log(`🔍 Запит goods-flow для product_id: ${productId}`);
-
         let cookies = this.userCookies.get("shared_user");
 
         if (!cookies) {
-          console.log("⚠️ Cookies відсутні, оновлюємо...");
           await this.refreshCookiesAutomatically();
           cookies = this.userCookies.get("shared_user");
 
@@ -1517,7 +1510,6 @@ class RemonlineMatrixSync {
             return res.status(503).json({
               success: false,
               error: "Сервіс автентифікації тимчасово недоступний",
-              needRetry: true,
             });
           }
         }
@@ -1529,41 +1521,41 @@ class RemonlineMatrixSync {
           cookies
         );
 
-        console.log(`📦 Отримано ${flowItems.length} записів`);
+        // Маппінг типів операцій
+        const typeMapping = {
+          0: { name: "Замовлення постачальнику", color: "#f97316" },
+          1: { name: "Продаж", color: "#8b5cf6" },
+          3: { name: "Оприбуткування", color: "#059669" },
+          4: { name: "Списання", color: "#ef4444" },
+          5: { name: "Переміщення", color: "#3b82f6" },
+          7: { name: "Повернення постачальнику", color: "#ec4899" },
+        };
 
-        // ДОДАЙТЕ ВІДЛАГОДЖЕННЯ
-        flowItems.forEach((item, index) => {
-          console.log(
-            `📋 Запис ${index + 1}: relation_type = ${
-              item.relation_type
-            }, relation_label = ${item.relation_label}`
-          );
-        });
+        // Збагачуємо дані назвами типів
+        const enrichedItems = flowItems.map((item) => ({
+          ...item,
+          type_info: typeMapping[item.relation_type] || {
+            name: `Невідомий тип ${item.relation_type}`,
+            color: "#6b7280",
+          },
+        }));
 
-        const filtered = flowItems.filter(
-          (item) => item.relation_type === 0 || item.relation_type === 7
+        console.log(
+          `✅ Повертаємо ${enrichedItems.length} операцій goods-flow`
         );
 
-        console.log(`✅ Відфільтровано ${filtered.length} записів`);
-
-        // ПОВЕРНІТЬ ВСІ ЗАПИСИ ДЛЯ ТЕСТУВАННЯ
         res.json({
           success: true,
           productId,
-          data: flowItems, // Повертаємо ВСІ записи, не тільки відфільтровані
-          filtered: filtered, // Окремо відфільтровані
-          totalRecords: flowItems.length,
-          filteredRecords: filtered.length,
+          data: enrichedItems,
+          totalRecords: enrichedItems.length,
         });
       } catch (error) {
-        console.error("❌ ПОМИЛКА goods-flow:", error);
-
-        if (!res.headersSent) {
-          res.status(500).json({
-            success: false,
-            error: error.message,
-          });
-        }
+        console.error("❌ Помилка goods-flow:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
       }
     });
   }

@@ -2169,6 +2169,8 @@
                     allOperations.push({
                         date: new Date(item.posting_created_at?.value || item.posting_created_at),
                         type: 'posting',
+                        typeName: '📦 Оприбуткування',
+                        typeColor: '#059669',
                         label: item.posting_label || '-',
                         user: item.created_by_name || '-',
                         warehouse: item.warehouse_title || warehouseTitle,
@@ -2176,7 +2178,7 @@
                         price: item.price || 0,
                         description: item.posting_description || '-',
                         supplier: item.supplier_name || '-',
-                        delta: +item.amount  // Додає до залишку
+                        delta: +item.amount
                     });
                 });
             }
@@ -2191,12 +2193,14 @@
                         allOperations.push({
                             date,
                             type: 'move_out',
+                            typeName: '➡️ Переміщення (вихід)',
+                            typeColor: '#f59e0b',
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
                             warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
                             amount: item.amount || 0,
                             description: item.move_description || '-',
-                            delta: -item.amount  // Віднімає від залишку
+                            delta: -item.amount
                         });
                     }
 
@@ -2205,12 +2209,14 @@
                         allOperations.push({
                             date,
                             type: 'move_in',
+                            typeName: '⬅️ Переміщення (вхід)',
+                            typeColor: '#3b82f6',
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
                             warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
                             amount: item.amount || 0,
                             description: item.move_description || '-',
-                            delta: +item.amount  // Додає до залишку
+                            delta: +item.amount
                         });
                     }
                 });
@@ -2222,13 +2228,15 @@
                     allOperations.push({
                         date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
                         type: 'outcome',
+                        typeName: '🗑️ Списання',
+                        typeColor: '#ef4444',
                         label: item.outcome_label || '-',
                         user: item.created_by_name || '-',
                         warehouse: item.source_warehouse_title || warehouseTitle,
                         amount: item.amount || 0,
                         cost: item.outcome_cost || 0,
                         description: item.outcome_description || '-',
-                        delta: -item.amount  // Віднімає від залишку
+                        delta: -item.amount
                     });
                 });
             }
@@ -2239,6 +2247,8 @@
                     allOperations.push({
                         date: new Date(item.sale_created_at?.value || item.sale_created_at),
                         type: 'sale',
+                        typeName: '💰 Продаж',
+                        typeColor: '#8b5cf6',
                         label: item.sale_label || '-',
                         user: item.created_by_name || '-',
                         warehouse: warehouseTitle,
@@ -2247,39 +2257,53 @@
                         cost: item.cost || 0,
                         discount: item.discount_value || 0,
                         description: item.sale_description || '-',
-                        delta: -item.amount  // Віднімає від залишку
+                        delta: -item.amount
                     });
                 });
             }
 
-            // Замовлення (-)
-            if (data.orders) {
-                data.orders.forEach(item => {
+            // ЗАМІНІТЬ orders та returns на це:
+            // Goods-flow операції (всі типи з RemOnline API)
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach(item => {
+                    const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
+
+                    // Визначаємо delta на основі типу
+                    let delta = 0;
+                    let icon = '📋';
+
+                    switch (item.relation_type) {
+                        case 0: // Замовлення постачальнику
+                            delta = -item.amount;
+                            icon = '🛒';
+                            break;
+                        case 1: // Продаж (дублюється з sales, пропускаємо)
+                            return;
+                        case 3: // Оприбуткування (дублюється з postings, пропускаємо)
+                            return;
+                        case 4: // Списання (дублюється з outcomes, пропускаємо)
+                            return;
+                        case 5: // Переміщення (дублюється з moves, пропускаємо)
+                            return;
+                        case 7: // Повернення постачальнику
+                            delta = -item.amount;
+                            icon = '↩️';
+                            break;
+                        default:
+                            delta = 0;
+                    }
+
                     allOperations.push({
                         date: new Date(item.created_at?.value || item.created_at),
-                        type: 'order',
+                        type: `goods_flow_${item.relation_type}`,
+                        typeName: `${icon} ${typeInfo.name}`,
+                        typeColor: typeInfo.color,
                         label: item.relation_label || '-',
                         user: '-',
                         warehouse: warehouseTitle,
                         amount: item.amount || 0,
                         description: item.comment || '-',
-                        delta: -item.amount  // ВИПРАВЛЕНО: Віднімає від залишку
-                    });
-                });
-            }
-
-            // Повернення постачальнику (-)
-            if (data.returns) {
-                data.returns.forEach(item => {
-                    allOperations.push({
-                        date: new Date(item.created_at?.value || item.created_at),
-                        type: 'return',
-                        label: item.relation_label || '-',
-                        user: '-',
-                        warehouse: warehouseTitle,
-                        amount: item.amount || 0,
-                        description: item.comment || '-',
-                        delta: -item.amount  // ВИПРАВЛЕНО: Віднімає від залишку
+                        delta: delta
                     });
                 });
             }
@@ -2298,26 +2322,6 @@
             allOperations.reverse();
 
             // Генерація HTML таблиці
-            const typeColors = {
-                posting: '#059669',
-                move_in: '#3b82f6',
-                move_out: '#f59e0b',
-                outcome: '#ef4444',
-                sale: '#8b5cf6',
-                order: '#f97316',  // Помаранчевий
-                return: '#ec4899'   // Рожевий
-            };
-
-            const typeNames = {
-                posting: '📦 Оприбуткування',
-                move_in: '⬅️ Переміщення (вхід)',
-                move_out: '➡️ Переміщення (вихід)',
-                outcome: '🗑️ Списання',
-                sale: '💰 Продаж',
-                order: '🛒 Замовлення',
-                return: '↩️ Повернення постачальнику'
-            };
-
             let html = `
         <div style="margin-bottom: 20px;">
             <h3 style="margin: 0 0 10px 0;">Історія операцій: ${productTitle}</h3>
@@ -2351,8 +2355,8 @@
                     ${op.date.toLocaleDateString('uk-UA')} ${op.date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                 </td>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
-                    <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; background: ${typeColors[op.type]}20; color: ${typeColors[op.type]}; font-weight: 600; font-size: 0.85rem;">
-                        ${typeNames[op.type]}
+                    <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; background: ${op.typeColor}20; color: ${op.typeColor}; font-weight: 600; font-size: 0.85rem;">
+                        ${op.typeName}
                     </span>
                 </td>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${op.label}</td>
