@@ -1844,7 +1844,8 @@
         }
 
         async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
-            console.log('=== showProductHistoryFromSearch ===');
+            console.log('🚀 === START showProductHistoryFromSearch ===');
+
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
 
@@ -1902,6 +1903,17 @@
             } catch (error) {
                 console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
                 alert(`Помилка: ${error.message}`);
+            }
+
+            console.log('📊 Відображаємо історію з даними:', combinedData);
+            console.log('🎯 Викликаємо displaySeparatedProductHistory...');
+
+            try {
+                displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
+                console.log('✅ displaySeparatedProductHistory виконано');
+            } catch (error) {
+                console.error('❌ Помилка в displaySeparatedProductHistory:', error);
+                console.error('Stack:', error.stack);
             }
         }
 
