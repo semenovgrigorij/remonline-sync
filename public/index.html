@@ -827,20 +827,45 @@
             <script>
                 function toggleAdminMenu() {
                     const dropdown = document.getElementById('adminDropdown');
+                    console.log('Toggle clicked, dropdown:', dropdown);
+
+                    if (!dropdown) {
+                        console.error('adminDropdown не знайдено!');
+                        return;
+                    }
+
                     if (dropdown.style.display === 'none' || dropdown.style.display === '') {
                         dropdown.style.display = 'block';
+                        console.log('Відкрито меню');
                     } else {
                         dropdown.style.display = 'none';
+                        console.log('Закрито меню');
                     }
                 }
 
                 // Закриття по кліку поза меню
                 document.addEventListener('click', function (e) {
                     const dropdown = document.getElementById('adminDropdown');
-                    const button = e.target.closest('button');
+                    const adminButton = e.target.closest('button[onclick*="toggleAdminMenu"]');
 
-                    if (dropdown && dropdown.style.display === 'block' && !e.target.closest('#adminDropdown') && button?.textContent !== '⚙️') {
+                    // Якщо клік НЕ по кнопці адміна і НЕ всередині меню
+                    if (dropdown &&
+                        dropdown.style.display === 'block' &&
+                        !adminButton &&
+                        !dropdown.contains(e.target)) {
                         dropdown.style.display = 'none';
+                        console.log('Закрито меню (клік поза)');
+                    }
+                });
+
+                // Закриття по Escape
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') {
+                        const dropdown = document.getElementById('adminDropdown');
+                        if (dropdown && dropdown.style.display === 'block') {
+                            dropdown.style.display = 'none';
+                            console.log('Закрито меню (Escape)');
+                        }
                     }
                 });
             </script>
