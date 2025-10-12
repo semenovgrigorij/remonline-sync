@@ -2188,20 +2188,9 @@
 
         function displaySeparatedProductHistory(data, productTitle, warehouseTitle) {
             console.log('🎬 === ПОЧАТОК displaySeparatedProductHistory ===');
-            console.log('📦 Отримані дані:', data);
-            console.log('📝 productTitle:', productTitle);
-            console.log('📝 warehouseTitle:', warehouseTitle);
 
-            const modal = safeGetElement('productHistoryModal');
-            const detailsDiv = safeGetElement('productHistoryDetails');
-
-            console.log('🔍 modal:', modal);
-            console.log('🔍 detailsDiv:', detailsDiv);
-
-            if (!modal || !detailsDiv) {
-                console.error('❌ Не знайдено modal або detailsDiv!');
-                return;
-            }
+            // Закриваємо старе модальне вікно якщо відкрите
+            closeHistoryModal();
 
             const allOperations = [];
             console.log('📋 Початок збору операцій...');
@@ -2306,8 +2295,6 @@
                 console.log(`✅ Обробляємо ${data.data.length} goods-flow операцій`);
 
                 data.data.forEach((item, index) => {
-                    console.log(`  📋 Goods-flow запис ${index + 1}:`, item);
-
                     const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
 
                     let delta = 0;
@@ -2317,21 +2304,17 @@
                         case 0: // Замовлення
                             delta = -item.amount;
                             icon = '🛒';
-                            console.log(`    ✅ Додаємо замовлення`);
                             break;
                         case 1: // Продаж (пропускаємо)
                         case 3: // Оприбуткування (пропускаємо)
                         case 4: // Списання (пропускаємо)
                         case 5: // Переміщення (пропускаємо)
-                            console.log(`    ⏭️ Пропускаємо тип ${item.relation_type} (дублікат)`);
                             return;
                         case 7: // Повернення
                             delta = -item.amount;
                             icon = '↩️';
-                            console.log(`    ✅ Додаємо повернення`);
                             break;
                         default:
-                            console.log(`    ⚠️ Невідомий тип ${item.relation_type}`);
                             delta = 0;
                     }
 
@@ -2348,101 +2331,85 @@
                         delta: delta
                     });
                 });
-            } else {
-                console.log('⚠️ Немає goods-flow операцій або невірний формат');
             }
 
-            console.log(`📊 Всього операцій зібрано: ${allOperations.length}`);
-            console.log('📋 Операції:', allOperations);
+            console.log(`📊 Всього операцій: ${allOperations.length}`);
 
-            // Сортування
+            // Сортування та розрахунок балансу
             allOperations.sort((a, b) => a.date - b.date);
-            console.log('✅ Операції відсортовано');
 
-            // Розрахунок балансу
             let runningBalance = 0;
             allOperations.forEach(op => {
                 runningBalance += op.delta;
                 op.balance = runningBalance;
             });
-            console.log('✅ Баланс розраховано');
 
-            // Реверс
             allOperations.reverse();
-            console.log('✅ Операції реверсовано');
 
             // Генерація HTML
-            console.log('🎨 Генерація HTML...');
-
-            let html = `
-        <div style="margin-bottom: 20px;">
-            <h3 style="margin: 0 0 10px 0;">Історія операцій: ${productTitle}</h3>
-            <p style="margin: 0; color: #6b7280;">Склад: ${warehouseTitle}</p>
-            <p style="margin: 5px 0 0 0; color: #6b7280;">Всього операцій: ${allOperations.length}</p>
-        </div>
-        
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                <thead>
-                    <tr style="background: #f3f4f6;">
-                        <th style="padding: 12px; text-align: left;">Дата</th>
-                        <th style="padding: 12px; text-align: left;">Тип</th>
-                        <th style="padding: 12px; text-align: left;">Номер</th>
-                        <th style="padding: 12px; text-align: right;">Кількість</th>
-                        <th style="padding: 12px; text-align: right;">Залишок</th>
-                        <th style="padding: 12px; text-align: left;">Деталі</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-            allOperations.forEach((op, index) => {
+            const historyHtml = `
+        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
+            <div style="background: white; padding: 30px; border-radius: 15px; max-width: 95%; max-height: 90%; overflow: auto; cursor: default;" onclick="event.stopPropagation()">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
+                    <div>
+                        <h3 style="margin: 0 0 5px 0; color: #374151;">Історія операцій: ${productTitle}</h3>
+                        <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">Склад: ${warehouseTitle} • Всього операцій: ${allOperations.length}</p>
+                    </div>
+                    <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="background: #f3f4f6;">
+                                <th style="padding: 12px; text-align: left;">Дата</th>
+                                <th style="padding: 12px; text-align: left;">Тип</th>
+                                <th style="padding: 12px; text-align: left;">Номер</th>
+                                <th style="padding: 12px; text-align: left;">Хто створив</th>
+                                <th style="padding: 12px; text-align: right;">Кількість</th>
+                                <th style="padding: 12px; text-align: right;">Залишок</th>
+                                <th style="padding: 12px; text-align: left;">Деталі</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allOperations.map((op, index) => {
                 const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
                 const amountColor = op.delta > 0 ? '#059669' : '#ef4444';
                 const amountSign = op.delta > 0 ? '+' : '';
 
-                html += `
-            <tr style="background: ${bgColor};">
-                <td style="padding: 10px; white-space: nowrap;">
-                    ${op.date.toLocaleDateString('uk-UA')} ${op.date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
-                </td>
-                <td style="padding: 10px;">
-                    <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; background: ${op.typeColor}20; color: ${op.typeColor}; font-weight: 600; font-size: 0.85rem;">
-                        ${op.typeName}
-                    </span>
-                </td>
-                <td style="padding: 10px;">${op.label}</td>
-                <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amountColor};">
-                    ${amountSign}${op.amount}
-                </td>
-                <td style="padding: 10px; text-align: right; font-weight: 700; font-size: 1.1rem;">
-                    ${op.balance}
-                </td>
-                <td style="padding: 10px; font-size: 0.85rem; color: #6b7280;">
-                    ${op.description}
-                </td>
-            </tr>
-        `;
-            });
-
-            html += `
-                </tbody>
-            </table>
+                return `
+                                    <tr style="background: ${bgColor};">
+                                        <td style="padding: 10px; white-space: nowrap;">
+                                            ${op.date.toLocaleDateString('uk-UA')} ${op.date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                                        </td>
+                                        <td style="padding: 10px;">
+                                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; background: ${op.typeColor}20; color: ${op.typeColor}; font-weight: 600; font-size: 0.85rem;">
+                                                ${op.typeName}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 10px;">${op.label}</td>
+                                        <td style="padding: 10px;">${op.user}</td>
+                                        <td style="padding: 10px; text-align: right; font-weight: 600; color: ${amountColor};">
+                                            ${amountSign}${op.amount}
+                                        </td>
+                                        <td style="padding: 10px; text-align: right; font-weight: 700; font-size: 1.1rem;">
+                                            ${op.balance}
+                                        </td>
+                                        <td style="padding: 10px; font-size: 0.85rem; color: #6b7280; max-width: 250px;">
+                                            ${op.description}
+                                        </td>
+                                    </tr>
+                                `;
+            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     `;
 
-            console.log('✅ HTML згенеровано');
-            console.log('📝 Встановлюємо innerHTML...');
-
-            detailsDiv.innerHTML = html;
-
-            console.log('✅ innerHTML встановлено');
-            console.log('👁️ Показуємо modal...');
-
-            modal.style.display = 'flex';
-
-            console.log('✅ Modal display = flex');
-            console.log('🏁 === КІНЕЦЬ displaySeparatedProductHistory ===');
+            document.body.insertAdjacentHTML('beforeend', historyHtml);
+            console.log('✅ Modal відображено');
         }
 
         function displayCombinedProductHistory(data, productTitle) {
