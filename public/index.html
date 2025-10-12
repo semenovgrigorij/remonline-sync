@@ -1845,7 +1845,6 @@
 
         async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
             console.log('🚀 === START showProductHistoryFromSearch ===');
-
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
 
@@ -1858,62 +1857,80 @@
                 console.log('📡 Запит історії...');
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
 
-                if (warehouseId) {
-                    const standardHistory = await apiCall(
-                        `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
-                    );
-
-                    console.log('✅ Отримано standardHistory:', standardHistory);
-
-                    const productId = standardHistory.productId;
-
-                    if (productId) {
-                        console.log('📡 Запит goods-flow...');
-
-                        let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
-
-                        console.log('✅ Отримано goodsFlowResult:', goodsFlowResult);
-
-                        // Якщо 503 - чекаємо і повторюємо
-                        if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
-                            console.log('⏳ Чекаємо оновлення cookies...');
-                            await new Promise(resolve => setTimeout(resolve, 2000));
-                            goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
-                        }
-
-                        if (standardHistory.success && goodsFlowResult.success) {
-                            // ОНОВЛЕНИЙ ФОРМАТ ДАНИХ
-                            const combinedData = {
-                                ...standardHistory.data,  // postings, moves, outcomes, sales
-                                data: goodsFlowResult.data // goods-flow операції (нова структура)
-                            };
-
-                            console.log('📊 Відображаємо історію з даними:', combinedData);
-                            displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
-                        } else {
-                            console.error('❌ Помилка в даних:', { standardHistory, goodsFlowResult });
-                            alert(`Помилка завантаження історії: ${goodsFlowResult.error || standardHistory.error || 'Невідома помилка'}`);
-                        }
-                    } else {
-                        alert('Не вдалось знайти ID товару');
-                    }
-                } else {
+                if (!warehouseId) {
                     alert(`Не вдалося знайти ID складу "${decodedWarehouseTitle}"`);
+                    return;
                 }
+
+                const standardHistory = await apiCall(
+                    `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
+                );
+
+                console.log('✅ Отримано standardHistory:', standardHistory);
+
+                if (!standardHistory.success) {
+                    alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
+                    return;
+                }
+
+                const productId = standardHistory.productId;
+
+                if (!productId) {
+                    alert('Не вдалось знайти ID товару');
+                    return;
+                }
+
+                console.log('📡 Запит goods-flow...');
+
+                let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+
+                console.log('✅ Отримано goodsFlowResult:', goodsFlowResult);
+
+                // Якщо 503 - чекаємо і повторюємо
+                if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
+                    console.log('⏳ Чекаємо оновлення cookies...');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+                }
+
+                // ВИПРАВЛЕНО: Перевіряємо успішність ПЕРЕД створенням combinedData
+                if (!goodsFlowResult.success) {
+                    console.log('⚠️ Goods-flow недоступний, показуємо тільки основні дані');
+
+                    // Показуємо історію БЕЗ goods-flow операцій
+                    const combinedData = {
+                        ...standardHistory.data,
+                        data: [] // Порожній масив замість goods-flow
+                    };
+
+                    displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
+
+                    // Попереджуємо користувача
+                    alert('⚠️ Частина даних недоступна (замовлення/повернення). Спробуйте пізніше або зверніться до адміністратора.');
+                    return;
+                }
+
+                // Якщо все ОК - показуємо повні дані
+                const combinedData = {
+                    ...standardHistory.data,
+                    data: goodsFlowResult.data
+                };
+
+                console.log('📊 Відображаємо історію з даними:', combinedData);
+                console.log('🎯 Викликаємо displaySeparatedProductHistory...');
+
+                try {
+                    displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
+                    console.log('✅ displaySeparatedProductHistory виконано');
+                } catch (error) {
+                    console.error('❌ Помилка в displaySeparatedProductHistory:', error);
+                    console.error('Stack:', error.stack);
+                    alert(`Помилка відображення: ${error.message}`);
+                }
+
             } catch (error) {
                 console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
                 alert(`Помилка: ${error.message}`);
-            }
-
-            console.log('📊 Відображаємо історію з даними:', combinedData);
-            console.log('🎯 Викликаємо displaySeparatedProductHistory...');
-
-            try {
-                displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
-                console.log('✅ displaySeparatedProductHistory виконано');
-            } catch (error) {
-                console.error('❌ Помилка в displaySeparatedProductHistory:', error);
-                console.error('Stack:', error.stack);
             }
         }
 
