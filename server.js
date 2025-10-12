@@ -103,13 +103,17 @@ class RemonlineMatrixSync {
     this.setupScheduledSync();
     this.browser = null;
     this.userCookies = new Map();
-    this.autoLogin();
+    // this.autoLogin();
     this.loginServiceUrl = process.env.LOGIN_SERVICE_URL;
 
     // Отримуємо cookies при старті (відкладено)
     setTimeout(() => {
       this.refreshCookiesAutomatically();
     }, 5000); // Через 5 секунд після старту
+  }
+  async initialize() {
+    await this.autoLogin();
+    console.log("✅ Сервер повністю ініціалізовано");
   }
 
   // async autoLogin() {
@@ -4044,7 +4048,14 @@ class RemonlineMatrixSync {
   }
 
   start() {
+    const app = new WarehouseApp();
+
+    // Запускаємо async ініціалізацію
+    app.initialize().catch((error) => {
+      console.error("❌ Помилка ініціалізації:", error);
+    });
     const PORT = process.env.PORT || 3000;
+
     this.app.listen(PORT, () => {
       console.log(`🚀 Сервер запущен на порту ${PORT}`);
       console.log(`📱 Откройте http://localhost:${PORT} в браузере`);
