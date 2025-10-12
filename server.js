@@ -188,6 +188,38 @@ class RemonlineMatrixSync {
       }
     });
 
+    this.app.post("/api/temp-set-cookies", async (req, res) => {
+      try {
+        console.log("📥 Отримано запит на встановлення cookies");
+        console.log("📦 Body:", req.body);
+
+        const { cookies } = req.body;
+
+        if (!cookies) {
+          console.log("❌ Cookies відсутні в body");
+          return res.status(400).json({
+            success: false,
+            error: "Cookies обов'язкові",
+          });
+        }
+
+        this.userCookies.set("shared_user", cookies);
+        console.log("✅ Cookies встановлено");
+        console.log("📏 Довжина:", cookies.length);
+
+        res.json({
+          success: true,
+          message: "Cookies успішно збережено",
+          cookiesLength: cookies.length,
+        });
+      } catch (error) {
+        console.error("❌ Помилка:", error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
     // НОВЫЕ ЭНДПОИНТЫ ДЛЯ ВЫПАДАЮЩИХ СПИСКОВ
 
     // Получение складов для конкретной локации (branch_id)
@@ -4024,3 +4056,7 @@ class RemonlineMatrixSync {
 // Запуск приложения
 const syncApp = new RemonlineMatrixSync();
 syncApp.start();
+
+//////////////////////////////////////////
+
+///////////////////////////////
