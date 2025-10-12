@@ -2541,28 +2541,6 @@
             console.log('✅ Modal відображено');
         }
 
-        // Функція для відкриття/закриття адмін меню
-        function toggleAdminMenu() {
-            const dropdown = document.getElementById('adminDropdown');
-            dropdown.classList.toggle('show');
-        }
-
-        // Закриття меню при кліку поза ним
-        window.onclick = function (event) {
-            // Закриття адмін-меню
-            if (!event.target.matches('.admin-toggle')) {
-                const dropdown = document.getElementById('adminDropdown');
-                if (dropdown && dropdown.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                }
-            }
-
-            // Закриття модального вікна при кліку на фон
-            if (event.target.id === 'historyModal') {
-                closeHistoryModal();
-            }
-        }
-
         // Инициализация
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM загружен, инициализация...');
