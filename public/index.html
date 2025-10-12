@@ -1227,6 +1227,7 @@
             }
 
             if (body) {
+                // ИСПРАВЛЕНО: Передаем currentWarehouseId
                 body.innerHTML = data.map((item, index) => `
             <tr>
                 <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
@@ -1238,7 +1239,7 @@
                 <td>${item.uom_title || '-'}</td>
                 <td>
                     <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;" 
-                           onclick="showProductHistoryFromSearch('${encodeURIComponent(currentWarehouseTitle)}', '${encodeURIComponent(item.title)}')">
+                        onclick="showProductHistoryFromWarehouse('${currentWarehouseId}', '${encodeURIComponent(currentWarehouseTitle)}', '${encodeURIComponent(item.title)}')">
                         История
                     </button>
                 </td>
@@ -1333,21 +1334,9 @@
 
         function displaySearchResults(data) {
             console.log('displaySearchResults получила данные:', data);
-            console.log('Первый элемент данных:', data[0]);
 
             const header = safeGetElement('detailTableHeader');
             const body = safeGetElement('detailTableBody');
-
-            console.log('displaySearchResults - проверка данных:');
-            data.forEach((item, index) => {
-                if (index < 3) {
-                    console.log(`Запись ${index}:`, {
-                        title: item.title,
-                        warehouse_title: item.warehouse_title,
-                        warehouse_title_type: typeof item.warehouse_title
-                    });
-                }
-            });
 
             if (header) {
                 header.innerHTML = `
@@ -1376,7 +1365,8 @@
                     <td>${item.article || '-'}</td>
                     <td>${item.uom_title || '-'}</td>
                     <td>
-                        <button class="btn" onclick="showProductHistoryFromSearch('${encodeURIComponent(item.warehouse_title)}', '${encodeURIComponent(item.title)}')">
+                        <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;"
+                            onclick="showProductHistoryFromSearch('${encodeURIComponent(item.warehouse_title)}', '${encodeURIComponent(item.title)}')">
                             История
                         </button>
                     </td>
@@ -1387,6 +1377,65 @@
 
             safeSetDisplay('detailTable', 'block');
         }
+
+        // ФУНКЦИЯ для истории из выбранного склада
+        async function showProductHistoryFromWarehouse(warehouseId, warehouseTitle, productTitle) {
+            console.log('🚀 showProductHistoryFromWarehouse:', { warehouseId, warehouseTitle, productTitle });
+
+            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
+            const decodedProductTitle = decodeURIComponent(productTitle);
+
+            if (!warehouseId) {
+                alert('Помилка: не вказано ID складу');
+                return;
+            }
+
+            try {
+                // Получаем историю
+                const standardHistory = await apiCall(
+                    `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
+                );
+
+                console.log('✅ Отримано standardHistory:', standardHistory);
+
+                if (!standardHistory.success) {
+                    alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
+                    return;
+                }
+
+                const productId = standardHistory.productId;
+
+                if (!productId) {
+                    alert('Не вдалось знайти ID товару');
+                    return;
+                }
+
+                // Получаем goods-flow
+                let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+
+                if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+                }
+
+                const combinedData = {
+                    ...standardHistory.data,
+                    data: goodsFlowResult.success ? goodsFlowResult.data : []
+                };
+
+                // ИСПРАВЛЕНО: Передаем warehouseId для фильтрации
+                displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
+
+                if (!goodsFlowResult.success) {
+                    alert('⚠️ Частина даних недоступна (замовлення/повернення). Спробуйте пізніше.');
+                }
+
+            } catch (error) {
+                console.error('❌ Помилка:', error);
+                alert(`Помилка: ${error.message}`);
+            }
+        }
+
 
         async function loadMatrixData() {
             // Показать индикатор загрузки
@@ -1998,7 +2047,8 @@
         }
 
         async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
-            console.log('🚀 === START showProductHistoryFromSearch ===');
+            console.log('🚀 showProductHistoryFromSearch:', { warehouseTitle, productTitle });
+
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
 
@@ -2008,7 +2058,6 @@
             }
 
             try {
-                console.log('📡 Запит історії...');
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
 
                 if (!warehouseId) {
@@ -2016,74 +2065,11 @@
                     return;
                 }
 
-                const standardHistory = await apiCall(
-                    `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
-                );
-
-                console.log('✅ Отримано standardHistory:', standardHistory);
-
-                if (!standardHistory.success) {
-                    alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
-                    return;
-                }
-
-                const productId = standardHistory.productId;
-
-                if (!productId) {
-                    alert('Не вдалось знайти ID товару');
-                    return;
-                }
-
-                console.log('📡 Запит goods-flow...');
-
-                let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
-
-                console.log('✅ Отримано goodsFlowResult:', goodsFlowResult);
-
-                // Якщо 503 - чекаємо і повторюємо
-                if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
-                    console.log('⏳ Чекаємо оновлення cookies...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
-                }
-
-                // ВИПРАВЛЕНО: Перевіряємо успішність ПЕРЕД створенням combinedData
-                if (!goodsFlowResult.success) {
-                    console.log('⚠️ Goods-flow недоступний, показуємо тільки основні дані');
-
-                    // Показуємо історію БЕЗ goods-flow операцій
-                    const combinedData = {
-                        ...standardHistory.data,
-                        data: [] // Порожній масив замість goods-flow
-                    };
-
-                    displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
-
-                    // Попереджуємо користувача
-                    alert('⚠️ Частина даних недоступна (замовлення/повернення). Спробуйте пізніше або зверніться до адміністратора.');
-                    return;
-                }
-
-                // Якщо все ОК - показуємо повні дані
-                const combinedData = {
-                    ...standardHistory.data,
-                    data: goodsFlowResult.data
-                };
-
-                console.log('📊 Відображаємо історію з даними:', combinedData);
-                console.log('🎯 Викликаємо displaySeparatedProductHistory...');
-
-                try {
-                    displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle);
-                    console.log('✅ displaySeparatedProductHistory виконано');
-                } catch (error) {
-                    console.error('❌ Помилка в displaySeparatedProductHistory:', error);
-                    console.error('Stack:', error.stack);
-                    alert(`Помилка відображення: ${error.message}`);
-                }
+                // ИСПРАВЛЕНО: Вызываем новую функцию
+                await showProductHistoryFromWarehouse(warehouseId, warehouseTitle, productTitle);
 
             } catch (error) {
-                console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
+                console.error('❌ Помилка:', error);
                 alert(`Помилка: ${error.message}`);
             }
         }
@@ -2340,18 +2326,19 @@
             }
         }
 
-        function displaySeparatedProductHistory(data, productTitle, warehouseTitle) {
-            console.log('🎬 === ПОЧАТОК displaySeparatedProductHistory ===');
+        function displaySeparatedProductHistory(data, productTitle, warehouseTitle, filterWarehouseId = null) {
+            console.log('🎬 displaySeparatedProductHistory:', {
+                productTitle,
+                warehouseTitle,
+                filterWarehouseId
+            });
 
-            // Закриваємо старе модальне вікно якщо відкрите
             closeHistoryModal();
 
             const allOperations = [];
-            console.log('📋 Початок збору операцій...');
 
-            // Оприбуткування (+)
+            // Оприбуткування
             if (data.postings) {
-                console.log(`✅ Додаємо ${data.postings.length} оприбуткувань`);
                 data.postings.forEach(item => {
                     allOperations.push({
                         date: new Date(item.posting_created_at?.value || item.posting_created_at),
@@ -2361,6 +2348,7 @@
                         label: item.posting_label || '-',
                         user: item.created_by_name || '-',
                         warehouse: item.warehouse_title || warehouseTitle,
+                        warehouseId: item.warehouse_id,
                         amount: item.amount || 0,
                         description: item.posting_description || '-',
                         delta: +item.amount
@@ -2370,10 +2358,10 @@
 
             // Переміщення
             if (data.moves) {
-                console.log(`✅ Обробляємо ${data.moves.length} переміщень`);
                 data.moves.forEach(item => {
                     const date = new Date(item.move_created_at?.value || item.move_created_at);
 
+                    // Вихід зі складу
                     if (item.source_warehouse_title === warehouseTitle) {
                         allOperations.push({
                             date,
@@ -2383,12 +2371,14 @@
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
                             warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
+                            warehouseId: item.warehouse_id,
                             amount: item.amount || 0,
                             description: item.move_description || '-',
                             delta: -item.amount
                         });
                     }
 
+                    // Вхід на склад
                     if (item.target_warehouse_title === warehouseTitle) {
                         allOperations.push({
                             date,
@@ -2398,6 +2388,7 @@
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
                             warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
+                            warehouseId: item.warehouse_id,
                             amount: item.amount || 0,
                             description: item.move_description || '-',
                             delta: +item.amount
@@ -2406,9 +2397,8 @@
                 });
             }
 
-            // Списання (-)
+            // Списання
             if (data.outcomes) {
-                console.log(`✅ Додаємо ${data.outcomes.length} списань`);
                 data.outcomes.forEach(item => {
                     allOperations.push({
                         date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
@@ -2418,6 +2408,7 @@
                         label: item.outcome_label || '-',
                         user: item.created_by_name || '-',
                         warehouse: item.source_warehouse_title || warehouseTitle,
+                        warehouseId: null,
                         amount: item.amount || 0,
                         description: item.outcome_description || '-',
                         delta: -item.amount
@@ -2425,9 +2416,8 @@
                 });
             }
 
-            // Продажі (-)
+            // Продажі
             if (data.sales) {
-                console.log(`✅ Додаємо ${data.sales.length} продажів`);
                 data.sales.forEach(item => {
                     allOperations.push({
                         date: new Date(item.sale_created_at?.value || item.sale_created_at),
@@ -2437,6 +2427,7 @@
                         label: item.sale_label || '-',
                         user: item.created_by_name || '-',
                         warehouse: warehouseTitle,
+                        warehouseId: item.warehouse_id,
                         amount: item.amount || 0,
                         description: item.sale_description || '-',
                         delta: -item.amount
@@ -2446,9 +2437,7 @@
 
             // Goods-flow операції
             if (data.data && Array.isArray(data.data)) {
-                console.log(`✅ Обробляємо ${data.data.length} goods-flow операцій`);
-
-                data.data.forEach((item, index) => {
+                data.data.forEach(item => {
                     const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
 
                     let delta = 0;
@@ -2480,6 +2469,7 @@
                         label: item.relation_label || '-',
                         user: '-',
                         warehouse: warehouseTitle,
+                        warehouseId: null,
                         amount: item.amount || 0,
                         description: item.comment || '-',
                         delta: delta
@@ -2487,18 +2477,32 @@
                 });
             }
 
-            console.log(`📊 Всього операцій: ${allOperations.length}`);
+            // КРИТИЧНО: Фильтруем по складу ЕСЛИ передан filterWarehouseId
+            let filteredOperations = allOperations;
+
+            if (filterWarehouseId) {
+                filteredOperations = allOperations.filter(op => {
+                    // Для операций с warehouseId - проверяем его
+                    if (op.warehouseId) {
+                        return op.warehouseId == filterWarehouseId;
+                    }
+                    // Для операций без warehouseId - проверяем по названию склада
+                    return op.warehouse.includes(warehouseTitle);
+                });
+
+                console.log(`🔍 Фильтрация: ${allOperations.length} → ${filteredOperations.length} операций`);
+            }
 
             // Сортування та розрахунок балансу
-            allOperations.sort((a, b) => a.date - b.date);
+            filteredOperations.sort((a, b) => a.date - b.date);
 
             let runningBalance = 0;
-            allOperations.forEach(op => {
+            filteredOperations.forEach(op => {
                 runningBalance += op.delta;
                 op.balance = runningBalance;
             });
 
-            allOperations.reverse();
+            filteredOperations.reverse();
 
             // Генерація HTML
             const historyHtml = `
@@ -2507,7 +2511,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
                     <div>
                         <h3 style="margin: 0 0 5px 0; color: #374151;">Історія операцій: ${productTitle}</h3>
-                        <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">Склад: ${warehouseTitle} • Всього операцій: ${allOperations.length}</p>
+                        <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">Склад: ${warehouseTitle} • Операцій: ${filteredOperations.length}</p>
                     </div>
                     <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
                 </div>
@@ -2526,7 +2530,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${allOperations.map((op, index) => {
+                            ${filteredOperations.map((op, index) => {
                 const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
                 const amountColor = op.delta > 0 ? '#059669' : '#ef4444';
                 const amountSign = op.delta > 0 ? '+' : '';
@@ -2563,7 +2567,7 @@
     `;
 
             document.body.insertAdjacentHTML('beforeend', historyHtml);
-            console.log('✅ Modal відображено');
+            console.log('✅ Modal відображено з фільтрацією по складу');
         }
 
         // Инициализация
