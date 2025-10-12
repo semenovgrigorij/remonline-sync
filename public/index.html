@@ -2412,74 +2412,6 @@
             console.log('✅ Modal відображено');
         }
 
-        function displayCombinedProductHistory(data, productTitle) {
-            closeHistoryModal();
-
-            // Удаляем дубликаты
-            const uniqueData = data.filter((item, index, self) =>
-                index === self.findIndex(t =>
-                    t.operation_id === item.operation_id &&
-                    t.operation_type === item.operation_type
-                )
-            );
-
-            console.log(`Исходных записей: ${data.length}, уникальных: ${uniqueData.length}`);
-
-            const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
-            <div style="background: white; padding: 30px; border-radius: 15px; max-width: 95%; max-height: 90%; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); cursor: default;" onclick="event.stopPropagation()">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
-                    <h3 style="margin: 0; color: #374151; font-size: 1.5rem;">История товара: ${productTitle}</h3>
-                    <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрыть</button>
-                </div>
-                
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                        <thead>
-                            <tr style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white;">
-                                <th style="padding: 10px 6px; text-align: left;">Дата</th>
-                                <th style="padding: 10px 6px; text-align: left;">Тип операции</th>
-                                <th style="padding: 10px 6px; text-align: left;">Документ</th>
-                                <th style="padding: 10px 6px; text-align: left;">Кто создал</th>
-                                <th style="padding: 10px 6px; text-align: center;">Количество</th>
-                                <th style="padding: 10px 6px; text-align: left;">Откуда</th>
-                                <th style="padding: 10px 6px; text-align: left;">Куда</th>
-                                <th style="padding: 10px 6px; text-align: left;">Описание</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${uniqueData.length > 0 ? uniqueData.map((item, index) => {
-                const isPosting = item.operation_type === 'posting';
-                const operationType = isPosting ? 'Оприходование' : 'Перемещение';
-                const bgColor = isPosting ? '#f0fdf4' : '#eff6ff';
-
-                return `
-                                <tr style="background: ${index % 2 === 0 ? bgColor : 'white'}; border-bottom: 1px solid #e2e8f0;">
-                                    <td style="padding: 8px 6px; font-weight: 500;">
-                                        ${new Date(item.operation_date).toLocaleString('uk-UA')}
-                                    </td>
-                                    <td style="padding: 8px 6px; font-weight: 600; color: ${isPosting ? '#059669' : '#0ea5e9'};">
-                                        ${operationType}
-                                    </td>
-                                    <td style="padding: 8px 6px; font-family: monospace;">${item.operation_label || '-'}</td>
-                                    <td style="padding: 8px 6px;">${item.created_by_name || 'Неизвестно'}</td>
-                                    <td style="padding: 8px 6px; text-align: center; font-weight: 600;">${item.amount || 0}</td>
-                                    <td style="padding: 8px 6px; max-width: 150px; word-wrap: break-word;">${item.source_warehouse || item.warehouse_info || '-'}</td>
-                                    <td style="padding: 8px 6px; max-width: 150px; word-wrap: break-word;">${item.target_warehouse || '-'}</td>
-                                    <td style="padding: 8px 6px; max-width: 200px; word-wrap: break-word;">${item.description || '-'}</td>
-                                </tr>
-                                `;
-            }).join('') : '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #6b7280;">История не найдена</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    `;
-
-            document.body.insertAdjacentHTML('beforeend', historyHtml);
-        }
-
         // Функція для відкриття/закриття адмін меню
         function toggleAdminMenu() {
             const dropdown = document.getElementById('adminDropdown');
@@ -2513,6 +2445,32 @@
 
             // Автообновление статуса каждые 30 секунд
             statusInterval = setInterval(refreshStatus, 30000);
+        });
+    </script>
+    <!-- Модальне вікно для детальної історії товару -->
+    <div id="productHistoryModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div
+            style="background: white; padding: 30px; border-radius: 12px; max-width: 95%; max-height: 90%; overflow-y: auto; position: relative;">
+            <button onclick="closeProductHistoryModal()"
+                style="position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">×</button>
+            <div id="productHistoryDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        function closeProductHistoryModal() {
+            const modal = document.getElementById('productHistoryModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Закриття по кліку на фон
+        document.getElementById('productHistoryModal')?.addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeProductHistoryModal();
+            }
         });
     </script>
 </body>
