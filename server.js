@@ -3977,7 +3977,11 @@ class RemonlineMatrixSync {
     try {
       console.log("🔄 Запит нових cookies з login-service...");
 
-      const response = await fetch(`${this.loginServiceUrl}/get-cookies`, {
+      // ВИПРАВЛЕНО: Прибрано зайвий слеш
+      const url = `${this.loginServiceUrl}/get-cookies`;
+      console.log(`📡 URL: ${url}`);
+
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3985,6 +3989,10 @@ class RemonlineMatrixSync {
           password: process.env.REMONLINE_PASSWORD,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const result = await response.json();
 
