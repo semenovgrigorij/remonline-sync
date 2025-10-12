@@ -715,6 +715,76 @@
                     <span class="status-value">Никогда</span>
                 </div>
             </div>
+
+            - Адмін панель -->
+            <div style="position: fixed; top: 20px; right: 20px; z-index: 2000;">
+                <button onclick="toggleAdminMenu()"
+                    style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; padding: 12px 16px; border-radius: 50%; cursor: pointer; font-size: 1.3rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: transform 0.2s;">
+                    ⚙️
+                </button>
+
+                <div id="adminDropdown" class="admin-dropdown"
+                    style="display: none; position: absolute; top: 60px; right: 0; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); min-width: 250px; overflow: hidden;">
+                    <div
+                        style="padding: 15px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white;">
+                        <h4 style="margin: 0; font-size: 1rem;">⚙️ Адмін панель</h4>
+                    </div>
+
+                    <div style="padding: 10px;">
+                        <button class="admin-btn" onclick="showCookiesUpdateModal(); toggleAdminMenu();"
+                            style="width: 100%; padding: 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.95rem; margin-bottom: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.2rem;">🔐</span>
+                            <span>Оновити Cookies API</span>
+                        </button>
+
+                        <button class="admin-btn" onclick="location.reload(); toggleAdminMenu();"
+                            style="width: 100%; padding: 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.95rem; margin-bottom: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.2rem;">🔄</span>
+                            <span>Оновити сторінку</span>
+                        </button>
+
+                        <button class="admin-btn"
+                            onclick="localStorage.clear(); alert('Кеш очищено!'); toggleAdminMenu();"
+                            style="width: 100%; padding: 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.95rem; transition: all 0.2s; display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.2rem;">🗑️</span>
+                            <span>Очистити кеш</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .admin-btn:hover {
+                    background: #f3f4f6 !important;
+                    border-color: #6366f1 !important;
+                    transform: translateX(5px);
+                }
+
+                .admin-dropdown.show {
+                    display: block !important;
+                }
+            </style>
+
+            <script>
+                function toggleAdminMenu() {
+                    const dropdown = document.getElementById('adminDropdown');
+                    if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                }
+
+                // Закриття по кліку поза меню
+                document.addEventListener('click', function (e) {
+                    const dropdown = document.getElementById('adminDropdown');
+                    const button = e.target.closest('button');
+
+                    if (dropdown && dropdown.style.display === 'block' && !e.target.closest('#adminDropdown') && button?.textContent !== '⚙️') {
+                        dropdown.style.display = 'none';
+                    }
+                });
+            </script>
         </div>
 
 
@@ -2470,6 +2540,110 @@
         document.getElementById('productHistoryModal')?.addEventListener('click', function (e) {
             if (e.target === this) {
                 closeProductHistoryModal();
+            }
+        });
+    </script>
+
+    <!-- Модальне вікно для оновлення cookies -->
+    <div id="cookiesUpdateModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 700px; width: 90%;">
+            <h3 style="margin: 0 0 15px 0;">🔐 Оновлення Cookies для RemOnline API</h3>
+
+            <div
+                style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.9rem; color: #1e40af;">
+                    ℹ️ Cookies потрібні для отримання історії замовлень та повернень. Оновлюйте кожну годину.
+                </p>
+            </div>
+
+            <div
+                style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                <p style="margin: 0 0 10px 0; font-weight: 600; color: #92400e;">Як отримати cookies:</p>
+                <ol style="margin: 0; padding-left: 20px; font-size: 0.9rem; color: #78350f;">
+                    <li>Відкрийте <a href="https://web.roapp.io" target="_blank"
+                            style="color: #0ea5e9; text-decoration: underline;">web.roapp.io</a> в новій вкладці</li>
+                    <li>Увійдіть в акаунт (якщо не залогінені)</li>
+                    <li>Натисніть <kbd>F12</kbd> → вкладка <strong>Network</strong></li>
+                    <li>Оновіть сторінку (<kbd>F5</kbd>)</li>
+                    <li>Виберіть будь-який запит до <code>roapp.io</code></li>
+                    <li>В <strong>Request Headers</strong> знайдіть <code>cookie:</code></li>
+                    <li>Скопіюйте ВЕСЬ текст після <code>cookie:</code> (Ctrl+C)</li>
+                    <li>Вставте нижче і натисніть "Зберегти"</li>
+                </ol>
+            </div>
+
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
+                Вставте cookies тут:
+            </label>
+            <textarea id="cookiesInput"
+                style="width: 100%; height: 150px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; resize: vertical;"
+                placeholder="PHPSESSID=abc123...; token=eyJ..."></textarea>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="saveCookiesManually()"
+                    style="flex: 1; padding: 14px; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.3);">
+                    ✅ Зберегти Cookies
+                </button>
+                <button onclick="closeCookiesModal()"
+                    style="flex: 1; padding: 14px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer;">
+                    Скасувати
+                </button>
+            </div>
+
+            <div style="margin-top: 15px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+                <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">
+                    💡 <strong>Порада:</strong> Додайте цю сторінку в закладки для швидкого доступу до оновлення cookies
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showCookiesUpdateModal() {
+            document.getElementById('cookiesUpdateModal').style.display = 'flex';
+        }
+
+        function closeCookiesModal() {
+            document.getElementById('cookiesUpdateModal').style.display = 'none';
+            document.getElementById('cookiesInput').value = '';
+        }
+
+        async function saveCookiesManually() {
+            const cookies = document.getElementById('cookiesInput').value.trim();
+
+            if (!cookies) {
+                alert('❌ Будь ласка, вставте cookies');
+                return;
+            }
+
+            if (cookies.length < 100) {
+                alert('❌ Cookies занадто короткі. Переконайтесь що скопіювали ВЕСЬ текст після "cookie:"');
+                return;
+            }
+
+            try {
+                const result = await fetch('/api/temp-set-cookies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookies })
+                }).then(r => r.json());
+
+                if (result.success) {
+                    alert(`✅ Cookies збережено!\n\nДовжина: ${result.cookiesLength} символів\n\nТепер можна переглядати історію товарів.`);
+                    closeCookiesModal();
+                } else {
+                    alert(`❌ Помилка: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`❌ Помилка зв'язку з сервером: ${error.message}`);
+            }
+        }
+
+        // Закриття по Escape
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeCookiesModal();
             }
         });
     </script>
