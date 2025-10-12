@@ -1558,6 +1558,25 @@ class RemonlineMatrixSync {
         });
       }
     });
+
+    // ТИМЧАСОВО для тестування
+    this.app.get("/api/set-cookies/:cookieString", async (req, res) => {
+      try {
+        const cookies = decodeURIComponent(req.params.cookieString);
+        this.userCookies.set("shared_user", cookies);
+
+        res.json({
+          success: true,
+          message: "Cookies встановлено",
+          cookiesLength: cookies.length,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
   }
 
   initializeBigQuery() {
