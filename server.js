@@ -111,26 +111,6 @@ class RemonlineMatrixSync {
       this.refreshCookiesAutomatically();
     }, 5000); // Через 5 секунд після старту
   }
-  async initialize() {
-    await this.autoLogin();
-    console.log("✅ Сервер повністю ініціалізовано");
-  }
-
-  // async autoLogin() {
-  //   if (process.env.REMONLINE_EMAIL && process.env.REMONLINE_PASSWORD) {
-  //     try {
-  //       console.log("🔐 Автоматичний логін в RemOnline...");
-  //       const cookies = await this.loginToRemOnline(
-  //         process.env.REMONLINE_EMAIL,
-  //         process.env.REMONLINE_PASSWORD
-  //       );
-  //       this.userCookies.set("main_user", cookies);
-  //       console.log("✅ Автологін успішний");
-  //     } catch (error) {
-  //       console.error("❌ Помилка автологіну:", error.message);
-  //     }
-  //   }
-  // }
 
   async autoLogin() {
     // НЕ логінимось при старті сервера, щоб не блокувати запуск
@@ -4018,6 +3998,11 @@ class RemonlineMatrixSync {
       console.error("❌ Помилка зв'язку з login-service:", error.message);
     }
   }
+
+  async initialize() {
+    await this.refreshCookiesAutomatically();
+    console.log("✅ Сервер повністю ініціалізовано");
+  }
   startAutoSync() {
     this.isRunning = true;
     console.log("🚀 Автоматическая синхронизация запущена");
@@ -4047,27 +4032,25 @@ class RemonlineMatrixSync {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  start() {
-    const app = new WarehouseApp();
+  async start() {
+    try {
+      // Викликаємо async ініціалізацію
+      await this.initialize();
 
-    // Запускаємо async ініціалізацію
-    app.initialize().catch((error) => {
+      const PORT = process.env.PORT || 3000;
+
+      this.app.listen(PORT, () => {
+        console.log(`🚀 Сервер запущен на порту ${PORT}`);
+        console.log(`📱 Откройте http://localhost:${PORT} в браузере`);
+        console.log(`📊 Матричное отображение: товары × склади`);
+      });
+    } catch (error) {
       console.error("❌ Помилка ініціалізації:", error);
-    });
-    const PORT = process.env.PORT || 3000;
-
-    this.app.listen(PORT, () => {
-      console.log(`🚀 Сервер запущен на порту ${PORT}`);
-      console.log(`📱 Откройте http://localhost:${PORT} в браузере`);
-      console.log(`📊 Матричное отображение: товары × склады`);
-    });
+      process.exit(1);
+    }
   }
 }
 
 // Запуск приложения
 const syncApp = new RemonlineMatrixSync();
 syncApp.start();
-
-//////////////////////////////////////////
-
-///////////////////////////////
