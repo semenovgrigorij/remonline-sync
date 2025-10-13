@@ -1419,11 +1419,25 @@
                 }
 
                 // Получаем goods-flow
+                console.log('📡 Запит goods-flow...');
                 let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
 
-                if (!goodsFlowResult.success && goodsFlowResult.needRetry) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+                console.log('📦 Результат goods-flow:', goodsFlowResult);
+
+                let showWarning = false;
+                let warningMessage = '';
+
+                if (!goodsFlowResult.success) {
+                    console.log('⚠️ Goods-flow недоступний:', goodsFlowResult.error);
+
+                    if (goodsFlowResult.needManualUpdate) {
+                        warningMessage = '⚠️ Cookies застарілі!\n\n';
+                        warningMessage += 'Для відображення замовлень та повернень потрібно оновити Cookies:\n';
+                        warningMessage += '1. Відкрийте адмін-панель (⚙️)\n';
+                        warningMessage += '2. Натисніть "🔐 Оновити Cookies API"\n';
+                        warningMessage += '3. Слідуйте інструкціям';
+                        showWarning = true;
+                    }
                 }
 
                 const combinedData = {
@@ -1431,11 +1445,16 @@
                     data: goodsFlowResult.success ? goodsFlowResult.data : []
                 };
 
-                // ИСПРАВЛЕНО: Передаем warehouseId для фильтрации
+                // Показуємо історію
                 displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
 
-                if (!goodsFlowResult.success) {
-                    alert('⚠️ Частина даних недоступна (замовлення/повернення). Спробуйте пізніше.');
+                // Показуємо попередження якщо потрібно
+                if (showWarning) {
+                    setTimeout(() => {
+                        if (confirm(warningMessage + '\n\nВідкрити інструкцію зараз?')) {
+                            showCookiesUpdateModal();
+                        }
+                    }, 500);
                 }
 
             } catch (error) {
@@ -1443,9 +1462,6 @@
                 alert(`Помилка: ${error.message}`);
             }
         }
-
-
-
 
         async function loadMatrixData() {
             // Показать индикатор загрузки
@@ -2436,7 +2452,6 @@
                         }
 
                         // Вхід на склад (якщо це склад-призначення)
-                        // ВИПРАВЛЕНО: використовуємо includes() замість ===
                         const isTargetMatch = item.target_warehouse_title &&
                             item.target_warehouse_title.includes(warehouseTitle);
                         if (isTargetMatch) {
@@ -2653,26 +2668,25 @@
                 });
 
                 const historyHtml = `
-            <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
-                <div style="background: white; padding: 30px; border-radius: 15px; max-width: 600px; cursor: default;" onclick="event.stopPropagation()">
-                    <div style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 20px;">📦❌</div>
-                        <h3 style="margin: 0 0 15px 0; color: #374151;">Немає операцій на цьому складі</h3>
-                        <p style="color: #6b7280; margin-bottom: 20px;">
-                            Товар <strong>"${productTitle}"</strong> не має операцій на складі <strong>"${warehouseTitle}"</strong>
-                        </p>
-                        
-                        <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
-                            <p style="margin: 0 0 10px 0; font-weight: 600; color: #1e40af;">Товар є на інших складах:</p>
-                            <ul style="margin: 0; padding-left: 20px; color: #374151;">
-                                ${Array.from(otherWarehouses).map(w => `<li>${w}</li>`).join('')}
-                            </ul>
-                        </div>
-                        
-                        <button onclick="closeHistoryModal()" style="background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">
-                            Зрозуміло
-                        </button>
+    <div id="historyModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; cursor: pointer;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 95%; max-height: 90%; overflow: auto; cursor: default;" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
+                <div>
+                    <h3 style="margin: 0 0 5px 0; color: #374151;">Історія операцій: ${productTitle}</h3>
+                    <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
+                        Склад: ${warehouseTitle} • Операцій: ${filteredOperations.length}
+                        ${filterWarehouseId ? `<button onclick="showFullProductHistory('${encodeURIComponent(productTitle)}')" style="margin-left: 15px; padding: 4px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">📊 Вся історія товару</button>` : ''}
+                    </p>
+                    ${data.data && data.data.length === 0 ? `
+                    <div style="margin-top: 10px; padding: 8px 12px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                        <span style="font-size: 0.85rem; color: #92400e;">
+                            ⚠️ Замовлення та повернення не завантажені (потрібні актуальні Cookies)
+                        </span>
                     </div>
+                    ` : ''}
+                </div>
+                <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
+            </div>
                 </div>
             </div>
         `;

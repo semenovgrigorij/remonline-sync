@@ -1521,16 +1521,27 @@ class RemonlineMatrixSync {
         let cookies = this.userCookies.get("shared_user");
 
         if (!cookies) {
+          console.log("❌ Cookies відсутні, намагаємось оновити...");
           await this.refreshCookiesAutomatically();
           cookies = this.userCookies.get("shared_user");
 
           if (!cookies) {
-            return res.status(503).json({
+            console.log("❌ Не вдалося отримати cookies");
+            return res.json({
               success: false,
-              error: "Сервіс автентифікації тимчасово недоступний",
+              error: "Cookies недоступні. Оновіть вручну через адмін-панель.",
+              needManualUpdate: true,
+              data: [],
             });
           }
         }
+
+        console.log(`📡 Запит goods-flow для товару ${productId}`);
+        console.log(
+          `📅 Період: ${new Date(startDate).toISOString()} - ${new Date(
+            endDate
+          ).toISOString()}`
+        );
 
         const flowItems = await this.fetchGoodsFlowForProduct(
           productId,
@@ -1541,7 +1552,7 @@ class RemonlineMatrixSync {
 
         // Маппінг типів операцій
         const typeMapping = {
-          0: { name: "Замовлення", color: "#f97316" },
+          0: { name: "Замовлення постачальнику", color: "#f97316" },
           1: { name: "Продаж", color: "#8b5cf6" },
           3: { name: "Оприбуткування", color: "#059669" },
           4: { name: "Списання", color: "#ef4444" },
@@ -1570,9 +1581,22 @@ class RemonlineMatrixSync {
         });
       } catch (error) {
         console.error("❌ Помилка goods-flow:", error);
+
+        // Перевіряємо чи це помилка авторизації
+        if (error.message.includes("401") || error.message.includes("403")) {
+          return res.json({
+            success: false,
+            error: "Cookies застарілі або невалідні",
+            needManualUpdate: true,
+            httpStatus: error.message.includes("401") ? 401 : 403,
+            data: [],
+          });
+        }
+
         res.status(500).json({
           success: false,
           error: error.message,
+          data: [],
         });
       }
     });
@@ -2258,7 +2282,7 @@ class RemonlineMatrixSync {
 
   async fetchGoodsFlowForProduct(productId, startDate, endDate, cookies) {
     if (!cookies) {
-      throw new Error("Потрібні cookies для доступу до цього endpoint");
+      throw new Error("Потрібні cookies для доступу до goods-flow");
     }
 
     const options = {
@@ -2274,19 +2298,35 @@ class RemonlineMatrixSync {
     let allItems = [];
     let page = 1;
     const pageSize = 100;
+    let consecutiveErrors = 0;
 
-    while (true) {
+    while (page <= 100 && consecutiveErrors < 3) {
       try {
         const url = `https://web.roapp.io/app/warehouse/get-goods-flow-items?page=${page}&pageSize=${pageSize}&id=${productId}&startDate=${startDate}&endDate=${endDate}`;
+
+        console.log(`   📄 Goods-flow сторінка ${page}`);
 
         const response = await fetch(url, options);
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          console.error(`   ❌ HTTP ${response.status} на сторінці ${page}`);
+
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(`HTTP ${response.status}: Авторізація невалідна`);
+          }
+
+          consecutiveErrors++;
+          if (consecutiveErrors >= 3) {
+            console.log(`   ⚠️ 3 помилки поспіль, припиняємо`);
+            break;
+          }
+          continue;
         }
 
         const result = await response.json();
         const items = result.data || [];
+
+        console.log(`   ✅ Отримано ${items.length} записів`);
 
         if (items.length === 0) break;
 
@@ -2295,17 +2335,26 @@ class RemonlineMatrixSync {
         if (items.length < pageSize) break;
 
         page++;
-        if (page > 100) break;
+        consecutiveErrors = 0; // Скидаємо лічильник помилок
 
         await this.sleep(300);
       } catch (error) {
-        console.error(`❌ Помилка на сторінці ${page}:`, error.message);
-        break;
+        console.error(`   ❌ Помилка на сторінці ${page}:`, error.message);
+
+        // Якщо помилка авторизації - кидаємо далі
+        if (error.message.includes("401") || error.message.includes("403")) {
+          throw error;
+        }
+
+        consecutiveErrors++;
+        if (consecutiveErrors >= 3) break;
       }
     }
 
+    console.log(`📊 Всього goods-flow операцій: ${allItems.length}`);
     return allItems;
   }
+
   async fetchEmployees() {
     const options = {
       method: "GET",
@@ -4049,8 +4098,59 @@ class RemonlineMatrixSync {
     }
   }
 
+  // async initialize() {
+  //   await this.refreshCookiesAutomatically();
+  //   console.log("✅ Сервер повністю ініціалізовано");
+  // }
   async initialize() {
-    await this.refreshCookiesAutomatically();
+    console.log("🚀 Ініціалізація сервера...");
+
+    // Перевіряємо cookies
+    const cookies = this.userCookies.get("shared_user");
+
+    if (!cookies) {
+      console.log("⚠️ ========================================");
+      console.log("⚠️ УВАГА: Cookies для goods-flow ВІДСУТНІ!");
+      console.log("⚠️ Замовлення та повернення НЕ БУДУТЬ відображатись");
+      console.log("⚠️ Оновіть cookies через адмін-панель (⚙️ → 🔐)");
+      console.log("⚠️ ========================================");
+    } else {
+      console.log(`✅ Cookies знайдено (${cookies.length} символів)`);
+
+      // Перевіряємо валідність
+      try {
+        const testUrl =
+          "https://web.roapp.io/app/warehouse/get-goods-flow-items?page=1&pageSize=1&id=1&startDate=0&endDate=999999999999";
+
+        const testResponse = await fetch(testUrl, {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            cookie: cookies,
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
+        });
+
+        if (testResponse.ok) {
+          console.log("✅ Cookies ВАЛІДНІ, goods-flow доступний");
+        } else {
+          console.log("⚠️ ========================================");
+          console.log(
+            `⚠️ УВАГА: Cookies ЗАСТАРІЛІ (HTTP ${testResponse.status})`
+          );
+          console.log("⚠️ Замовлення та повернення НЕ БУДУТЬ відображатись");
+          console.log("⚠️ Оновіть cookies через адмін-панель (⚙️ → 🔐)");
+          console.log("⚠️ ========================================");
+        }
+      } catch (testError) {
+        console.log(
+          "⚠️ Не вдалося перевірити валідність cookies:",
+          testError.message
+        );
+      }
+    }
+
     console.log("✅ Сервер повністю ініціалізовано");
   }
   startAutoSync() {
