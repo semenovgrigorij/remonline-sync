@@ -1541,7 +1541,7 @@ class RemonlineMatrixSync {
 
         // Маппінг типів операцій
         const typeMapping = {
-          0: { name: "Замовлення постачальнику", color: "#f97316" },
+          0: { name: "Замовлення", color: "#f97316" },
           1: { name: "Продаж", color: "#8b5cf6" },
           3: { name: "Оприбуткування", color: "#059669" },
           4: { name: "Списання", color: "#ef4444" },
@@ -1588,6 +1588,66 @@ class RemonlineMatrixSync {
           message: "Cookies встановлено",
           cookiesLength: cookies.length,
         });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+
+    // endpoint для проверки cookies
+
+    this.app.get("/api/check-cookies-status", async (req, res) => {
+      try {
+        const cookies = this.userCookies.get("shared_user");
+
+        if (!cookies) {
+          return res.json({
+            success: false,
+            hasCookies: false,
+            message: "Cookies відсутні. Необхідно оновити через адмін-панель.",
+            cookiesLength: 0,
+          });
+        }
+
+        // Тестуємо чи працюють cookies
+        try {
+          const testUrl =
+            "https://web.roapp.io/app/warehouse/get-goods-flow-items?page=1&pageSize=1&id=1&startDate=0&endDate=999999999999";
+
+          const testResponse = await fetch(testUrl, {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+              cookie: cookies,
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+          });
+
+          const isValid = testResponse.ok;
+
+          return res.json({
+            success: true,
+            hasCookies: true,
+            cookiesValid: isValid,
+            cookiesLength: cookies.length,
+            httpStatus: testResponse.status,
+            message: isValid
+              ? "✅ Cookies валідні, goods-flow доступний"
+              : `❌ Cookies застарілі (HTTP ${testResponse.status}), потрібно оновити`,
+          });
+        } catch (testError) {
+          return res.json({
+            success: true,
+            hasCookies: true,
+            cookiesValid: false,
+            cookiesLength: cookies.length,
+            error: testError.message,
+            message: "❌ Помилка перевірки cookies",
+          });
+        }
       } catch (error) {
         res.status(500).json({
           success: false,

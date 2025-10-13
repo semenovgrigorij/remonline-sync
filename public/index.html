@@ -796,6 +796,12 @@
                             <span style="font-size: 1.1rem;">🗑️</span>
                             <span>Очистити кеш</span>
                         </button>
+
+                        <button class="admin-btn" onclick="checkCookiesStatus(); toggleAdminMenu();"
+                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">🔍</span>
+                            <span>Перевірити статус Cookies</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2539,6 +2545,8 @@
                             delta: delta
                         });
                     });
+                } else if (data.goodsFlowError) {
+                    console.warn('⚠️ Goods-flow недоступний:', data.goodsFlowError);
                 }
 
                 console.log(`📊 Всього операцій зібрано: ${allOperations.length}`);
@@ -2681,7 +2689,10 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
                     <div>
                         <h3 style="margin: 0 0 5px 0; color: #374151;">Історія операцій: ${productTitle}</h3>
-                        <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">Склад: ${warehouseTitle} • Операцій: ${filteredOperations.length}</p>
+                        <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
+                            Склад: ${warehouseTitle} • Операцій: ${filteredOperations.length}
+                            ${filterWarehouseId ? `<button onclick="showFullProductHistory('${encodeURIComponent(productTitle)}')" style="margin-left: 15px; padding: 4px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">📊 Вся історія товару</button>` : ''}
+                        </p>
                     </div>
                     <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>
                 </div>
@@ -2873,6 +2884,34 @@
                 }
             } catch (error) {
                 alert(`❌ Помилка зв'язку з сервером: ${error.message}`);
+            }
+        }
+
+        async function checkCookiesStatus() {
+            try {
+                const result = await apiCall('/api/check-cookies-status');
+
+                let message = `📊 Статус Cookies для Goods-Flow:\n\n`;
+                message += `Cookies є: ${result.hasCookies ? '✅' : '❌'}\n`;
+
+                if (result.hasCookies) {
+                    message += `Довжина: ${result.cookiesLength} символів\n`;
+                    message += `Валідність: ${result.cookiesValid ? '✅ Працюють' : '❌ Застарілі'}\n`;
+
+                    if (result.httpStatus) {
+                        message += `HTTP статус: ${result.httpStatus}\n`;
+                    }
+                }
+
+                message += `\n${result.message}`;
+
+                if (!result.hasCookies || !result.cookiesValid) {
+                    message += `\n\n💡 Оновіть cookies через кнопку "🔐 Оновити Cookies API"`;
+                }
+
+                alert(message);
+            } catch (error) {
+                alert(`Помилка перевірки: ${error.message}`);
             }
         }
 
