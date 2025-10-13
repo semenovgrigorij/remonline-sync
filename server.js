@@ -1328,7 +1328,8 @@ class RemonlineMatrixSync {
             amount,
             posting_description,
             price,
-            warehouse_title
+            warehouse_title,
+            warehouse_id
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
         WHERE product_id = @product_id
         ORDER BY posting_created_at DESC
@@ -1356,7 +1357,8 @@ class RemonlineMatrixSync {
             source_warehouse_title,
             target_warehouse_title,
             amount,
-            move_description
+            move_description,
+            warehouse_id
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\`
         WHERE product_id = @product_id
         ORDER BY move_created_at DESC
@@ -1699,7 +1701,7 @@ class RemonlineMatrixSync {
         { name: "created_by_name", type: "STRING", mode: "NULLABLE" },
         { name: "supplier_id", type: "INTEGER", mode: "NULLABLE" },
         { name: "supplier_name", type: "STRING", mode: "NULLABLE" },
-        { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" },
+        { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" }, // ✅ УЖЕ ЕСТЬ!
         { name: "warehouse_title", type: "STRING", mode: "NULLABLE" },
         { name: "product_id", type: "INTEGER", mode: "REQUIRED" },
         { name: "product_title", type: "STRING", mode: "REQUIRED" },
@@ -1740,31 +1742,14 @@ class RemonlineMatrixSync {
       await this.fetchEmployees();
       await this.fetchSuppliersFromPostings();
 
-      // Один раз отримуємо склади (тепер fetchWarehouses() вже повертає лише потрібні)
       const warehouses = await this.fetchWarehouses();
       console.log(
         `📍 Найдено ${warehouses.length} складів для отримання історії`
       );
 
-      if (this.employeesCache.size > 0) {
-        const firstEmployee = Array.from(this.employeesCache.entries())[0];
-        console.log(
-          `🔍 ВІДЛАГОДЖЕННЯ: Перший співробітник в кеші:`,
-          firstEmployee
-        );
-      }
-
       const allPostingsData = [];
-
-      // Временные рамки: с мая 2022 до сейчас
-      const startTime = 1651363200000; // 1 мая 2022 00:00:00 UTC
-      const endTime = Date.now(); // Текущее время
-
-      console.log(
-        `📅 Період синхронізації: ${new Date(
-          startTime
-        ).toISOString()} - ${new Date(endTime).toISOString()}`
-      );
+      const startTime = 1651363200000;
+      const endTime = Date.now();
 
       for (const warehouse of warehouses) {
         try {
@@ -1793,7 +1778,7 @@ class RemonlineMatrixSync {
                   supplier_name: await this.getSupplierName(
                     posting.supplier_id
                   ),
-                  warehouse_id: warehouse.id,
+                  warehouse_id: warehouse.id, // ✅ КРИТИЧНО - добавляем ID склада!
                   warehouse_title: warehouse.title,
                   product_id: product.id,
                   product_title: product.title,
@@ -1833,9 +1818,6 @@ class RemonlineMatrixSync {
       console.log(`Оброблено складів: ${warehouses.length}`);
       console.log(`Знайдено оприбуткувань: ${totalPostings}`);
       console.log(`Оброблено позицій товарів: ${processedProducts}`);
-      console.log(
-        `Час обробки: ${Math.round((Date.now() - syncStart) / 1000)} секунд`
-      );
 
       if (allPostingsData.length > 0) {
         console.log(
