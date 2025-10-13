@@ -2331,6 +2331,10 @@
             }
         }
 
+        // ========================================
+        // ПОЛНОСТЬЮ ЗАМЕНИТЕ функцию displaySeparatedProductHistory в index.html
+        // ========================================
+
         function displaySeparatedProductHistory(data, productTitle, warehouseTitle, filterWarehouseId = null) {
             console.log('🎬 displaySeparatedProductHistory:', {
                 productTitle,
@@ -2351,7 +2355,6 @@
             const allOperations = [];
 
             try {
-
                 // Оприбуткування
                 if (data.postings) {
                     console.log(`📦 Обробка ${data.postings.length} оприбуткувань`);
@@ -2372,21 +2375,45 @@
                             label: item.posting_label || '-',
                             user: item.created_by_name || '-',
                             warehouse: item.warehouse_title || warehouseTitle,
-                            warehouseId: warehouseId, // ИСПРАВЛЕНО
+                            warehouseId: warehouseId,
                             amount: item.amount || 0,
                             description: item.posting_description || '-',
                             delta: +item.amount
                         });
                     });
+                    console.log(`✅ Оприбуткування оброблено: ${data.postings.length} операцій додано`);
                 }
 
+                console.log('🔄 Переходимо до обробки переміщень...');
+
                 // Переміщення
+                console.log('🔍 Перевірка data.moves:', {
+                    exists: !!data.moves,
+                    isArray: Array.isArray(data.moves),
+                    length: data.moves?.length,
+                    firstItem: data.moves?.[0]
+                });
+
                 if (data.moves) {
-                    data.moves.forEach(item => {
+                    console.log(`📦 Обробка ${data.moves.length} переміщень`);
+                    data.moves.forEach((item, idx) => {
                         const date = new Date(item.move_created_at?.value || item.move_created_at);
 
-                        // Вихід зі складу
-                        if (item.source_warehouse_title === warehouseTitle) {
+                        if (idx === 0) {
+                            console.log('Перше переміщення (повна інформація):', {
+                                warehouse_id: item.warehouse_id,
+                                source_warehouse_title: item.source_warehouse_title,
+                                target_warehouse_title: item.target_warehouse_title,
+                                warehouseTitle_шукаємо: warehouseTitle,
+                                source_matches: item.source_warehouse_title === warehouseTitle,
+                                target_matches: item.target_warehouse_title === warehouseTitle
+                            });
+                        }
+
+                        // Вихід зі складу (якщо це склад-джерело)
+                        const isSourceMatch = item.source_warehouse_title === warehouseTitle;
+                        if (isSourceMatch) {
+                            console.log(`✅ Додаємо ВИХІД зі складу "${warehouseTitle}"`);
                             allOperations.push({
                                 date,
                                 type: 'move_out',
@@ -2395,15 +2422,19 @@
                                 label: item.move_label || '-',
                                 user: item.created_by_name || '-',
                                 warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
-                                warehouseId: item.warehouse_id,
+                                warehouseId: null,
+                                sourceWarehouseTitle: item.source_warehouse_title,
+                                targetWarehouseTitle: item.target_warehouse_title,
                                 amount: item.amount || 0,
                                 description: item.move_description || '-',
                                 delta: -item.amount
                             });
                         }
 
-                        // Вхід на склад
-                        if (item.target_warehouse_title === warehouseTitle) {
+                        // Вхід на склад (якщо це склад-призначення)
+                        const isTargetMatch = item.target_warehouse_title === warehouseTitle;
+                        if (isTargetMatch) {
+                            console.log(`✅ Додаємо ВХІД на склад "${warehouseTitle}"`);
                             allOperations.push({
                                 date,
                                 type: 'move_in',
@@ -2412,17 +2443,24 @@
                                 label: item.move_label || '-',
                                 user: item.created_by_name || '-',
                                 warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
-                                warehouseId: item.warehouse_id,
+                                warehouseId: null,
+                                sourceWarehouseTitle: item.source_warehouse_title,
+                                targetWarehouseTitle: item.target_warehouse_title,
                                 amount: item.amount || 0,
                                 description: item.move_description || '-',
                                 delta: +item.amount
                             });
+                        }
+
+                        if (!isSourceMatch && !isTargetMatch && idx === 0) {
+                            console.log(`❌ Переміщення НЕ стосується складу "${warehouseTitle}"`);
                         }
                     });
                 }
 
                 // Списання
                 if (data.outcomes) {
+                    console.log(`🗑️ Обробка ${data.outcomes.length} списань`);
                     data.outcomes.forEach(item => {
                         allOperations.push({
                             date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
@@ -2442,6 +2480,7 @@
 
                 // Продажі
                 if (data.sales) {
+                    console.log(`💰 Обробка ${data.sales.length} продажів`);
                     data.sales.forEach(item => {
                         allOperations.push({
                             date: new Date(item.sale_created_at?.value || item.sale_created_at),
@@ -2461,6 +2500,7 @@
 
                 // Goods-flow операції
                 if (data.data && Array.isArray(data.data)) {
+                    console.log(`🛒 Обробка ${data.data.length} goods-flow операцій`);
                     data.data.forEach(item => {
                         const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
 
@@ -2629,7 +2669,7 @@
 
                 document.body.insertAdjacentHTML('beforeend', historyHtml);
                 console.log('✅ Показано інформаційне повідомлення про відсутність операцій');
-                return; // Виходимо з функції
+                return;
             }
 
             // Генерація HTML для таблиці
