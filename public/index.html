@@ -2331,10 +2331,6 @@
             }
         }
 
-        // ========================================
-        // ПОЛНОСТЬЮ ЗАМЕНИТЕ функцию displaySeparatedProductHistory в index.html
-        // ========================================
-
         function displaySeparatedProductHistory(data, productTitle, warehouseTitle, filterWarehouseId = null) {
             console.log('🎬 displaySeparatedProductHistory:', {
                 productTitle,
@@ -2405,13 +2401,15 @@
                                 source_warehouse_title: item.source_warehouse_title,
                                 target_warehouse_title: item.target_warehouse_title,
                                 warehouseTitle_шукаємо: warehouseTitle,
-                                source_matches: item.source_warehouse_title === warehouseTitle,
-                                target_matches: item.target_warehouse_title === warehouseTitle
+                                source_includes: item.source_warehouse_title?.includes(warehouseTitle),
+                                target_includes: item.target_warehouse_title?.includes(warehouseTitle)
                             });
                         }
 
                         // Вихід зі складу (якщо це склад-джерело)
-                        const isSourceMatch = item.source_warehouse_title === warehouseTitle;
+                        // ВИПРАВЛЕНО: використовуємо includes() замість ===
+                        const isSourceMatch = item.source_warehouse_title &&
+                            item.source_warehouse_title.includes(warehouseTitle);
                         if (isSourceMatch) {
                             console.log(`✅ Додаємо ВИХІД зі складу "${warehouseTitle}"`);
                             allOperations.push({
@@ -2432,7 +2430,9 @@
                         }
 
                         // Вхід на склад (якщо це склад-призначення)
-                        const isTargetMatch = item.target_warehouse_title === warehouseTitle;
+                        // ВИПРАВЛЕНО: використовуємо includes() замість ===
+                        const isTargetMatch = item.target_warehouse_title &&
+                            item.target_warehouse_title.includes(warehouseTitle);
                         if (isTargetMatch) {
                             console.log(`✅ Додаємо ВХІД на склад "${warehouseTitle}"`);
                             allOperations.push({
@@ -2578,10 +2578,12 @@
                 });
 
                 filteredOperations = allOperations.filter(op => {
-                    // Для перемещений - проверяем source или target
+                    // Для перемещений - проверяем source или target (ВИПРАВЛЕНО: includes замість ===)
                     if (op.type === 'move_in' || op.type === 'move_out') {
-                        const matchSource = op.sourceWarehouseTitle === warehouseTitle;
-                        const matchTarget = op.targetWarehouseTitle === warehouseTitle;
+                        const matchSource = op.sourceWarehouseTitle &&
+                            op.sourceWarehouseTitle.includes(warehouseTitle);
+                        const matchTarget = op.targetWarehouseTitle &&
+                            op.targetWarehouseTitle.includes(warehouseTitle);
                         const match = matchSource || matchTarget;
 
                         if (!match) {
