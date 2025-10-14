@@ -3690,12 +3690,22 @@ class RemonlineMatrixSync {
     let totalOrders = 0;
 
     try {
-      // Отримуємо всі товари
+      const cookies = this.userCookies.get("shared_user");
+
+      if (!cookies) {
+        throw new Error(
+          "Cookies для goods-flow відсутні! Оновіть через адмін-панель."
+        );
+      }
+
+      // ✅ ВИПРАВЛЕНО: Отримуємо тільки товари з поточними остатками
       const productsQuery = `
-      SELECT DISTINCT product_id 
+      SELECT DISTINCT 
+        product_id,
+        title as product_title
       FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-      WHERE product_id IS NOT NULL
-      LIMIT 1000
+      WHERE product_id IS NOT NULL AND residue > 0
+      LIMIT 500
     `;
 
       const [products] = await this.bigquery.query({
@@ -3709,14 +3719,16 @@ class RemonlineMatrixSync {
       const startDate = new Date("2022-05-01").getTime();
       const endDate = Date.now();
 
-      const cookies = this.userCookies.get("shared_user");
-
-      if (!cookies) {
-        throw new Error("Cookies для goods-flow відсутні!");
-      }
+      let processedCount = 0;
 
       for (const product of products) {
         try {
+          console.log(
+            `📊 Обробка ${++processedCount}/${products.length}: ${
+              product.product_title
+            }`
+          );
+
           const flowItems = await this.fetchGoodsFlowForProduct(
             product.product_id,
             startDate,
@@ -3729,15 +3741,19 @@ class RemonlineMatrixSync {
             (item) => item.relation_type === 0 || item.relation_type === 7
           );
 
+          console.log(
+            `   ✅ Знайдено ${ordersAndReturns.length} замовлень/повернень`
+          );
+
           for (const item of ordersAndReturns) {
             allOrdersData.push({
-              order_id: item.id,
+              order_id: item.id || 0,
               relation_type: item.relation_type,
               relation_label: item.relation_label || "",
               created_at: new Date(item.created_at).toISOString(),
-              warehouse_id: item.warehouse_id || null,
+              warehouse_id: null, // ⚠️ goods-flow НЕ містить warehouse_id
               product_id: product.product_id,
-              product_title: item.product_title || "",
+              product_title: item.product_title || product.product_title,
               amount: item.amount || 0,
               comment: item.comment || "",
               sync_id: Date.now().toString(),
@@ -3753,19 +3769,25 @@ class RemonlineMatrixSync {
             `❌ Помилка товару ${product.product_id}:`,
             error.message
           );
+          // Продовжуємо обробку інших товарів
         }
       }
 
       console.log(`\n📊 === ПІДСУМОК ПО ЗАМОВЛЕННЯМ ===`);
+      console.log(`Оброблено товарів: ${processedCount}`);
       console.log(`Знайдено операцій: ${totalOrders}`);
 
       if (allOrdersData.length > 0) {
+        console.log(`💾 Збереження ${allOrdersData.length} записів...`);
         await this.saveOrdersToBigQuery(allOrdersData);
+      } else {
+        console.log("⚠️ Замовлень не знайдено");
       }
 
       return {
         success: true,
         totalOrders,
+        processedProducts: processedCount,
         duration: Date.now() - syncStart,
       };
     } catch (error) {
@@ -4033,29 +4055,36 @@ class RemonlineMatrixSync {
       const tableName = `${process.env.BIGQUERY_TABLE}_orders`;
       const table = dataset.table(tableName);
 
-      // Видаляємо старі дані
-      console.log("🗑️ Видалення старих замовлень...");
-      const deleteQuery = `
-      DELETE FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${tableName}\` 
-      WHERE TRUE
-    `;
-      await this.bigquery.createQueryJob({
-        query: deleteQuery,
-        location: "EU",
+      console.log(`📊 Підготовка ${data.length} записів замовлень...`);
+
+      // ✅ ВИКОРИСТОВУЄМО LOAD JOB (працює на Free Tier)
+      const [job] = await table.load(data, {
+        sourceFormat: "JSON",
+        writeDisposition: "WRITE_TRUNCATE", // Перезаписує таблицю
+        schema: {
+          fields: [
+            { name: "order_id", type: "INTEGER", mode: "REQUIRED" },
+            { name: "relation_type", type: "INTEGER", mode: "REQUIRED" },
+            { name: "relation_label", type: "STRING", mode: "NULLABLE" },
+            { name: "created_at", type: "TIMESTAMP", mode: "REQUIRED" },
+            { name: "warehouse_id", type: "INTEGER", mode: "NULLABLE" },
+            { name: "product_id", type: "INTEGER", mode: "REQUIRED" },
+            { name: "product_title", type: "STRING", mode: "REQUIRED" },
+            { name: "amount", type: "FLOAT", mode: "REQUIRED" },
+            { name: "comment", type: "STRING", mode: "NULLABLE" },
+            { name: "sync_id", type: "STRING", mode: "NULLABLE" },
+            { name: "updated_at", type: "TIMESTAMP", mode: "REQUIRED" },
+          ],
+        },
       });
 
-      // Вставляємо нові
-      console.log("📊 Вставка замовлень...");
-      const batchSize = 500;
-      for (let i = 0; i < data.length; i += batchSize) {
-        const batch = data.slice(i, i + batchSize);
-        await table.insert(batch);
-        console.log(`📊 Вставлено ${i + batch.length}/${data.length}`);
-      }
+      console.log(`⏳ Очікування завершення load job...`);
+      await job.promise();
 
-      console.log("✅ Замовлення збережено");
+      console.log(`✅ Успішно завантажено ${data.length} замовлень`);
     } catch (error) {
-      console.error("❌ Помилка збереження:", error.message);
+      console.error("❌ Помилка збереження замовлень:", error.message);
+      throw error;
     }
   }
 
