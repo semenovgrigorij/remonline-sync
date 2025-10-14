@@ -2581,6 +2581,7 @@
                             user: '-',
                             warehouse: warehouseTitle,
                             warehouseId: null,
+                            warehouseTitle: warehouseTitle,
                             amount: item.amount || 0,
                             description: item.comment || '-',
                             delta: delta
@@ -2640,63 +2641,32 @@
             let filteredOperations = allOperations;
 
             if (filterWarehouseId) {
-                console.log('🔍 Начинаем фильтрацию по складу:', {
-                    filterWarehouseId,
-                    warehouseTitle,
-                    totalOperations: allOperations.length
-                });
-
-                // Отладка первых 3 операций ДО фильтрации
-                allOperations.slice(0, 3).forEach((op, i) => {
-                    console.log(`Операция ${i}:`, {
-                        type: op.type,
-                        warehouseId: op.warehouseId,
-                        warehouse: op.warehouse,
-                        amount: op.amount
-                    });
-                });
+                console.log('🔍 Починаємо фільтрацію...');
 
                 filteredOperations = allOperations.filter(op => {
-                    // Для перемещений - проверяем source или target 
+                    // Для перемещений
                     if (op.type === 'move_in' || op.type === 'move_out') {
                         const matchSource = op.sourceWarehouseTitle &&
                             op.sourceWarehouseTitle.includes(warehouseTitle);
                         const matchTarget = op.targetWarehouseTitle &&
                             op.targetWarehouseTitle.includes(warehouseTitle);
-                        const match = matchSource || matchTarget;
-
-                        if (!match) {
-                            console.log(`❌ Отфильтровано перемещение: ${op.sourceWarehouseTitle} → ${op.targetWarehouseTitle}, не касается ${warehouseTitle}`);
-                        }
-                        return match;
+                        return matchSource || matchTarget;
                     }
 
-                    // Для операций с warehouseId - проверяем его
+                    // Для операций с warehouseId
                     if (op.warehouseId !== null && op.warehouseId !== undefined) {
-                        const match = op.warehouseId == filterWarehouseId;
-                        if (!match) {
-                            console.log(`❌ Отфильтровано: warehouseId ${op.warehouseId} != ${filterWarehouseId}`);
-                        }
-                        return match;
+                        return op.warehouseId == filterWarehouseId;
                     }
 
-                    // Для операций без warehouseId (goods-flow, outcomes) - проверяем по названию склада
+                    // ✅ ДОДАНО: Для goods-flow без warehouseId - перевіряємо по назві
+                    if (op.type && op.type.startsWith('goods_flow_')) {
+                        // Goods-flow завжди для ПОТОЧНОГО складу
+                        return true; // ✅ Залишаємо всі goods-flow
+                    }
+
+                    // Для інших операцій - по назві складу
                     const matchByName = op.warehouse && op.warehouse.includes(warehouseTitle);
-                    if (!matchByName) {
-                        console.log(`❌ Отфильтровано по названию: "${op.warehouse}" не содержит "${warehouseTitle}"`);
-                    }
                     return matchByName;
-                });
-
-                console.log(`🔍 Фильтрация завершена: ${allOperations.length} → ${filteredOperations.length} операций`);
-
-                // Показываем первые 3 после фильтрации
-                filteredOperations.slice(0, 3).forEach((op, i) => {
-                    console.log(`✅ Осталась операция ${i}:`, {
-                        type: op.type,
-                        date: op.date.toISOString(),
-                        amount: op.amount
-                    });
                 });
             }
 

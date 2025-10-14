@@ -2231,6 +2231,12 @@ class RemonlineMatrixSync {
         const result = await response.json();
         const items = result.data || [];
 
+        if (items.length > 0) {
+          console.log(
+            "📋 Перший goods-flow запис:",
+            JSON.stringify(items[0], null, 2)
+          );
+        }
         console.log(`   ✅ Отримано ${items.length} записів`);
 
         if (items.length === 0) break;
