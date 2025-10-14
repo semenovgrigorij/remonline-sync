@@ -2606,6 +2606,36 @@
                 return;
             }
 
+            /////////////////////////
+            console.log('📊 === ДІАГНОСТИКА ПЕРЕД ФІЛЬТРАЦІЄЮ ===');
+            console.log(`Всього операцій зібрано: ${allOperations.length}`);
+            console.log(`filterWarehouseId: ${filterWarehouseId}`);
+            console.log(`warehouseTitle: ${warehouseTitle}`);
+
+            // Статистика по warehouse_id
+            const warehouseStats = {};
+            allOperations.forEach(op => {
+                const wid = op.warehouseId || 'null';
+                warehouseStats[wid] = (warehouseStats[wid] || 0) + 1;
+            });
+            console.log('📊 Розподіл по warehouse_id:', warehouseStats);
+
+            // Статистика по типах операцій
+            const typeStats = {};
+            allOperations.forEach(op => {
+                typeStats[op.type] = (typeStats[op.type] || 0) + 1;
+            });
+            console.log('📊 Розподіл по типах:', typeStats);
+
+            // Перші 5 операцій для перевірки
+            console.log('📋 Перші 5 операцій:', allOperations.slice(0, 5).map(op => ({
+                type: op.type,
+                warehouse: op.warehouse,
+                warehouseId: op.warehouseId,
+                amount: op.amount
+            })));
+            ////////////////////
+
             // КРИТИЧНО: Фильтруем по складу ЕСЛИ передан filterWarehouseId
             let filteredOperations = allOperations;
 
