@@ -2703,7 +2703,6 @@
                     <h3 style="margin: 0 0 5px 0; color: #374151;">Історія операцій: ${productTitle}</h3>
                     <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
                         Склад: ${warehouseTitle} • Операцій: ${filteredOperations.length}
-                        ${filterWarehouseId ? `<button onclick="showFullProductHistory('${encodeURIComponent(productTitle)}')" style="margin-left: 15px; padding: 4px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">📊 Вся історія товару</button>` : ''}
                     </p>
                     ${data.data && data.data.length === 0 ? `
                     <div style="margin-top: 10px; padding: 8px 12px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
@@ -2733,7 +2732,6 @@
                         <h3 style="margin: 0 0 5px 0; color: #374151;">Історія операцій: ${productTitle}</h3>
                         <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
                             Склад: ${warehouseTitle} • Операцій: ${filteredOperations.length}
-                            ${filterWarehouseId ? `<button onclick="showFullProductHistory('${encodeURIComponent(productTitle)}')" style="margin-left: 15px; padding: 4px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">📊 Вся історія товару</button>` : ''}
                         </p>
                     </div>
                     <button onclick="closeHistoryModal()" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;">✕ Закрити</button>

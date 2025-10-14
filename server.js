@@ -1577,7 +1577,7 @@ class RemonlineMatrixSync {
         const enrichedItems = flowItems.map((item) => ({
           ...item,
           type_info: typeMapping[item.relation_type] || {
-            name: `Невідомий тип ${item.relation_type}`,
+            name: `Відшкодування`,
             color: "#6b7280",
           },
         }));
