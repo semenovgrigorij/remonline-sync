@@ -1451,10 +1451,9 @@
                     data: goodsFlowResult.success ? goodsFlowResult.data : []
                 };
 
-                // Показуємо історію
+                // ✅ КРИТИЧНО: Передаємо warehouseId для фільтрації!
                 displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
 
-                // Показуємо попередження якщо потрібно
                 if (showWarning) {
                     setTimeout(() => {
                         if (confirm(warningMessage + '\n\nВідкрити інструкцію зараз?')) {
@@ -2457,7 +2456,6 @@
                         }
 
                         // Вихід зі складу (якщо це склад-джерело)
-                        // ВИПРАВЛЕНО: використовуємо includes() замість ===
                         const isSourceMatch = item.source_warehouse_title &&
                             item.source_warehouse_title.includes(warehouseTitle);
                         if (isSourceMatch) {
@@ -2629,7 +2627,7 @@
                 });
 
                 filteredOperations = allOperations.filter(op => {
-                    // Для перемещений - проверяем source или target (ВИПРАВЛЕНО: includes замість ===)
+                    // Для перемещений - проверяем source или target 
                     if (op.type === 'move_in' || op.type === 'move_out') {
                         const matchSource = op.sourceWarehouseTitle &&
                             op.sourceWarehouseTitle.includes(warehouseTitle);
