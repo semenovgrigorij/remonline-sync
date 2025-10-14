@@ -2529,6 +2529,14 @@
                 if (data.outcomes) {
                     console.log(`🗑️ Обробка ${data.outcomes.length} списань`);
                     data.outcomes.forEach(item => {
+                        // ✅ ВИПРАВЛЕНО: додаємо warehouseId
+                        let outcomeWarehouse = item.source_warehouse_title || warehouseTitle;
+
+                        // Очищаємо від префіксу якщо є
+                        if (outcomeWarehouse.includes(' > ')) {
+                            outcomeWarehouse = outcomeWarehouse.split(' > ')[1].trim();
+                        }
+
                         allOperations.push({
                             date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
                             type: 'outcome',
@@ -2536,8 +2544,8 @@
                             typeColor: '#ef4444',
                             label: item.outcome_label || '-',
                             user: item.created_by_name || '-',
-                            warehouse: item.source_warehouse_title || warehouseTitle,
-                            warehouseId: null,
+                            warehouse: outcomeWarehouse,
+                            warehouseId: item.warehouse_id || null, // ✅ Якщо є в даних
                             amount: item.amount || 0,
                             description: item.outcome_description || '-',
                             delta: -item.amount
@@ -2667,28 +2675,63 @@
                     totalOperations: allOperations.length
                 });
 
+                // Логіруємо першу операцію для діагностики
+                if (allOperations.length > 0) {
+                    console.log('📋 Перша операція перед фільтрацією:', {
+                        type: allOperations[0].type,
+                        warehouse: allOperations[0].warehouse,
+                        warehouseId: allOperations[0].warehouseId
+                    });
+                }
+
                 filteredOperations = allOperations.filter(op => {
-                    // Для перемещений - ВОНИ ВЖЕ ВІДФІЛЬТРОВАНІ при зборі!
-                    // Якщо додали move_in або move_out - значить вони стосуються нашого складу
+                    // 1. Переміщення - ВЖЕ відфільтровані при зборі
                     if (op.type === 'move_in' || op.type === 'move_out') {
-                        return true; // ✅ Залишаємо ВСІ переміщення (вони вже відфільтровані)
+                        console.log(`✅ Залишаємо переміщення: ${op.type}`);
+                        return true;
                     }
 
-                    // Для операций з warehouseId
+                    // 2. Операції з warehouseId - перевіряємо ID
                     if (op.warehouseId !== null && op.warehouseId !== undefined) {
-                        return op.warehouseId == filterWarehouseId;
+                        const match = op.warehouseId == filterWarehouseId;
+                        if (match) {
+                            console.log(`✅ Залишаємо операцію з warehouseId: ${op.type}`);
+                        } else {
+                            console.log(`❌ Фільтруємо: warehouseId ${op.warehouseId} != ${filterWarehouseId}`);
+                        }
+                        return match;
                     }
 
-                    // Для goods-flow та інших без warehouseId
+                    // 3. Goods-flow - ЗАВЖДИ для поточного складу (API викликається для конкретного складу)
                     if (op.type && op.type.startsWith('goods_flow_')) {
-                        return true; // ✅ Goods-flow завжди для поточного складу
+                        console.log(`✅ Залишаємо goods-flow: ${op.type}`);
+                        return true;
                     }
 
-                    // Для outcomes та інших - по назві складу
-                    return op.warehouse && op.warehouse.includes(warehouseTitle);
+                    // 4. Outcomes та інші без warehouseId - перевіряємо по НАЗВІ складу
+                    if (op.warehouse) {
+                        const match = op.warehouse.includes(warehouseTitle);
+                        if (match) {
+                            console.log(`✅ Залишаємо операцію по назві: ${op.type}, склад: ${op.warehouse}`);
+                        } else {
+                            console.log(`❌ Фільтруємо по назві: ${op.warehouse} не містить ${warehouseTitle}`);
+                        }
+                        return match;
+                    }
+
+                    // 5. Якщо немає жодних ознак - НЕ показуємо
+                    console.log(`❌ Фільтруємо невідому операцію: ${op.type}`);
+                    return false;
                 });
 
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
+
+                // Показуємо що залишилось
+                const remainingTypes = {};
+                filteredOperations.forEach(op => {
+                    remainingTypes[op.type] = (remainingTypes[op.type] || 0) + 1;
+                });
+                console.log('📊 Залишилось операцій по типах:', remainingTypes);
             }
 
             // Сортування та розрахунок балансу
