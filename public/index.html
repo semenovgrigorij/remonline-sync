@@ -943,6 +943,8 @@
     </div>
 
     <script>
+        console.log('🔄 JavaScript версія: 2.0 - з переміщеннями');
+
         let statusInterval;
         let matrixData = {};
         let currentView = 'matrix'; // 'matrix', 'warehouse', 'product', 'search', 'selected_warehouse'
@@ -2439,27 +2441,41 @@
                     firstItem: data.moves?.[0]
                 });
 
+                // Переміщення
                 if (data.moves) {
-                    console.log(`📦 Обробка ${data.moves.length} переміщень`);
+                    console.log(`🔄 Обробка ${data.moves.length} переміщень`);
                     data.moves.forEach((item, idx) => {
                         const date = new Date(item.move_created_at?.value || item.move_created_at);
 
+                        // ✅ ВИПРАВЛЕНО: Витягуємо реальну назву складу (після ' > ')
+                        let sourceTitle = item.source_warehouse_title || '';
+                        let targetTitle = item.target_warehouse_title || '';
+
+                        // Якщо є роздільник ' > ', беремо частину після нього
+                        if (sourceTitle.includes(' > ')) {
+                            sourceTitle = sourceTitle.split(' > ')[1].trim();
+                        }
+                        if (targetTitle.includes(' > ')) {
+                            targetTitle = targetTitle.split(' > ')[1].trim();
+                        }
+
                         if (idx === 0) {
-                            console.log('Перше переміщення (повна інформація):', {
-                                warehouse_id: item.warehouse_id,
-                                source_warehouse_title: item.source_warehouse_title,
-                                target_warehouse_title: item.target_warehouse_title,
+                            console.log('Перше переміщення (після обробки):', {
+                                original_source: item.source_warehouse_title,
+                                cleaned_source: sourceTitle,
+                                original_target: item.target_warehouse_title,
+                                cleaned_target: targetTitle,
                                 warehouseTitle_шукаємо: warehouseTitle,
-                                source_includes: item.source_warehouse_title?.includes(warehouseTitle),
-                                target_includes: item.target_warehouse_title?.includes(warehouseTitle)
+                                source_match: sourceTitle.includes(warehouseTitle),
+                                target_match: targetTitle.includes(warehouseTitle)
                             });
                         }
 
-                        // Вихід зі складу (якщо це склад-джерело)
-                        const isSourceMatch = item.source_warehouse_title &&
-                            item.source_warehouse_title.includes(warehouseTitle);
+                        // Вихід зі складу (перевіряємо по ОЧИЩЕНІЙ назві)
+                        const isSourceMatch = sourceTitle.includes(warehouseTitle);
+
                         if (isSourceMatch) {
-                            console.log(`✅ Додаємо ВИХІД зі складу "${warehouseTitle}"`);
+                            console.log(`✅ Додаємо ВИХІД зі складу "${sourceTitle}"`);
                             allOperations.push({
                                 date,
                                 type: 'move_out',
@@ -2467,21 +2483,21 @@
                                 typeColor: '#f59e0b',
                                 label: item.move_label || '-',
                                 user: item.created_by_name || '-',
-                                warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
-                                warehouseId: item.source_wh_id,
-                                sourceWarehouseTitle: item.source_warehouse_title,
-                                targetWarehouseTitle: item.target_warehouse_title,
+                                warehouse: `${sourceTitle} → ${targetTitle}`,
+                                warehouseId: null, // Поки що null, потім додамо через SQL
+                                sourceWarehouseTitle: sourceTitle,
+                                targetWarehouseTitle: targetTitle,
                                 amount: item.amount || 0,
                                 description: item.move_description || '-',
                                 delta: -item.amount
                             });
                         }
 
-                        // Вхід на склад (якщо це склад-призначення)
-                        const isTargetMatch = item.target_warehouse_title &&
-                            item.target_warehouse_title.includes(warehouseTitle);
+                        // Вхід на склад (перевіряємо по ОЧИЩЕНІЙ назві)
+                        const isTargetMatch = targetTitle.includes(warehouseTitle);
+
                         if (isTargetMatch) {
-                            console.log(`✅ Додаємо ВХІД на склад "${warehouseTitle}"`);
+                            console.log(`✅ Додаємо ВХІД на склад "${targetTitle}"`);
                             allOperations.push({
                                 date,
                                 type: 'move_in',
@@ -2489,10 +2505,10 @@
                                 typeColor: '#3b82f6',
                                 label: item.move_label || '-',
                                 user: item.created_by_name || '-',
-                                warehouse: `${item.source_warehouse_title} → ${item.target_warehouse_title}`,
-                                warehouseId: item.target_wh_id,
-                                sourceWarehouseTitle: item.source_warehouse_title,
-                                targetWarehouseTitle: item.target_warehouse_title,
+                                warehouse: `${sourceTitle} → ${targetTitle}`,
+                                warehouseId: filterWarehouseId, // ✅ Використовуємо filterWarehouseId для входу
+                                sourceWarehouseTitle: sourceTitle,
+                                targetWarehouseTitle: targetTitle,
                                 amount: item.amount || 0,
                                 description: item.move_description || '-',
                                 delta: +item.amount
@@ -2503,7 +2519,11 @@
                             console.log(`❌ Переміщення НЕ стосується складу "${warehouseTitle}"`);
                         }
                     });
+
+                    console.log(`✅ Переміщення оброблено`);
                 }
+
+                console.log(`✅ Переміщення оброблено`);
 
                 // Списання
                 if (data.outcomes) {
@@ -2641,33 +2661,34 @@
             let filteredOperations = allOperations;
 
             if (filterWarehouseId) {
-                console.log('🔍 Починаємо фільтрацію...');
+                console.log('🔍 Починаємо фільтрацію по складу:', {
+                    filterWarehouseId,
+                    warehouseTitle,
+                    totalOperations: allOperations.length
+                });
 
                 filteredOperations = allOperations.filter(op => {
-                    // Для перемещений
+                    // Для перемещений - ВОНИ ВЖЕ ВІДФІЛЬТРОВАНІ при зборі!
+                    // Якщо додали move_in або move_out - значить вони стосуються нашого складу
                     if (op.type === 'move_in' || op.type === 'move_out') {
-                        const matchSource = op.sourceWarehouseTitle &&
-                            op.sourceWarehouseTitle.includes(warehouseTitle);
-                        const matchTarget = op.targetWarehouseTitle &&
-                            op.targetWarehouseTitle.includes(warehouseTitle);
-                        return matchSource || matchTarget;
+                        return true; // ✅ Залишаємо ВСІ переміщення (вони вже відфільтровані)
                     }
 
-                    // Для операций с warehouseId
+                    // Для операций з warehouseId
                     if (op.warehouseId !== null && op.warehouseId !== undefined) {
                         return op.warehouseId == filterWarehouseId;
                     }
 
-                    // ✅ ДОДАНО: Для goods-flow без warehouseId - перевіряємо по назві
+                    // Для goods-flow та інших без warehouseId
                     if (op.type && op.type.startsWith('goods_flow_')) {
-                        // Goods-flow завжди для ПОТОЧНОГО складу
-                        return true; // ✅ Залишаємо всі goods-flow
+                        return true; // ✅ Goods-flow завжди для поточного складу
                     }
 
-                    // Для інших операцій - по назві складу
-                    const matchByName = op.warehouse && op.warehouse.includes(warehouseTitle);
-                    return matchByName;
+                    // Для outcomes та інших - по назві складу
+                    return op.warehouse && op.warehouse.includes(warehouseTitle);
                 });
+
+                console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
             }
 
             // Сортування та розрахунок балансу
