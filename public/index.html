@@ -2414,11 +2414,11 @@
                         typeColor: '#059669',
                         label: item.posting_label || '-',
                         user: item.created_by_name || '-',
-                        warehouse: item.warehouse_title || warehouseTitle,
+                        counterparty: item.supplier_name || '-',
                         warehouseId: item.warehouse_id || null,
                         amount: item.amount || 0,
                         description: item.posting_description || '-',
-                        delta: +item.amount
+                        delta: +(item.amount || 0)
                     });
                 });
             }
@@ -2459,7 +2459,7 @@
                             typeColor: '#f59e0b',
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
-                            warehouse: `${sourceTitle} → ${targetTitle}`,
+                            counterparty: targetTitle,
                             warehouseId: null,
                             sourceWarehouseTitle: sourceTitle,
                             targetWarehouseTitle: targetTitle,
@@ -2478,7 +2478,7 @@
                             typeColor: '#3b82f6',
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
-                            warehouse: `${sourceTitle} → ${targetTitle}`,
+                            counterparty: sourceTitle,
                             warehouseId: filterWarehouseId,
                             sourceWarehouseTitle: sourceTitle,
                             targetWarehouseTitle: targetTitle,
@@ -2507,7 +2507,7 @@
                         typeColor: '#ef4444',
                         label: item.outcome_label || '-',
                         user: item.created_by_name || '-',
-                        warehouse: outcomeWarehouse,
+                        counterparty: '-',
                         warehouseId: item.warehouse_id || null,
                         amount: item.amount || 0,
                         description: item.outcome_description || '-',
@@ -2527,7 +2527,7 @@
                         typeColor: '#8b5cf6',
                         label: item.sale_label || '-',
                         user: item.created_by_name || '-',
-                        warehouse: warehouseTitle,
+                        counterparty: '-',
                         warehouseId: item.warehouse_id || null,
                         amount: item.amount || 0,
                         description: item.sale_description || '-',
@@ -2539,7 +2539,7 @@
             // Goods-flow (замовлення та повернення)
             if (data.data && Array.isArray(data.data)) {
                 console.log(`🛒 Обробка ${data.data.length} goods-flow операцій`);
-                data.data.forEach(item => {
+                data.data.forEach((item, idx) => {
                     const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
 
                     let delta = 0;
@@ -2573,14 +2573,23 @@
                             typeName = typeInfo.name || 'Невідомо';
                     }
 
+                    if (idx === 0) {
+                        console.log('📋 Перший goods-flow запис:', {
+                            employee_id: item.employee_id,
+                            relation_id_label: item.relation_id_label,
+                            amount: item.amount,
+                            delta: delta
+                        });
+                    }
+
                     allOperations.push({
                         date: new Date(item.created_at?.value || item.created_at),
                         type: `goods_flow_${item.relation_type}`,
                         typeName: `${icon} ${typeName}`,
                         typeColor: typeInfo.color || '#6b7280',
-                        label: item.relation_label || item.id || '-',
-                        user: item.client_name || item.manager_name || '-',
-                        warehouse: warehouseTitle,
+                        label: item.relation_id_label || item.relation_label || item.id || '-',
+                        user: item.employee_id || '-',
+                        counterparty: '-',
                         warehouseId: null,
                         amount: Math.abs(item.amount || 0),
                         description: item.comment || item.relation_label || '-',
@@ -2659,8 +2668,9 @@
                     minute: '2-digit'
                 });
 
-                const deltaClass = op.delta > 0 ? 'positive' : op.delta < 0 ? 'negative' : 'neutral';
-                const deltaSign = op.delta > 0 ? '+' : '';
+                // Визначаємо + або - кількість
+                const plusAmount = op.delta > 0 ? op.amount : '';
+                const minusAmount = op.delta < 0 ? op.amount : '';
 
                 // Додаємо рядок ЗВЕРХУ
                 tableRows = `
@@ -2673,13 +2683,9 @@
                 </td>
                 <td style="padding: 12px 8px;">${op.label}</td>
                 <td style="padding: 12px 8px;">${op.user}</td>
-                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.warehouse}</td>
-                <td style="padding: 12px 8px; text-align: right;">${op.amount}</td>
-                <td style="padding: 12px 8px; text-align: right;">
-                    <span class="${deltaClass}" style="font-weight: 600;">
-                        ${deltaSign}${op.delta}
-                    </span>
-                </td>
+                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.counterparty}</td>
+                <td style="padding: 12px 8px; text-align: right; color: #059669; font-weight: 600;">${plusAmount}</td>
+                <td style="padding: 12px 8px; text-align: right; color: #dc2626; font-weight: 600;">${minusAmount}</td>
                 <td style="padding: 12px 8px; text-align: right; font-weight: 600;">${runningBalance}</td>
                 <td style="padding: 12px 8px; font-size: 0.85rem; color: #6b7280;">${op.description}</td>
             </tr>
@@ -2732,9 +2738,9 @@
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Тип операції</th>
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Документ</th>
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Хто створив</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Склад</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Кількість</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Зміна</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Контрагент</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #059669;">+</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #dc2626;">−</th>
                                 <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Залишок</th>
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Опис</th>
                             </tr>
