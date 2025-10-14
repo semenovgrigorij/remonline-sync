@@ -1282,7 +1282,7 @@ class RemonlineMatrixSync {
             });
           }
 
-          // ✅ ЗАПИТ ОПРИБУТКУВАНЬ (з фільтрацією)
+          // ОПРИБУТКУВАННЯ
           console.log("📦 Запит оприбуткувань...");
           const postingsQuery = `
         SELECT DISTINCT
@@ -1313,7 +1313,57 @@ class RemonlineMatrixSync {
 
           console.log(`✅ Оприбуткувань: ${postingsData.length}`);
 
-          // ✅ ЗАПИТ ПРОДАЖІВ (з фільтрацією)
+          // ✅ ПЕРЕМІЩЕННЯ - БЕЗ ФІЛЬТРАЦІЇ (НОВИЙ КОД!)
+          console.log("🔄 Запит переміщень...");
+          const movesQuery = `
+        SELECT DISTINCT
+            m.move_id,
+            m.move_label,
+            m.move_created_at,
+            m.created_by_name,
+            m.source_warehouse_title,
+            m.target_warehouse_title,
+            m.amount,
+            m.move_description,
+            m.warehouse_id
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+        WHERE m.product_id = @product_id
+        ORDER BY m.move_created_at DESC
+      `;
+
+          const [movesData] = await this.bigquery.query({
+            query: movesQuery,
+            location: "EU",
+            params: { product_id: productId },
+          });
+
+          console.log(`✅ Переміщень (всього): ${movesData.length}`);
+
+          // СПИСАННЯ
+          console.log("🗑️ Запит списань...");
+          const outcomesQuery = `
+        SELECT DISTINCT
+            o.outcome_created_at,
+            o.outcome_label,
+            o.created_by_name,
+            o.source_warehouse_title,
+            o.amount,
+            o.outcome_description,
+            o.outcome_cost
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
+        WHERE o.product_id = @product_id
+        ORDER BY o.outcome_created_at DESC
+      `;
+
+          const [outcomesData] = await this.bigquery.query({
+            query: outcomesQuery,
+            location: "EU",
+            params: { product_id: productId },
+          });
+
+          console.log(`✅ Списань (всього): ${outcomesData.length}`);
+
+          // ПРОДАЖІ
           console.log("💰 Запит продажів...");
           const salesQuery = `
         SELECT DISTINCT
@@ -1343,15 +1393,11 @@ class RemonlineMatrixSync {
 
           console.log(`✅ Продажів: ${salesData.length}`);
 
-          // Переміщення і списання (знаємо що 0)
-          const movesData = [];
-          const outcomesData = [];
-
           console.log("\n📊 === ПІДСУМОК API ===");
           console.log(`Postings: ${postingsData.length}`);
-          console.log(`Sales: ${salesData.length}`);
           console.log(`Moves: ${movesData.length}`);
           console.log(`Outcomes: ${outcomesData.length}`);
+          console.log(`Sales: ${salesData.length}`);
 
           res.json({
             success: true,
