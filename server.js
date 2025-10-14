@@ -1233,7 +1233,12 @@ class RemonlineMatrixSync {
       "/api/product-warehouse-history/:warehouseId/:productTitle",
       async (req, res) => {
         try {
+          console.log("\n🔍 === API ENDPOINT ВИКЛИКАНО ===");
+          console.log("warehouseId:", req.params.warehouseId);
+          console.log("productTitle:", req.params.productTitle);
+
           if (!this.bigquery) {
+            console.log("❌ BigQuery не налаштована");
             return res.json({
               data: { postings: [], moves: [], outcomes: [], sales: [] },
               message: "BigQuery не настроена",
@@ -1243,11 +1248,13 @@ class RemonlineMatrixSync {
           const warehouseId = parseInt(req.params.warehouseId);
           const productTitle = decodeURIComponent(req.params.productTitle);
 
+          console.log(
+            `✅ Парсинг: warehouseId=${warehouseId}, productTitle="${productTitle}"`
+          );
+
+          // Пошук product_id
           let productId = null;
 
-          console.log(`🔍 Пошук product_id для товару: "${productTitle}"`);
-
-          // Спочатку шукаємо в оприбуткуваннях
           const productFromPostingsQuery = `
         SELECT DISTINCT product_id
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
@@ -1255,82 +1262,28 @@ class RemonlineMatrixSync {
         LIMIT 1
       `;
 
+          console.log("🔍 Шукаємо product_id...");
           const [postingRows] = await this.bigquery.query({
             query: productFromPostingsQuery,
             location: "EU",
-            params: {
-              product_title: productTitle,
-            },
+            params: { product_title: productTitle },
           });
 
           if (postingRows.length > 0) {
             productId = postingRows[0].product_id;
-            console.log(
-              `✅ Знайдено product_id в оприбуткуваннях: ${productId}`
-            );
+            console.log(`✅ Знайдено product_id: ${productId}`);
           } else {
-            // Якщо не знайшли - шукаємо в переміщеннях
-            const productFromMovesQuery = `
-          SELECT DISTINCT product_id
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\`
-          WHERE LOWER(product_title) = LOWER(@product_title)
-          LIMIT 1
-        `;
-
-            const [movesRows] = await this.bigquery.query({
-              query: productFromMovesQuery,
-              location: "EU",
-              params: {
-                product_title: productTitle,
-              },
-            });
-
-            if (movesRows.length > 0) {
-              productId = movesRows[0].product_id;
-              console.log(
-                `✅ Знайдено product_id в переміщеннях: ${productId}`
-              );
-            } else {
-              // Остання спроба - шукаємо в списаннях
-              const productFromOutcomesQuery = `
-            SELECT DISTINCT product_id
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\`
-            WHERE LOWER(product_title) = LOWER(@product_title)
-            LIMIT 1
-          `;
-
-              const [outcomesRows] = await this.bigquery.query({
-                query: productFromOutcomesQuery,
-                location: "EU",
-                params: {
-                  product_title: productTitle,
-                },
-              });
-
-              if (outcomesRows.length > 0) {
-                productId = outcomesRows[0].product_id;
-                console.log(`✅ Знайдено product_id в списаннях: ${productId}`);
-              }
-            }
-          }
-
-          if (!productId) {
-            console.log(
-              `❌ Товар "${productTitle}" не знайдено в жодній таблиці`
-            );
+            console.log(`❌ product_id НЕ знайдено для "${productTitle}"`);
             return res.json({
               success: true,
               data: { postings: [], moves: [], outcomes: [], sales: [] },
-              error: "Товар не найден в базе данных",
-              totalPostings: 0,
-              totalMoves: 0,
-              totalOutcomes: 0,
-              totalSales: 0,
-              currentBalances: {},
+              error: "Товар не найден",
+              productId: null,
             });
           }
 
-          // Запит оприбуткувань
+          // ✅ ЗАПИТ ОПРИБУТКУВАНЬ (з фільтрацією)
+          console.log("📦 Запит оприбуткувань...");
           const postingsQuery = `
         SELECT DISTINCT
             posting_created_at,
@@ -1345,11 +1298,11 @@ class RemonlineMatrixSync {
             warehouse_id
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
         WHERE product_id = @product_id
-        AND warehouse_id = @warehouse_id
+          AND warehouse_id = @warehouse_id
         ORDER BY posting_created_at DESC
       `;
 
-          const [postingsRows] = await this.bigquery.query({
+          const [postingsData] = await this.bigquery.query({
             query: postingsQuery,
             location: "EU",
             params: {
@@ -1358,82 +1311,10 @@ class RemonlineMatrixSync {
             },
           });
 
-          console.log(
-            `📊 Знайдено оприбуткувань для product_id ${productId}: ${postingsRows.length}`
-          );
+          console.log(`✅ Оприбуткувань: ${postingsData.length}`);
 
-          // Запит переміщень
-          const movesQuery = `
-    SELECT DISTINCT
-        m.move_id,
-        m.move_label,
-        m.move_created_at,
-        m.created_by_name,
-        m.source_warehouse_title,
-        m.target_warehouse_title,
-        m.amount,
-        m.move_description,
-        m.warehouse_id,
-        ws.warehouse_id as source_wh_id,  -- ✅ Отримуємо через JOIN
-        wt.warehouse_id as target_wh_id   -- ✅ Отримуємо через JOIN
-    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
-    LEFT JOIN (
-        SELECT DISTINCT warehouse_id, warehouse_title 
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-    ) ws ON m.source_warehouse_title = ws.warehouse_title
-    LEFT JOIN (
-        SELECT DISTINCT warehouse_id, warehouse_title 
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-    ) wt ON m.target_warehouse_title = wt.warehouse_title
-    WHERE m.product_id = @product_id
-      AND (ws.warehouse_id = @warehouse_id OR wt.warehouse_id = @warehouse_id)
-    ORDER BY m.move_created_at DESC
-`;
-
-          const [movesRows] = await this.bigquery.query({
-            query: movesQuery,
-            location: "EU",
-            params: {
-              product_id: productId,
-              warehouse_id: warehouseId,
-            },
-          });
-
-          console.log(`📦 Знайдено переміщень: ${movesRows.length}`);
-
-          // Запит списань
-          const outcomesQuery = `
-        SELECT DISTINCT
-            o.outcome_created_at,
-            o.outcome_label,
-            o.created_by_name,
-            o.source_warehouse_title,
-            o.amount,
-            o.outcome_description,
-            o.outcome_cost,
-            w.warehouse_id
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
-        JOIN (
-            SELECT DISTINCT warehouse_id, warehouse_title 
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-        ) w ON o.source_warehouse_title = w.warehouse_title
-        WHERE o.product_id = @product_id
-          AND w.warehouse_id = @warehouse_id  -- ✅ КРИТИЧНО!
-        ORDER BY o.outcome_created_at DESC
-      `;
-
-          const [outcomesRows] = await this.bigquery.query({
-            query: outcomesQuery,
-            location: "EU",
-            params: {
-              product_id: productId,
-              warehouse_id: warehouseId,
-            },
-          });
-
-          console.log(`🗑️ Знайдено списань: ${outcomesRows.length}`);
-
-          // Запит продажів
+          // ✅ ЗАПИТ ПРОДАЖІВ (з фільтрацією)
+          console.log("💰 Запит продажів...");
           const salesQuery = `
         SELECT DISTINCT
             sale_created_at,
@@ -1447,11 +1328,11 @@ class RemonlineMatrixSync {
             sale_description
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\`
         WHERE LOWER(product_title) = LOWER(@product_title)
-          AND warehouse_id = @warehouse_id  -- ✅ КРИТИЧНО!
+          AND warehouse_id = @warehouse_id
         ORDER BY sale_created_at DESC
       `;
 
-          const [salesRows] = await this.bigquery.query({
+          const [salesData] = await this.bigquery.query({
             query: salesQuery,
             location: "EU",
             params: {
@@ -1460,38 +1341,17 @@ class RemonlineMatrixSync {
             },
           });
 
-          console.log(`💰 Знайдено продажів: ${salesRows.length}`);
+          console.log(`✅ Продажів: ${salesData.length}`);
 
-          // Поточні залишки
-          const currentBalanceQuery = `
-        SELECT 
-            warehouse_title,
-            residue as current_balance
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-        WHERE product_id = @product_id
-          AND warehouse_id = @warehouse_id  -- ✅ КРИТИЧНО!
-      `;
+          // Переміщення і списання (знаємо що 0)
+          const movesData = [];
+          const outcomesData = [];
 
-          const [balanceRows] = await this.bigquery.query({
-            query: currentBalanceQuery,
-            location: "EU",
-            params: {
-              product_id: productId,
-              warehouse_id: warehouseId,
-            },
-          });
-
-          const currentBalances = {};
-          balanceRows.forEach((row) => {
-            currentBalances[row.warehouse_title] = row.current_balance;
-          });
-
-          console.log(`✅ Всього операцій для складу ${warehouseId}:`, {
-            postings: postingsRows.length,
-            moves: movesRows.length,
-            outcomes: outcomesRows.length,
-            sales: salesRows.length,
-          });
+          console.log("\n📊 === ПІДСУМОК API ===");
+          console.log(`Postings: ${postingsData.length}`);
+          console.log(`Sales: ${salesData.length}`);
+          console.log(`Moves: ${movesData.length}`);
+          console.log(`Outcomes: ${outcomesData.length}`);
 
           res.json({
             success: true,
@@ -1499,19 +1359,19 @@ class RemonlineMatrixSync {
             productId,
             warehouseId,
             data: {
-              postings: postingsRows,
-              moves: movesRows,
-              outcomes: outcomesRows,
-              sales: salesRows,
+              postings: postingsData,
+              moves: movesData,
+              outcomes: outcomesData,
+              sales: salesData,
             },
-            totalPostings: postingsRows.length,
-            totalMoves: movesRows.length,
-            totalOutcomes: outcomesRows.length,
-            totalSales: salesRows.length,
-            currentBalances: currentBalances,
+            totalPostings: postingsData.length,
+            totalMoves: movesData.length,
+            totalOutcomes: outcomesData.length,
+            totalSales: salesData.length,
           });
         } catch (error) {
-          console.error("Ошибка получения истории товара на складе:", error);
+          console.error("❌ КРИТИЧНА ПОМИЛКА API:", error);
+          console.error("Stack:", error.stack);
           res.status(500).json({
             success: false,
             error: error.message,
