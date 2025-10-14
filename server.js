@@ -1364,31 +1364,31 @@ class RemonlineMatrixSync {
 
           // Запит переміщень
           const movesQuery = `
-        SELECT DISTINCT
-            m.move_id,
-            m.move_label,
-            m.move_created_at,
-            m.created_by_name,
-            m.source_warehouse_title,
-            m.target_warehouse_title,
-            m.amount,
-            m.move_description,
-            m.warehouse_id,
-            ws.warehouse_id as source_warehouse_id,
-            wt.warehouse_id as target_warehouse_id
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
-        LEFT JOIN (
-            SELECT DISTINCT warehouse_id, warehouse_title 
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-        ) ws ON m.source_warehouse_title = ws.warehouse_title
-        LEFT JOIN (
-            SELECT DISTINCT warehouse_id, warehouse_title 
-            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-        ) wt ON m.target_warehouse_title = wt.warehouse_title
-        WHERE m.product_id = @product_id
-          AND (ws.warehouse_id = @warehouse_id OR wt.warehouse_id = @warehouse_id)  -- ✅ КРИТИЧНО!
-        ORDER BY m.move_created_at DESC
-      `;
+    SELECT DISTINCT
+        m.move_id,
+        m.move_label,
+        m.move_created_at,
+        m.created_by_name,
+        m.source_warehouse_title,
+        m.target_warehouse_title,
+        m.amount,
+        m.move_description,
+        m.warehouse_id,
+        ws.warehouse_id as source_wh_id,  -- ✅ Отримуємо через JOIN
+        wt.warehouse_id as target_wh_id   -- ✅ Отримуємо через JOIN
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+    LEFT JOIN (
+        SELECT DISTINCT warehouse_id, warehouse_title 
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+    ) ws ON m.source_warehouse_title = ws.warehouse_title
+    LEFT JOIN (
+        SELECT DISTINCT warehouse_id, warehouse_title 
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+    ) wt ON m.target_warehouse_title = wt.warehouse_title
+    WHERE m.product_id = @product_id
+      AND (ws.warehouse_id = @warehouse_id OR wt.warehouse_id = @warehouse_id)
+    ORDER BY m.move_created_at DESC
+`;
 
           const [movesRows] = await this.bigquery.query({
             query: movesQuery,
