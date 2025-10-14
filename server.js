@@ -471,6 +471,19 @@ class RemonlineMatrixSync {
         });
       }
     });
+
+    this.app.post("/api/sync-orders", async (req, res) => {
+      try {
+        const result = await this.syncOrders();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+    });
+
     // Получение данных для матрицы
     this.app.get("/api/preview-data", async (req, res) => {
       try {
@@ -1552,7 +1565,7 @@ class RemonlineMatrixSync {
 
         // Маппінг типів операцій
         const typeMapping = {
-          0: { name: "Замовлення постачальнику", color: "#f97316" },
+          0: { name: "Замовлення", color: "#f97316" },
           1: { name: "Продаж", color: "#8b5cf6" },
           3: { name: "Оприбуткування", color: "#059669" },
           4: { name: "Списання", color: "#ef4444" },
@@ -3669,6 +3682,97 @@ class RemonlineMatrixSync {
     }
   }
 
+  // Mетоди для замовлень та повернень постачальнику
+  async syncOrders() {
+    console.log("🔄 Починається синхронізація замовлень та повернень...");
+
+    const syncStart = Date.now();
+    let totalOrders = 0;
+
+    try {
+      // Отримуємо всі товари
+      const productsQuery = `
+      SELECT DISTINCT product_id 
+      FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+      WHERE product_id IS NOT NULL
+      LIMIT 1000
+    `;
+
+      const [products] = await this.bigquery.query({
+        query: productsQuery,
+        location: "EU",
+      });
+
+      console.log(`📦 Знайдено ${products.length} товарів для синхронізації`);
+
+      const allOrdersData = [];
+      const startDate = new Date("2022-05-01").getTime();
+      const endDate = Date.now();
+
+      const cookies = this.userCookies.get("shared_user");
+
+      if (!cookies) {
+        throw new Error("Cookies для goods-flow відсутні!");
+      }
+
+      for (const product of products) {
+        try {
+          const flowItems = await this.fetchGoodsFlowForProduct(
+            product.product_id,
+            startDate,
+            endDate,
+            cookies
+          );
+
+          // Фільтруємо тільки замовлення (0) та повернення (7)
+          const ordersAndReturns = flowItems.filter(
+            (item) => item.relation_type === 0 || item.relation_type === 7
+          );
+
+          for (const item of ordersAndReturns) {
+            allOrdersData.push({
+              order_id: item.id,
+              relation_type: item.relation_type,
+              relation_label: item.relation_label || "",
+              created_at: new Date(item.created_at).toISOString(),
+              warehouse_id: item.warehouse_id || null,
+              product_id: product.product_id,
+              product_title: item.product_title || "",
+              amount: item.amount || 0,
+              comment: item.comment || "",
+              sync_id: Date.now().toString(),
+              updated_at: new Date().toISOString(),
+            });
+          }
+
+          totalOrders += ordersAndReturns.length;
+
+          await this.sleep(300); // Затримка між запитами
+        } catch (error) {
+          console.error(
+            `❌ Помилка товару ${product.product_id}:`,
+            error.message
+          );
+        }
+      }
+
+      console.log(`\n📊 === ПІДСУМОК ПО ЗАМОВЛЕННЯМ ===`);
+      console.log(`Знайдено операцій: ${totalOrders}`);
+
+      if (allOrdersData.length > 0) {
+        await this.saveOrdersToBigQuery(allOrdersData);
+      }
+
+      return {
+        success: true,
+        totalOrders,
+        duration: Date.now() - syncStart,
+      };
+    } catch (error) {
+      console.error(`❌ Критична помилка:`, error.message);
+      throw error;
+    }
+  }
   async fetchAllSales(startTime, endTime) {
     const options = {
       method: "GET",
@@ -3796,6 +3900,47 @@ class RemonlineMatrixSync {
     }
   }
 
+  async createOrdersTable() {
+    if (!this.bigquery) {
+      console.log("❌ BigQuery не інціалізована");
+      return false;
+    }
+
+    try {
+      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
+      const tableName = `${process.env.BIGQUERY_TABLE}_orders`;
+      const table = dataset.table(tableName);
+
+      const [tableExists] = await table.exists();
+      if (tableExists) {
+        console.log("✅ Таблиця замовлень вже існує");
+        return true;
+      }
+
+      console.log("🔨 Створюємо таблицю замовлень...");
+
+      const schema = [
+        { name: "order_id", type: "INTEGER", mode: "REQUIRED" },
+        { name: "relation_type", type: "INTEGER", mode: "REQUIRED" }, // 0 = замовлення, 7 = повернення
+        { name: "relation_label", type: "STRING", mode: "NULLABLE" },
+        { name: "created_at", type: "TIMESTAMP", mode: "REQUIRED" },
+        { name: "warehouse_id", type: "INTEGER", mode: "NULLABLE" },
+        { name: "product_id", type: "INTEGER", mode: "REQUIRED" },
+        { name: "product_title", type: "STRING", mode: "REQUIRED" },
+        { name: "amount", type: "FLOAT", mode: "REQUIRED" },
+        { name: "comment", type: "STRING", mode: "NULLABLE" },
+        { name: "sync_id", type: "STRING", mode: "NULLABLE" },
+        { name: "updated_at", type: "TIMESTAMP", mode: "REQUIRED" },
+      ];
+
+      await table.create({ schema, location: "EU" });
+      console.log("✅ Таблиця замовлень створена");
+      return true;
+    } catch (error) {
+      console.error("❌ Помилка створення таблиці замовлень:", error.message);
+      return false;
+    }
+  }
   async saveSalesToBigQuery(data) {
     if (!this.bigquery || !data.length) return;
 
@@ -3877,6 +4022,43 @@ class RemonlineMatrixSync {
     }
   }
 
+  // Метод сохранения замовлень и повернення постачальнику
+  async saveOrdersToBigQuery(data) {
+    if (!this.bigquery || !data.length) return;
+
+    try {
+      await this.createOrdersTable();
+
+      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
+      const tableName = `${process.env.BIGQUERY_TABLE}_orders`;
+      const table = dataset.table(tableName);
+
+      // Видаляємо старі дані
+      console.log("🗑️ Видалення старих замовлень...");
+      const deleteQuery = `
+      DELETE FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${tableName}\` 
+      WHERE TRUE
+    `;
+      await this.bigquery.createQueryJob({
+        query: deleteQuery,
+        location: "EU",
+      });
+
+      // Вставляємо нові
+      console.log("📊 Вставка замовлень...");
+      const batchSize = 500;
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        await table.insert(batch);
+        console.log(`📊 Вставлено ${i + batch.length}/${data.length}`);
+      }
+
+      console.log("✅ Замовлення збережено");
+    } catch (error) {
+      console.error("❌ Помилка збереження:", error.message);
+    }
+  }
+
   // Створює SQL view для розрахунку остатків
   async createStockCalculationView() {
     if (!this.bigquery) {
@@ -3915,6 +4097,45 @@ class RemonlineMatrixSync {
                 
                 UNION ALL
                 
+                -- Замовлення (-) резервують товар
+        SELECT 
+            o.warehouse_id,
+            w.warehouse_title,
+            o.product_id,
+            o.product_title,
+            '' as product_code,
+            '' as product_article,
+            '' as uom_title,
+            -o.amount as movement,  -- ❗ МІНУС
+            o.created_at as operation_date
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
+        JOIN (
+            SELECT DISTINCT warehouse_id, warehouse_title 
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+        ) w ON o.warehouse_id = w.warehouse_id
+        WHERE o.relation_type = 0  -- тільки замовлення
+        
+        UNION ALL
+        
+        -- Повернення постачальнику (-) теж віднімаються
+        SELECT 
+            o.warehouse_id,
+            w.warehouse_title,
+            o.product_id,
+            o.product_title,
+            '' as product_code,
+            '' as product_article,
+            '' as uom_title,
+            -o.amount as movement,  -- ❗ МІНУС
+            o.created_at as operation_date
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
+        JOIN (
+            SELECT DISTINCT warehouse_id, warehouse_title 
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+        ) w ON o.warehouse_id = w.warehouse_id
+        WHERE o.relation_type = 7  -- повернення постачальнику
+    )
+        
                 -- Оприбуткування (+) після останньої повної синхронізації
                 SELECT 
                     warehouse_id,

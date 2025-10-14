@@ -771,6 +771,12 @@
                             <span>Синхронізувати продажі</span>
                         </button>
 
+                        <button class="admin-btn" onclick="syncOrders(); toggleAdminMenu();"
+                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;"></button>
+                        <span style="font-size: 1.1rem;">🛒</span>
+                        <span>Синхронізувати замовлення</span>
+                        </button>
+
                         <button class="admin-btn" onclick="createStockView(); toggleAdminMenu();"
                             style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 1.1rem;">📊</span>
@@ -2302,6 +2308,28 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '💰 Синхронізувати продажі';
+            }
+        }
+
+        async function syncOrders() {
+            if (!confirm('Синхронізація замовлень займе час. Продовжити?')) {
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Синхронізація...';
+
+            try {
+                const result = await apiCall('/api/sync-orders', 'POST');
+                if (result.success) {
+                    alert(`✅ Готово!\nЗамовлень: ${result.totalOrders}`);
+                }
+            } catch (error) {
+                alert(`❌ Помилка: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🛒 Синхронізувати замовлення';
             }
         }
 
