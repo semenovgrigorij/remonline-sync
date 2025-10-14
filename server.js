@@ -1345,6 +1345,7 @@ class RemonlineMatrixSync {
             warehouse_id
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
         WHERE product_id = @product_id
+        AND warehouse_id = @warehouse_id
         ORDER BY posting_created_at DESC
       `;
 
@@ -1353,6 +1354,7 @@ class RemonlineMatrixSync {
             location: "EU",
             params: {
               product_id: productId,
+              warehouse_id: warehouseId,
             },
           });
 
@@ -1363,18 +1365,29 @@ class RemonlineMatrixSync {
           // Запит переміщень
           const movesQuery = `
         SELECT DISTINCT
-            move_id,
-            move_label,
-            move_created_at,
-            created_by_name,
-            source_warehouse_title,
-            target_warehouse_title,
-            amount,
-            move_description,
-            warehouse_id
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\`
-        WHERE product_id = @product_id
-        ORDER BY move_created_at DESC
+            m.move_id,
+            m.move_label,
+            m.move_created_at,
+            m.created_by_name,
+            m.source_warehouse_title,
+            m.target_warehouse_title,
+            m.amount,
+            m.move_description,
+            m.warehouse_id,
+            ws.warehouse_id as source_warehouse_id,
+            wt.warehouse_id as target_warehouse_id
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+        LEFT JOIN (
+            SELECT DISTINCT warehouse_id, warehouse_title 
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+        ) ws ON m.source_warehouse_title = ws.warehouse_title
+        LEFT JOIN (
+            SELECT DISTINCT warehouse_id, warehouse_title 
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+        ) wt ON m.target_warehouse_title = wt.warehouse_title
+        WHERE m.product_id = @product_id
+          AND (ws.warehouse_id = @warehouse_id OR wt.warehouse_id = @warehouse_id)  -- ✅ КРИТИЧНО!
+        ORDER BY m.move_created_at DESC
       `;
 
           const [movesRows] = await this.bigquery.query({
@@ -1382,6 +1395,7 @@ class RemonlineMatrixSync {
             location: "EU",
             params: {
               product_id: productId,
+              warehouse_id: warehouseId,
             },
           });
 
@@ -1390,16 +1404,22 @@ class RemonlineMatrixSync {
           // Запит списань
           const outcomesQuery = `
         SELECT DISTINCT
-            outcome_created_at,
-            outcome_label,
-            created_by_name,
-            source_warehouse_title,
-            amount,
-            outcome_description,
-            outcome_cost
-        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\`
-        WHERE product_id = @product_id
-        ORDER BY outcome_created_at DESC
+            o.outcome_created_at,
+            o.outcome_label,
+            o.created_by_name,
+            o.source_warehouse_title,
+            o.amount,
+            o.outcome_description,
+            o.outcome_cost,
+            w.warehouse_id
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
+        JOIN (
+            SELECT DISTINCT warehouse_id, warehouse_title 
+            FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+        ) w ON o.source_warehouse_title = w.warehouse_title
+        WHERE o.product_id = @product_id
+          AND w.warehouse_id = @warehouse_id  -- ✅ КРИТИЧНО!
+        ORDER BY o.outcome_created_at DESC
       `;
 
           const [outcomesRows] = await this.bigquery.query({
@@ -1407,6 +1427,7 @@ class RemonlineMatrixSync {
             location: "EU",
             params: {
               product_id: productId,
+              warehouse_id: warehouseId,
             },
           });
 
@@ -1426,6 +1447,7 @@ class RemonlineMatrixSync {
             sale_description
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\`
         WHERE LOWER(product_title) = LOWER(@product_title)
+          AND warehouse_id = @warehouse_id  -- ✅ КРИТИЧНО!
         ORDER BY sale_created_at DESC
       `;
 
@@ -1434,6 +1456,7 @@ class RemonlineMatrixSync {
             location: "EU",
             params: {
               product_title: productTitle,
+              warehouse_id: warehouseId,
             },
           });
 
@@ -1446,6 +1469,7 @@ class RemonlineMatrixSync {
             residue as current_balance
         FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
         WHERE product_id = @product_id
+          AND warehouse_id = @warehouse_id  -- ✅ КРИТИЧНО!
       `;
 
           const [balanceRows] = await this.bigquery.query({
@@ -1453,12 +1477,20 @@ class RemonlineMatrixSync {
             location: "EU",
             params: {
               product_id: productId,
+              warehouse_id: warehouseId,
             },
           });
 
           const currentBalances = {};
           balanceRows.forEach((row) => {
             currentBalances[row.warehouse_title] = row.current_balance;
+          });
+
+          console.log(`✅ Всього операцій для складу ${warehouseId}:`, {
+            postings: postingsRows.length,
+            moves: movesRows.length,
+            outcomes: outcomesRows.length,
+            sales: salesRows.length,
           });
 
           res.json({
