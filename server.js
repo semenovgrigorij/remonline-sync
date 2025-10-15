@@ -142,21 +142,13 @@ class RemonlineMatrixSync {
             }`
           );
 
-          // ✅ ВИПРАВЛЕНО: перевіряємо чи є метод getCookies
-          if (!this.getCookies) {
-            console.error("❌ Метод getCookies не знайдено в this");
-            return res.status(500).json({
-              success: false,
-              error: "Внутрішня помилка сервера",
-            });
-          }
-
           const cookies = await this.getCookies();
           if (!cookies) {
             return res.json({
               success: false,
               needManualUpdate: true,
-              error: "Cookies відсутні або застарілі",
+              error:
+                "Cookies відсутні або застарілі. Оновіть через адмін-панель.",
             });
           }
 
@@ -174,7 +166,6 @@ class RemonlineMatrixSync {
 
           console.log(`📊 Отримано з API: ${flowItems.length} операцій`);
 
-          // ✅ ФІЛЬТРУЄМО ПО СКЛАДУ
           let filteredItems = flowItems;
 
           if (warehouseId) {
@@ -202,6 +193,21 @@ class RemonlineMatrixSync {
           });
         } catch (error) {
           console.error("❌ Помилка отримання goods-flow:", error);
+
+          // ✅ ВИПРАВЛЕНО: перевіряємо чи це помилка авторизації
+          if (
+            error.message.includes("401") ||
+            error.message.includes("403") ||
+            error.message.includes("500")
+          ) {
+            return res.json({
+              success: false,
+              needManualUpdate: true,
+              error:
+                "Cookies застарілі! Оновіть через адмін-панель (⚙️ → 🔐 Оновити Cookies)",
+            });
+          }
+
           res.status(500).json({
             success: false,
             error: error.message,
@@ -2252,10 +2258,31 @@ class RemonlineMatrixSync {
         const response = await fetch(url, options);
 
         if (!response.ok) {
+          // ✅ ДОДАНО: детальніше логування помилки
           console.error(`   ❌ HTTP ${response.status} на сторінці ${page}`);
+          console.error(`   📋 URL: ${url}`);
+
+          // Спробуємо прочитати тіло відповіді
+          try {
+            const errorText = await response.text();
+            console.error(
+              `   📋 Відповідь сервера:`,
+              errorText.substring(0, 500)
+            );
+          } catch (e) {
+            console.error(`   📋 Не вдалося прочитати тіло відповіді`);
+          }
 
           if (response.status === 401 || response.status === 403) {
-            throw new Error(`HTTP ${response.status}: Авторізація невалідна`);
+            throw new Error(
+              `HTTP ${response.status}: Авторізація невалідна - ПОТРІБНО ОНОВИТИ COOKIES`
+            );
+          }
+
+          if (response.status === 500) {
+            throw new Error(
+              `HTTP 500: Внутрішня помилка Remonline API - COOKIES МОЖЛИВО ЗАСТАРІЛІ`
+            );
           }
 
           consecutiveErrors++;
@@ -2287,15 +2314,18 @@ class RemonlineMatrixSync {
         if (items.length < pageSize) break;
 
         page++;
-        consecutiveErrors = 0; // Скидаємо лічильник помилок
+        consecutiveErrors = 0;
 
         await this.sleep(300);
       } catch (error) {
         console.error(`   ❌ Помилка на сторінці ${page}:`, error.message);
 
-        // Якщо помилка авторизації - кидаємо далі
-        if (error.message.includes("401") || error.message.includes("403")) {
-          throw error;
+        if (
+          error.message.includes("401") ||
+          error.message.includes("403") ||
+          error.message.includes("500")
+        ) {
+          throw error; // Кидаємо далі щоб показати в UI
         }
 
         consecutiveErrors++;
