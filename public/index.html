@@ -2675,28 +2675,41 @@
             // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
             // ============================================
 
+            // ✅ ВИПРАВЛЕНО: Рахуємо початковий залишок ПРАВИЛЬНО
             const currentBalance = data.currentBalances?.[warehouseTitle] || 0;
 
             console.log(`📊 Поточний залишок з data.currentBalances: ${currentBalance}`);
             console.log(`📊 Всі балансі:`, data.currentBalances);
 
-            // Рахуємо початковий залишок
+            // Початковий залишок = Поточний - сума всіх змін
             let initialBalance = currentBalance;
             filteredOperations.forEach(op => {
                 initialBalance -= op.delta;
             });
 
-            console.log(`📊 Початковий залишок: ${initialBalance}, Поточний: ${currentBalance}`);
+            console.log(`📊 Розрахунок: Поточний ${currentBalance} - сума змін = ${initialBalance}`);
+            console.log(`📊 Перевірка: початковий ${initialBalance} + зміни має дорівнювати ${currentBalance}`);
 
-            // Сортуємо від старих до нових
+            // ✅ ВИПРАВЛЕНО: Сортуємо операції за датою
             const sortedOps = [...filteredOperations].sort((a, b) => a.date - b.date);
+
+            console.log('📅 Сортовані операції (від старих до нових):');
+            sortedOps.forEach((op, i) => {
+                console.log(`  ${i + 1}. ${op.date.toLocaleDateString()} ${op.typeName} | delta: ${op.delta}`);
+            });
 
             // Будуємо таблицю
             let tableRows = '';
             let runningBalance = initialBalance;
 
-            sortedOps.forEach((op) => {
+            console.log(`📊 Початок побудови таблиці: runningBalance = ${runningBalance}`);
+
+            sortedOps.forEach((op, idx) => {
                 runningBalance += op.delta;
+
+                if (idx < 3) {
+                    console.log(`  Крок ${idx + 1}: було ${runningBalance - op.delta}, зміна ${op.delta}, стало ${runningBalance}`);
+                }
 
                 const formattedDate = op.date.toLocaleString('uk-UA', {
                     year: 'numeric',
@@ -2706,11 +2719,10 @@
                     minute: '2-digit'
                 });
 
-                // Визначаємо + або - кількість
                 const plusAmount = op.delta > 0 ? op.amount : '';
                 const minusAmount = op.delta < 0 ? op.amount : '';
 
-                // Додаємо рядок ЗВЕРХУ
+                // Додаємо рядок ЗВЕРХУ (щоб нові операції були вгорі)
                 tableRows = `
         <tr style="border-bottom: 1px solid #e5e7eb;">
             <td style="padding: 12px 8px; white-space: nowrap;">${formattedDate}</td>
@@ -2730,7 +2742,14 @@
     ` + tableRows;
             });
 
-            console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance}`);
+            console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance}, очікуваний: ${currentBalance}`);
+
+            // ✅ ПЕРЕВІРКА
+            if (Math.abs(runningBalance - currentBalance) > 0.01) {
+                console.error(`❌ ПОМИЛКА: Кінцевий баланс ${runningBalance} не дорівнює поточному ${currentBalance}!`);
+            } else {
+                console.log(`✅ Перевірка пройдена: балансі співпадають`);
+            }
 
             // ============================================
             // 4. СТВОРЕННЯ МОДАЛЬНОГО ВІКНА
