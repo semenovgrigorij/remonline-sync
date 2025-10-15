@@ -2422,11 +2422,11 @@
                         typeColor: '#059669',
                         label: item.posting_label || '-',
                         user: item.created_by_name || '-',
-                        counterparty: item.supplier_name || '-',
+                        warehouse: item.warehouse_title || warehouseTitle,
                         warehouseId: item.warehouse_id || null,
                         amount: item.amount || 0,
                         description: item.posting_description || '-',
-                        delta: +(item.amount || 0)
+                        delta: +item.amount
                     });
                 });
             }
@@ -2467,7 +2467,7 @@
                             typeColor: '#f59e0b',
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
-                            counterparty: targetTitle,
+                            warehouse: `${sourceTitle} → ${targetTitle}`,
                             warehouseId: null,
                             sourceWarehouseTitle: sourceTitle,
                             targetWarehouseTitle: targetTitle,
@@ -2486,7 +2486,7 @@
                             typeColor: '#3b82f6',
                             label: item.move_label || '-',
                             user: item.created_by_name || '-',
-                            counterparty: sourceTitle,
+                            warehouse: `${sourceTitle} → ${targetTitle}`,
                             warehouseId: filterWarehouseId,
                             sourceWarehouseTitle: sourceTitle,
                             targetWarehouseTitle: targetTitle,
@@ -2508,15 +2508,6 @@
                         outcomeWarehouse = outcomeWarehouse.split(' > ')[1].trim();
                     }
 
-                    if (idx === 0) {
-                        console.log('📋 Перше списання:', {
-                            source_warehouse_title: item.source_warehouse_title,
-                            outcomeWarehouse: outcomeWarehouse,
-                            warehouseTitle: warehouseTitle,
-                            match: outcomeWarehouse.includes(warehouseTitle)
-                        });
-                    }
-
                     allOperations.push({
                         date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
                         type: 'outcome',
@@ -2524,7 +2515,7 @@
                         typeColor: '#ef4444',
                         label: item.outcome_label || '-',
                         user: item.created_by_name || '-',
-                        counterparty: '-',
+                        warehouse: outcomeWarehouse,
                         warehouseId: item.warehouse_id || null,
                         amount: item.amount || 0,
                         description: item.outcome_description || '-',
@@ -2544,7 +2535,7 @@
                         typeColor: '#8b5cf6',
                         label: item.sale_label || '-',
                         user: item.created_by_name || '-',
-                        counterparty: '-',
+                        warehouse: warehouseTitle,
                         warehouseId: item.warehouse_id || null,
                         amount: item.amount || 0,
                         description: item.sale_description || '-',
@@ -2594,16 +2585,6 @@
                         console.log('📋 Перший goods-flow запис:', {
                             employee_id: item.employee_id,
                             relation_id_label: item.relation_id_label,
-                            amount: item.amount,
-                            delta: delta
-                        });
-                    }
-
-                    if (idx === 0) {
-                        console.log('📋 Перший goods-flow:', {
-                            relation_type: item.relation_type,
-                            warehouse_id: item.warehouse_id,
-                            warehouse_title: item.warehouse_title,
                             amount: item.amount,
                             delta: delta
                         });
@@ -2661,18 +2642,6 @@
                 });
 
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
-
-                const typeStats = {};
-                filteredOperations.forEach(op => {
-                    typeStats[op.type] = (typeStats[op.type] || 0) + 1;
-                });
-                console.log('📊 Що залишилось після фільтрації:', typeStats);
-
-                // ✅ ПОКАЖИ ПЕРШІ 5 ОПЕРАЦІЙ
-                console.log('📋 Перші 5 відфільтрованих операцій:');
-                filteredOperations.slice(0, 5).forEach((op, i) => {
-                    console.log(`  ${i + 1}. ${op.typeName} | ${op.amount} шт | ${op.warehouse || op.counterparty}`);
-                });
             }
 
             // ============================================
@@ -2707,9 +2676,8 @@
                     minute: '2-digit'
                 });
 
-                // Визначаємо + або - кількість
-                const plusAmount = op.delta > 0 ? op.amount : '';
-                const minusAmount = op.delta < 0 ? op.amount : '';
+                const deltaClass = op.delta > 0 ? 'positive' : op.delta < 0 ? 'negative' : 'neutral';
+                const deltaSign = op.delta > 0 ? '+' : '';
 
                 // Додаємо рядок ЗВЕРХУ
                 tableRows = `
@@ -2722,9 +2690,13 @@
                 </td>
                 <td style="padding: 12px 8px;">${op.label}</td>
                 <td style="padding: 12px 8px;">${op.user}</td>
-                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.counterparty}</td>
-                <td style="padding: 12px 8px; text-align: right; color: #059669; font-weight: 600;">${plusAmount}</td>
-                <td style="padding: 12px 8px; text-align: right; color: #dc2626; font-weight: 600;">${minusAmount}</td>
+                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.warehouse}</td>
+                <td style="padding: 12px 8px; text-align: right;">${op.amount}</td>
+                <td style="padding: 12px 8px; text-align: right;">
+                    <span class="${deltaClass}" style="font-weight: 600;">
+                        ${deltaSign}${op.delta}
+                    </span>
+                </td>
                 <td style="padding: 12px 8px; text-align: right; font-weight: 600;">${runningBalance}</td>
                 <td style="padding: 12px 8px; font-size: 0.85rem; color: #6b7280;">${op.description}</td>
             </tr>
@@ -2777,9 +2749,9 @@
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Тип операції</th>
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Документ</th>
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Хто створив</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Контрагент</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #059669;">+</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #dc2626;">−</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Склад</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Кількість</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Зміна</th>
                                 <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Залишок</th>
                                 <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Опис</th>
                             </tr>
