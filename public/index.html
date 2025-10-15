@@ -2508,6 +2508,15 @@
                         outcomeWarehouse = outcomeWarehouse.split(' > ')[1].trim();
                     }
 
+                    if (idx === 0) {
+                        console.log('📋 Перше списання:', {
+                            source_warehouse_title: item.source_warehouse_title,
+                            outcomeWarehouse: outcomeWarehouse,
+                            warehouseTitle: warehouseTitle,
+                            match: outcomeWarehouse.includes(warehouseTitle)
+                        });
+                    }
+
                     allOperations.push({
                         date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
                         type: 'outcome',
@@ -2590,6 +2599,16 @@
                         });
                     }
 
+                    if (idx === 0) {
+                        console.log('📋 Перший goods-flow:', {
+                            relation_type: item.relation_type,
+                            warehouse_id: item.warehouse_id,
+                            warehouse_title: item.warehouse_title,
+                            amount: item.amount,
+                            delta: delta
+                        });
+                    }
+
                     allOperations.push({
                         date: new Date(item.created_at?.value || item.created_at),
                         type: `goods_flow_${item.relation_type}`,
@@ -2642,6 +2661,18 @@
                 });
 
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
+
+                const typeStats = {};
+                filteredOperations.forEach(op => {
+                    typeStats[op.type] = (typeStats[op.type] || 0) + 1;
+                });
+                console.log('📊 Що залишилось після фільтрації:', typeStats);
+
+                // ✅ ПОКАЖИ ПЕРШІ 5 ОПЕРАЦІЙ
+                console.log('📋 Перші 5 відфільтрованих операцій:');
+                filteredOperations.slice(0, 5).forEach((op, i) => {
+                    console.log(`  ${i + 1}. ${op.typeName} | ${op.amount} шт | ${op.warehouse || op.counterparty}`);
+                });
             }
 
             // ============================================
