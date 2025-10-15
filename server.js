@@ -1490,6 +1490,34 @@ class RemonlineMatrixSync {
           console.log(`Outcomes: ${outcomesData.length}`);
           console.log(`Sales: ${salesData.length}`);
 
+          const currentBalanceQuery = `
+  SELECT 
+      warehouse_title,
+      residue as current_balance
+  FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+  WHERE product_id = @product_id
+    AND warehouse_id = @warehouse_id
+`;
+
+          const [balanceRows] = await this.bigquery.query({
+            query: currentBalanceQuery,
+            location: "EU",
+            params: {
+              product_id: productId,
+              warehouse_id: warehouseId,
+            },
+          });
+
+          const currentBalances = {};
+          balanceRows.forEach((row) => {
+            currentBalances[row.warehouse_title] = row.current_balance;
+          });
+
+          console.log(
+            `✅ Поточний залишок для складу ${warehouseId}:`,
+            currentBalances
+          );
+
           res.json({
             success: true,
             productTitle,
@@ -1505,6 +1533,7 @@ class RemonlineMatrixSync {
             totalMoves: movesData.length,
             totalOutcomes: outcomesData.length,
             totalSales: salesData.length,
+            currentBalances: currentBalances,
           });
         } catch (error) {
           console.error("❌ КРИТИЧНА ПОМИЛКА API:", error);
