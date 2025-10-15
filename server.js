@@ -147,15 +147,19 @@ class RemonlineMatrixSync {
             return res.json({
               success: false,
               needManualUpdate: true,
-              error:
-                "Cookies відсутні або застарілі. Оновіть через адмін-панель.",
+              error: "Cookies відсутні",
             });
           }
 
-          const startDate = new Date("2022-05-01").toISOString();
-          const endDate = new Date().toISOString();
+          // ✅ ВИПРАВЛЕНО: передаємо timestamp замість ISO
+          const startDate = new Date("2022-05-01").getTime();
+          const endDate = Date.now();
 
-          console.log(`📅 Період: ${startDate} - ${endDate}`);
+          console.log(
+            `📅 Період: ${new Date(startDate).toISOString()} - ${new Date(
+              endDate
+            ).toISOString()}`
+          );
 
           const flowItems = await this.fetchGoodsFlowForProduct(
             productId,
@@ -194,7 +198,6 @@ class RemonlineMatrixSync {
         } catch (error) {
           console.error("❌ Помилка отримання goods-flow:", error);
 
-          // ✅ ВИПРАВЛЕНО: перевіряємо чи це помилка авторизації
           if (
             error.message.includes("401") ||
             error.message.includes("403") ||
@@ -203,8 +206,7 @@ class RemonlineMatrixSync {
             return res.json({
               success: false,
               needManualUpdate: true,
-              error:
-                "Cookies застарілі! Оновіть через адмін-панель (⚙️ → 🔐 Оновити Cookies)",
+              error: "Помилка доступу до goods-flow API",
             });
           }
 
@@ -2251,38 +2253,39 @@ class RemonlineMatrixSync {
 
     while (page <= 100 && consecutiveErrors < 3) {
       try {
-        const url = `https://web.roapp.io/app/warehouse/get-goods-flow-items?page=${page}&pageSize=${pageSize}&id=${productId}&startDate=${startDate}&endDate=${endDate}`;
+        // ✅ ВИПРАВЛЕНО: конвертуємо ISO в timestamp
+        const startTimestamp =
+          typeof startDate === "string"
+            ? new Date(startDate).getTime()
+            : startDate;
+        const endTimestamp =
+          typeof endDate === "string" ? new Date(endDate).getTime() : endDate;
+
+        const url = `https://web.roapp.io/app/warehouse/get-goods-flow-items?page=${page}&pageSize=${pageSize}&id=${productId}&startDate=${startTimestamp}&endDate=${endTimestamp}`;
 
         console.log(`   📄 Goods-flow сторінка ${page}`);
+        if (page === 1) {
+          console.log(`   📋 URL: ${url}`);
+        }
 
         const response = await fetch(url, options);
 
         if (!response.ok) {
-          // ✅ ДОДАНО: детальніше логування помилки
           console.error(`   ❌ HTTP ${response.status} на сторінці ${page}`);
-          console.error(`   📋 URL: ${url}`);
 
-          // Спробуємо прочитати тіло відповіді
           try {
             const errorText = await response.text();
-            console.error(
-              `   📋 Відповідь сервера:`,
-              errorText.substring(0, 500)
-            );
+            console.error(`   📋 Відповідь:`, errorText.substring(0, 300));
           } catch (e) {
-            console.error(`   📋 Не вдалося прочитати тіло відповіді`);
+            console.error(`   📋 Не вдалося прочитати відповідь`);
           }
 
           if (response.status === 401 || response.status === 403) {
-            throw new Error(
-              `HTTP ${response.status}: Авторізація невалідна - ПОТРІБНО ОНОВИТИ COOKIES`
-            );
+            throw new Error(`HTTP ${response.status}: Cookies застарілі`);
           }
 
           if (response.status === 500) {
-            throw new Error(
-              `HTTP 500: Внутрішня помилка Remonline API - COOKIES МОЖЛИВО ЗАСТАРІЛІ`
-            );
+            throw new Error(`HTTP 500: Помилка API Remonline`);
           }
 
           consecutiveErrors++;
@@ -2297,11 +2300,10 @@ class RemonlineMatrixSync {
         const items = result.data || [];
 
         if (page === 1 && items.length > 0) {
-          console.log("📋 Перший goods-flow запис від Remonline API:", {
+          console.log("📋 Перший goods-flow запис:", {
             warehouse_id: items[0].warehouse_id,
             warehouse_title: items[0].warehouse_title,
             relation_id_label: items[0].relation_id_label,
-            employee_id: items[0].employee_id,
             amount: items[0].amount,
           });
         }
@@ -2325,7 +2327,7 @@ class RemonlineMatrixSync {
           error.message.includes("403") ||
           error.message.includes("500")
         ) {
-          throw error; // Кидаємо далі щоб показати в UI
+          throw error;
         }
 
         consecutiveErrors++;
