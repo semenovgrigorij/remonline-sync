@@ -4255,6 +4255,40 @@ class RemonlineMatrixSync {
       WHERE warehouse_id IS NOT NULL
       GROUP BY warehouse_id, product_id
       HAVING SUM(movement) > 0
+
+      UNION ALL
+
+-- ✅ ДОДАНО: Замовлення (-)
+SELECT 
+    o.warehouse_id,
+    w.warehouse_title,
+    o.product_id,
+    o.product_title,
+    -o.amount as movement,
+    o.created_at as operation_date
+FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
+JOIN (
+    SELECT DISTINCT warehouse_id, warehouse_title 
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+) w ON o.warehouse_id = w.warehouse_id
+WHERE o.relation_type = 0  -- Тільки замовлення
+
+UNION ALL
+
+-- ✅ ДОДАНО: Повернення (+)
+SELECT 
+    o.warehouse_id,
+    w.warehouse_title,
+    o.product_id,
+    o.product_title,
+    o.amount as movement,
+    o.created_at as operation_date
+FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
+JOIN (
+    SELECT DISTINCT warehouse_id, warehouse_title 
+    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+) w ON o.warehouse_id = w.warehouse_id
+WHERE o.relation_type = 7  -- Тільки повернення
     `;
 
       const metadata = {
