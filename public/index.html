@@ -1428,7 +1428,15 @@
 
                 // Получаем goods-flow
                 console.log('📡 Запит goods-flow...');
-                let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}`);
+                console.log(`📡 Запит goods-flow для складу ${warehouseId}...`);
+                let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}/${warehouseId}`);
+
+                console.log('📦 Результат goods-flow:', {
+                    success: goodsFlowResult.success,
+                    totalRecords: goodsFlowResult.totalRecords,
+                    totalBeforeFilter: goodsFlowResult.totalBeforeFilter,
+                    filtered: goodsFlowResult.totalBeforeFilter - goodsFlowResult.totalRecords
+                });
 
                 console.log('📦 Результат goods-flow:', goodsFlowResult);
 

@@ -1462,95 +1462,104 @@ class RemonlineMatrixSync {
     });
 
     // Endpoint для отримання історії товару (замовлення + повернення)
-    this.app.get("/api/goods-flow-items/:productId", async (req, res) => {
-      try {
-        const productId = req.params.productId;
-        const startDate =
-          req.query.startDate || new Date("2022-05-01").getTime();
-        const endDate = req.query.endDate || Date.now();
+    // Знайди цей endpoint у server.js і заміни на:
+    this.app.get(
+      "/api/goods-flow-items/:productId/:warehouseId?",
+      async (req, res) => {
+        try {
+          const productId = req.params.productId;
+          const warehouseId = req.params.warehouseId
+            ? parseInt(req.params.warehouseId)
+            : null;
 
-        let cookies = this.userCookies.get("shared_user");
+          console.log(
+            `\n📡 Запит goods-flow для товару ${productId}${
+              warehouseId ? `, склад ${warehouseId}` : ""
+            }`
+          );
 
-        if (!cookies) {
-          console.log("❌ Cookies відсутні, намагаємось оновити...");
-          await this.refreshCookiesAutomatically();
-          cookies = this.userCookies.get("shared_user");
-
+          const cookies = await this.getCookies();
           if (!cookies) {
-            console.log("❌ Не вдалося отримати cookies");
             return res.json({
               success: false,
-              error: "Cookies недоступні. Оновіть вручну через адмін-панель.",
               needManualUpdate: true,
-              data: [],
+              error: "Cookies відсутні або застарілі",
             });
           }
-        }
 
-        console.log(`📡 Запит goods-flow для товару ${productId}`);
-        console.log(
-          `📅 Період: ${new Date(startDate).toISOString()} - ${new Date(
-            endDate
-          ).toISOString()}`
-        );
+          const startDate = new Date("2022-05-01").toISOString();
+          const endDate = new Date().toISOString();
 
-        const flowItems = await this.fetchGoodsFlowForProduct(
-          productId,
-          startDate,
-          endDate,
-          cookies
-        );
+          console.log(`📅 Період: ${startDate} - ${endDate}`);
 
-        // Маппінг типів операцій
-        const typeMapping = {
-          0: { name: "Замовлення", color: "#f97316" },
-          1: { name: "Продаж", color: "#8b5cf6" },
-          3: { name: "Оприбуткування", color: "#059669" },
-          4: { name: "Списання", color: "#ef4444" },
-          5: { name: "Переміщення", color: "#3b82f6" },
-          7: { name: "Повернення постачальнику", color: "#ec4899" },
-        };
+          const flowItems = await this.fetchGoodsFlowForProduct(
+            productId,
+            startDate,
+            endDate,
+            cookies
+          );
 
-        // Збагачуємо дані назвами типів
-        const enrichedItems = flowItems.map((item) => ({
-          ...item,
-          type_info: typeMapping[item.relation_type] || {
-            name: `Відшкодування`,
-            color: "#6b7280",
-          },
-        }));
+          console.log(`📊 Отримано з API: ${flowItems.length} операцій`);
 
-        console.log(
-          `✅ Повертаємо ${enrichedItems.length} операцій goods-flow`
-        );
+          // ✅ ФІЛЬТРУЄМО ПО СКЛАДУ
+          let filteredItems = flowItems;
 
-        res.json({
-          success: true,
-          productId,
-          data: enrichedItems,
-          totalRecords: enrichedItems.length,
-        });
-      } catch (error) {
-        console.error("❌ Помилка goods-flow:", error);
+          if (warehouseId) {
+            const beforeFilter = flowItems.length;
 
-        // Перевіряємо чи це помилка авторизації
-        if (error.message.includes("401") || error.message.includes("403")) {
-          return res.json({
+            filteredItems = flowItems.filter((item) => {
+              // Перевіряємо наявність warehouse_id
+              if (!item.warehouse_id) {
+                console.warn(`⚠️ Запис без warehouse_id:`, {
+                  relation_id_label: item.relation_id_label,
+                  id: item.id,
+                });
+                return false;
+              }
+
+              return parseInt(item.warehouse_id) === parseInt(warehouseId);
+            });
+
+            console.log(
+              `✅ Фільтрація: ${beforeFilter} → ${filteredItems.length} операцій для складу ${warehouseId}`
+            );
+
+            // Показуємо які склади відфільтрували (групуємо)
+            if (beforeFilter > filteredItems.length) {
+              const warehouseStats = {};
+              flowItems.forEach((item) => {
+                if (item.warehouse_id != warehouseId) {
+                  const key = `${item.warehouse_id} (${
+                    item.warehouse_title || "без назви"
+                  })`;
+                  warehouseStats[key] = (warehouseStats[key] || 0) + 1;
+                }
+              });
+              console.log(`❌ Відфільтровано з інших складів:`, warehouseStats);
+            }
+          }
+
+          console.log(
+            `✅ Повертаємо ${filteredItems.length} операцій goods-flow\n`
+          );
+
+          res.json({
+            success: true,
+            productId: productId,
+            warehouseId: warehouseId,
+            data: filteredItems,
+            totalRecords: filteredItems.length,
+            totalBeforeFilter: flowItems.length,
+          });
+        } catch (error) {
+          console.error("❌ Помилка отримання goods-flow:", error);
+          res.status(500).json({
             success: false,
-            error: "Cookies застарілі або невалідні",
-            needManualUpdate: true,
-            httpStatus: error.message.includes("401") ? 401 : 403,
-            data: [],
+            error: error.message,
           });
         }
-
-        res.status(500).json({
-          success: false,
-          error: error.message,
-          data: [],
-        });
       }
-    });
+    );
 
     // ТИМЧАСОВО для тестування
     this.app.get("/api/set-cookies/:cookieString", async (req, res) => {
@@ -2277,11 +2286,14 @@ class RemonlineMatrixSync {
         const result = await response.json();
         const items = result.data || [];
 
-        if (items.length > 0) {
-          console.log(
-            "📋 Перший goods-flow запис:",
-            JSON.stringify(items[0], null, 2)
-          );
+        if (page === 1 && items.length > 0) {
+          console.log("📋 Перший goods-flow запис від Remonline API:", {
+            warehouse_id: items[0].warehouse_id,
+            warehouse_title: items[0].warehouse_title,
+            relation_id_label: items[0].relation_id_label,
+            employee_id: items[0].employee_id,
+            amount: items[0].amount,
+          });
         }
         console.log(`   ✅ Отримано ${items.length} записів`);
 
