@@ -126,6 +126,89 @@ class RemonlineMatrixSync {
   }
 
   setupRoutes() {
+    // Endpoint для отримання історії товару (замовлення + повернення)
+    this.app.get(
+      "/api/goods-flow-items/:productId/:warehouseId?",
+      async (req, res) => {
+        try {
+          const productId = req.params.productId;
+          const warehouseId = req.params.warehouseId
+            ? parseInt(req.params.warehouseId)
+            : null;
+
+          console.log(
+            `📡 Запит goods-flow для товару ${productId}${
+              warehouseId ? `, склад ${warehouseId}` : ""
+            }`
+          );
+
+          // ✅ ВИПРАВЛЕНО: перевіряємо чи є метод getCookies
+          if (!this.getCookies) {
+            console.error("❌ Метод getCookies не знайдено в this");
+            return res.status(500).json({
+              success: false,
+              error: "Внутрішня помилка сервера",
+            });
+          }
+
+          const cookies = await this.getCookies();
+          if (!cookies) {
+            return res.json({
+              success: false,
+              needManualUpdate: true,
+              error: "Cookies відсутні або застарілі",
+            });
+          }
+
+          const startDate = new Date("2022-05-01").toISOString();
+          const endDate = new Date().toISOString();
+
+          console.log(`📅 Період: ${startDate} - ${endDate}`);
+
+          const flowItems = await this.fetchGoodsFlowForProduct(
+            productId,
+            startDate,
+            endDate,
+            cookies
+          );
+
+          console.log(`📊 Отримано з API: ${flowItems.length} операцій`);
+
+          // ✅ ФІЛЬТРУЄМО ПО СКЛАДУ
+          let filteredItems = flowItems;
+
+          if (warehouseId) {
+            const beforeFilter = flowItems.length;
+
+            filteredItems = flowItems.filter((item) => {
+              if (!item.warehouse_id) {
+                return false;
+              }
+              return parseInt(item.warehouse_id) === parseInt(warehouseId);
+            });
+
+            console.log(
+              `✅ Фільтрація: ${beforeFilter} → ${filteredItems.length} операцій для складу ${warehouseId}`
+            );
+          }
+
+          res.json({
+            success: true,
+            productId: productId,
+            warehouseId: warehouseId,
+            data: filteredItems,
+            totalRecords: filteredItems.length,
+            totalBeforeFilter: flowItems.length,
+          });
+        } catch (error) {
+          console.error("❌ Помилка отримання goods-flow:", error);
+          res.status(500).json({
+            success: false,
+            error: error.message,
+          });
+        }
+      }
+    );
     // Главная страница
     this.app.get("/", (req, res) => {
       res.sendFile(path.join(__dirname, "public", "index.html"));
@@ -1461,106 +1544,6 @@ class RemonlineMatrixSync {
       });
     });
 
-    // Endpoint для отримання історії товару (замовлення + повернення)
-    // Знайди цей endpoint у server.js і заміни на:
-    this.app.get(
-      "/api/goods-flow-items/:productId/:warehouseId?",
-      async (req, res) => {
-        try {
-          const productId = req.params.productId;
-          const warehouseId = req.params.warehouseId
-            ? parseInt(req.params.warehouseId)
-            : null;
-
-          console.log(
-            `\n📡 Запит goods-flow для товару ${productId}${
-              warehouseId ? `, склад ${warehouseId}` : ""
-            }`
-          );
-
-          const cookies = await this.getCookies();
-          if (!cookies) {
-            return res.json({
-              success: false,
-              needManualUpdate: true,
-              error: "Cookies відсутні або застарілі",
-            });
-          }
-
-          const startDate = new Date("2022-05-01").toISOString();
-          const endDate = new Date().toISOString();
-
-          console.log(`📅 Період: ${startDate} - ${endDate}`);
-
-          const flowItems = await this.fetchGoodsFlowForProduct(
-            productId,
-            startDate,
-            endDate,
-            cookies
-          );
-
-          console.log(`📊 Отримано з API: ${flowItems.length} операцій`);
-
-          // ✅ ФІЛЬТРУЄМО ПО СКЛАДУ
-          let filteredItems = flowItems;
-
-          if (warehouseId) {
-            const beforeFilter = flowItems.length;
-
-            filteredItems = flowItems.filter((item) => {
-              // Перевіряємо наявність warehouse_id
-              if (!item.warehouse_id) {
-                console.warn(`⚠️ Запис без warehouse_id:`, {
-                  relation_id_label: item.relation_id_label,
-                  id: item.id,
-                });
-                return false;
-              }
-
-              return parseInt(item.warehouse_id) === parseInt(warehouseId);
-            });
-
-            console.log(
-              `✅ Фільтрація: ${beforeFilter} → ${filteredItems.length} операцій для складу ${warehouseId}`
-            );
-
-            // Показуємо які склади відфільтрували (групуємо)
-            if (beforeFilter > filteredItems.length) {
-              const warehouseStats = {};
-              flowItems.forEach((item) => {
-                if (item.warehouse_id != warehouseId) {
-                  const key = `${item.warehouse_id} (${
-                    item.warehouse_title || "без назви"
-                  })`;
-                  warehouseStats[key] = (warehouseStats[key] || 0) + 1;
-                }
-              });
-              console.log(`❌ Відфільтровано з інших складів:`, warehouseStats);
-            }
-          }
-
-          console.log(
-            `✅ Повертаємо ${filteredItems.length} операцій goods-flow\n`
-          );
-
-          res.json({
-            success: true,
-            productId: productId,
-            warehouseId: warehouseId,
-            data: filteredItems,
-            totalRecords: filteredItems.length,
-            totalBeforeFilter: flowItems.length,
-          });
-        } catch (error) {
-          console.error("❌ Помилка отримання goods-flow:", error);
-          res.status(500).json({
-            success: false,
-            error: error.message,
-          });
-        }
-      }
-    );
-
     // ТИМЧАСОВО для тестування
     this.app.get("/api/set-cookies/:cookieString", async (req, res) => {
       try {
@@ -2384,6 +2367,17 @@ class RemonlineMatrixSync {
     }
   }
 
+  async getCookies() {
+    const cookies = this.userCookies.get("shared_user");
+
+    if (!cookies) {
+      console.log("❌ Cookies відсутні в пам'яті");
+      return null;
+    }
+
+    console.log(`✅ Cookies знайдено (${cookies.length} символів)`);
+    return cookies;
+  }
   getEmployeeName(employeeId) {
     console.log(
       `🔍 getEmployeeName вызван с ID: ${employeeId}, тип: ${typeof employeeId}`
