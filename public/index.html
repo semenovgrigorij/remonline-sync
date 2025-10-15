@@ -2671,21 +2671,18 @@
             // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
             // ============================================
 
-            //  отримуємо поточний залишок зі standardHistory
-            const currentBalance = standardHistory?.data?.currentBalances?.[warehouseTitle] ||
-                standardHistory?.currentBalances?.[warehouseTitle] ||
-                0;
+            const currentBalance = data.currentBalances?.[warehouseTitle] || 0;
 
-            console.log(`📊 Поточний залишок з API: ${currentBalance}`);
-            console.log(`📊 standardHistory.currentBalances:`, standardHistory?.currentBalances);
-            console.log(`📊 standardHistory.data?.currentBalances:`, standardHistory?.data?.currentBalances);
+            console.log(`📊 Поточний залишок з data.currentBalances: ${currentBalance}`);
+            console.log(`📊 Всі балансі:`, data.currentBalances);
 
             // Рахуємо початковий залишок
             let initialBalance = currentBalance;
             filteredOperations.forEach(op => {
                 initialBalance -= op.delta;
             });
-            console.log(`📊 Початковий залишок: ${initialBalance}`);
+
+            console.log(`📊 Початковий залишок: ${initialBalance}, Поточний: ${currentBalance}`);
 
             // Сортуємо від старих до нових
             const sortedOps = [...filteredOperations].sort((a, b) => a.date - b.date);
@@ -2705,49 +2702,31 @@
                     minute: '2-digit'
                 });
 
-                const deltaClass = op.delta > 0 ? 'positive' : op.delta < 0 ? 'negative' : 'neutral';
-                const deltaSign = op.delta > 0 ? '+' : '';
+                // Визначаємо + або - кількість
+                const plusAmount = op.delta > 0 ? op.amount : '';
+                const minusAmount = op.delta < 0 ? op.amount : '';
 
                 // Додаємо рядок ЗВЕРХУ
                 tableRows = `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 12px 8px; white-space: nowrap;">${formattedDate}</td>
-                <td style="padding: 12px 8px;">
-                    <span style="background: ${op.typeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; white-space: nowrap;">
-                        ${op.typeName}
-                    </span>
-                </td>
-                <td style="padding: 12px 8px;">${op.label}</td>
-                <td style="padding: 12px 8px;">${op.user}</td>
-                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.warehouse}</td>
-                <td style="padding: 12px 8px; text-align: right;">${op.amount}</td>
-                <td style="padding: 12px 8px; text-align: right;">
-                    <span class="${deltaClass}" style="font-weight: 600;">
-                        ${deltaSign}${op.delta}
-                    </span>
-                </td>
-                <td style="padding: 12px 8px; text-align: right; font-weight: 600;">${runningBalance}</td>
-                <td style="padding: 12px 8px; font-size: 0.85rem; color: #6b7280;">${op.description}</td>
-            </tr>
-        ` + tableRows;
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px 8px; white-space: nowrap;">${formattedDate}</td>
+            <td style="padding: 12px 8px;">
+                <span style="background: ${op.typeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; white-space: nowrap;">
+                    ${op.typeName}
+                </span>
+            </td>
+            <td style="padding: 12px 8px;">${op.label}</td>
+            <td style="padding: 12px 8px;">${op.user}</td>
+            <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.counterparty}</td>
+            <td style="padding: 12px 8px; text-align: right; color: #059669; font-weight: 600;">${plusAmount}</td>
+            <td style="padding: 12px 8px; text-align: right; color: #dc2626; font-weight: 600;">${minusAmount}</td>
+            <td style="padding: 12px 8px; text-align: right; font-weight: 600;">${runningBalance}</td>
+            <td style="padding: 12px 8px; font-size: 0.85rem; color: #6b7280;">${op.description}</td>
+        </tr>
+    ` + tableRows;
             });
 
             console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance}`);
-
-            if (filteredOperations.length === 0) {
-                tableRows = `
-            <tr>
-                <td colspan="9" style="padding: 40px; text-align: center; color: #6b7280;">
-                    <div style="font-size: 3rem; margin-bottom: 16px;">📭</div>
-                    <div style="font-size: 1.1rem; margin-bottom: 8px;">Операцій немає</div>
-                    <div style="font-size: 0.9rem;">
-                        На складі "${warehouseTitle}" немає зареєстрованих операцій<br>
-                        з товаром "${productTitle}"
-                    </div>
-                </td>
-            </tr>
-        `;
-            }
 
             // ============================================
             // 4. СТВОРЕННЯ МОДАЛЬНОГО ВІКНА
