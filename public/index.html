@@ -2563,12 +2563,12 @@
 
                     switch (item.relation_type) {
                         case 0: // Замовлення
-                            delta = -(item.amount || 0);
+                            delta = -itemAmount;
                             icon = '🛒';
                             typeName = 'Замовлення';
                             break;
                         case 7: // Повернення
-                            delta = +(item.amount || 0);
+                            delta = +itemAmount;
                             icon = '↩️';
                             typeName = 'Повернення';
                             break;
@@ -2593,6 +2593,8 @@
                             employee_id: item.employee_id,
                             relation_id_label: item.relation_id_label,
                             amount: item.amount,
+                            quantity: item.quantity,
+                            itemAmount: itemAmount,
                             delta: delta
                         });
                     }
@@ -2606,7 +2608,7 @@
                         user: item.employee_id || '-',
                         counterparty: '-',
                         warehouseId: null,
-                        amount: Math.abs(item.amount || 0),
+                        amount: Math.abs(itemAmount),
                         description: item.comment || item.relation_label || '-',
                         delta: delta
                     });

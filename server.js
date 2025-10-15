@@ -182,6 +182,21 @@ class RemonlineMatrixSync {
               return parseInt(item.warehouse_id) === parseInt(warehouseId);
             });
 
+            // ✅ ДОДАНО: Завантажуємо співробітників якщо кеш порожній
+            if (this.employeesCache.size === 0) {
+              console.log("📡 Завантаження співробітників для goods-flow...");
+              await this.fetchEmployees();
+            }
+
+            // ✅ ДОДАНО: Додаємо імена співробітників до goods-flow
+            filteredItems.forEach((item) => {
+              if (item.employee_id) {
+                const employee = this.employeesCache.get(item.employee_id);
+                item.employee_name = employee
+                  ? employee.fullName
+                  : `ID: ${item.employee_id}`;
+              }
+            });
             console.log(
               `✅ Фільтрація: ${beforeFilter} → ${filteredItems.length} операцій для складу ${warehouseId}`
             );
