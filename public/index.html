@@ -1456,9 +1456,15 @@
                     }
                 }
 
+                console.log('📊 Повна структура standardHistory:', {
+                    currentBalances: standardHistory.currentBalances,
+                    dataCurrentBalances: standardHistory.data?.currentBalances
+                });
+
                 const combinedData = {
                     ...standardHistory.data,
-                    data: goodsFlowResult.success ? goodsFlowResult.data : []
+                    data: goodsFlowResult.success ? goodsFlowResult.data : [],
+                    currentBalances: standardHistory.currentBalances  // ✅ ДОДАЙ ЦЕ
                 };
 
                 // ✅ КРИТИЧНО: Передаємо warehouseId для фільтрації!
@@ -2621,35 +2627,58 @@
                     totalOperations: allOperations.length
                 });
 
-                filteredOperations = allOperations.filter(op => {
-                    // Переміщення - вже відфільтровані при зборі
+                // ✅ ДОДАЙ ДЕТАЛЬНИЙ ЛОГ КОЖНОЇ ОПЕРАЦІЇ
+                console.log('📋 Операції ДО фільтрації:');
+                allOperations.forEach((op, i) => {
+                    console.log(`  ${i + 1}. ${op.type} | warehouseId: ${op.warehouseId} | counterparty: ${op.counterparty || op.warehouse}`);
+                });
+
+                filteredOperations = allOperations.filter((op, index) => {
+                    // Переміщення - вже відфільтровані
                     if (op.type === 'move_in' || op.type === 'move_out') {
+                        console.log(`✅ ${index + 1}. Залишаємо ${op.type}`);
                         return true;
                     }
 
                     // Операції з warehouseId
                     if (op.warehouseId !== null && op.warehouseId !== undefined) {
-                        return op.warehouseId == filterWarehouseId;
+                        const match = op.warehouseId == filterWarehouseId;
+                        console.log(`${match ? '✅' : '❌'} ${index + 1}. ${op.type} | warehouseId: ${op.warehouseId} ${match ? '==' : '!='} ${filterWarehouseId}`);
+                        return match;
                     }
 
-                    // Goods-flow - завжди для поточного складу
+                    // Goods-flow
                     if (op.type && op.type.startsWith('goods_flow_')) {
+                        console.log(`✅ ${index + 1}. Залишаємо ${op.type}`);
                         return true;
                     }
 
                     // Інші - по назві складу
-                    return op.warehouse && op.warehouse.includes(warehouseTitle);
+                    const match = op.counterparty && op.counterparty.includes(warehouseTitle);
+                    console.log(`${match ? '✅' : '❌'} ${index + 1}. ${op.type} | counterparty: ${op.counterparty} ${match ? 'містить' : 'НЕ містить'} ${warehouseTitle}`);
+                    return match;
                 });
 
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
+
+                console.log('📋 Операції ПІСЛЯ фільтрації:');
+                filteredOperations.forEach((op, i) => {
+                    console.log(`  ${i + 1}. ${op.typeName} | ${op.amount} шт | delta: ${op.delta}`);
+                });
             }
 
             // ============================================
             // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
             // ============================================
 
-            const currentBalance = data.currentBalances?.[warehouseTitle] || 0;
-            console.log(`📊 Поточний залишок: ${currentBalance}`);
+            //  отримуємо поточний залишок зі standardHistory
+            const currentBalance = standardHistory?.data?.currentBalances?.[warehouseTitle] ||
+                standardHistory?.currentBalances?.[warehouseTitle] ||
+                0;
+
+            console.log(`📊 Поточний залишок з API: ${currentBalance}`);
+            console.log(`📊 standardHistory.currentBalances:`, standardHistory?.currentBalances);
+            console.log(`📊 standardHistory.data?.currentBalances:`, standardHistory?.data?.currentBalances);
 
             // Рахуємо початковий залишок
             let initialBalance = currentBalance;
