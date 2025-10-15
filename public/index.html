@@ -2557,6 +2557,7 @@
                 data.data.forEach((item, idx) => {
                     const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
 
+                    const itemAmount = item.amount || item.quantity || 1;
                     let delta = 0;
                     let icon = '📋';
                     let typeName = 'Невідомо';
