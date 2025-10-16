@@ -1424,7 +1424,7 @@
                 const combinedData = {
                     ...standardHistory.data,
                     data: goodsFlowResult.success ? goodsFlowResult.data : [],
-                    currentBalances: standardHistory.currentBalances  // ✅ ДОДАЙ ЦЕ
+                    currentBalances: standardHistory.currentBalances
                 };
 
                 // ✅ КРИТИЧНО: Передаємо warehouseId для фільтрації!
@@ -2611,14 +2611,27 @@
             // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
             // ============================================
 
-            // ✅ ВИПРАВЛЕНО: Рахуємо початковий залишок ПРАВИЛЬНО
+            // ✅ Поточний залишок із BigQuery (останній відомий стан)
             const currentBalance = data.currentBalances?.[warehouseTitle] || 0;
+
+            // Обчислюємо суму всіх змін (дельт) за всіма операціями
+            const totalDelta = operationsSorted.reduce((sum, op) => sum + (op.delta || 0), 0);
+
+            // Початковий залишок = Поточний - сума всіх змін
+            let initialBalance = currentBalance - totalDelta;
+
+            // Стартуємо розрахунок з початкового залишку
+            let runningBalance = initialBalance;
 
             console.log(`📊 Поточний залишок з data.currentBalances: ${currentBalance}`);
             console.log(`📊 Всі балансі:`, data.currentBalances);
 
-            // Початковий залишок = Поточний - сума всіх змін
-            let initialBalance = currentBalance;
+            console.log("📊 Розрахунок залишків:");
+            console.log("   Поточний баланс:", currentBalance);
+            console.log("   Сума всіх змін:", totalDelta);
+            console.log("   Обчислений початковий залишок:", initialBalance);
+            console.log("📊 Початок побудови таблиці: runningBalance =", runningBalance);
+
             filteredOperations.forEach(op => {
                 initialBalance -= op.delta;
             });
@@ -2636,7 +2649,6 @@
 
             // Будуємо таблицю
             let tableRows = '';
-            let runningBalance = initialBalance;
 
             console.log(`📊 Початок побудови таблиці: runningBalance = ${runningBalance}`);
 
