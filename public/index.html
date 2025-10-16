@@ -741,12 +741,6 @@
                             <span>Зупинити синхронізацію</span>
                         </button>
 
-                        <button class="admin-btn" onclick="syncNow(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🔄</span>
-                            <span>Синхронізувати остатки</span>
-                        </button>
-
                         <button class="admin-btn" onclick="syncPostings(); toggleAdminMenu();"
                             style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 1.1rem;">📊</span>
@@ -1182,40 +1176,6 @@
 
             const response = await fetch(endpoint, options);
             return await response.json();
-        }
-
-        async function syncNow() {
-            if (!confirm('Синхронизация всех складов займет 10-15 минут. Продолжить?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронизация...';
-
-            try {
-                const result = await apiCall('/api/sync-now', 'POST');
-
-                if (result.success) {
-                    const data = result.result;
-                    updateStatus('lastSyncStatus',
-                        `${new Date().toLocaleString()} (${data.goodsFound} товаров)`,
-                        'success'
-                    );
-                    alert(`Синхронизация завершена!\n- Складов: ${data.warehousesProcessed}\n- Товаров: ${data.goodsFound}\n- Время: ${Math.round(data.duration / 1000)} сек`);
-
-                    setTimeout(() => {
-                        loadMatrixData();
-                    }, 2000);
-                } else {
-                    alert(`Ошибка синхронизации: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'Синхронізувати зараз';
-            }
         }
 
 
@@ -2048,30 +2008,6 @@
 
             } catch (error) {
                 console.error('Ошибка обновления статуса:', error);
-            }
-        }
-
-        async function recreateTable() {
-            if (!confirm('Пересоздание таблицы удалит все существующие данные! Продолжить?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Пересоздание...';
-
-            try {
-                const result = await apiCall('/api/recreate-table', 'POST');
-                if (result.success) {
-                    alert('Таблица пересоздана с правильной схемой! Теперь можно сохранять дробные остатки.');
-                } else {
-                    alert(`Ошибка: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🔄 Перестворити таблицю';
             }
         }
 

@@ -246,38 +246,6 @@ class RemonlineMatrixSync {
       });
     });
 
-    // Тест подключения к API
-    this.app.post("/api/test-connection", async (req, res) => {
-      try {
-        const allWarehouses = await this.fetchWarehouses();
-
-        // Фильтруем склады по названию
-        const activeWarehouses = allWarehouses.filter((warehouse) => {
-          const title = warehouse.title || "";
-          return (
-            !title.startsWith("001_") &&
-            !title.startsWith("002_") &&
-            !title.startsWith("003_")
-          );
-        });
-
-        console.log(
-          `Всего складов: ${allWarehouses.length}, активных: ${activeWarehouses.length}`
-        );
-
-        res.json({
-          success: true,
-          warehousesCount: activeWarehouses.length,
-          warehouses: activeWarehouses.slice(0, 3),
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
-    });
-
     this.app.post("/api/temp-set-cookies", async (req, res) => {
       try {
         console.log("📥 Отримано запит на встановлення cookies");
@@ -441,22 +409,6 @@ class RemonlineMatrixSync {
       }
     );
 
-    // Запуск синхронизации
-    this.app.post("/api/sync-now", async (req, res) => {
-      try {
-        const result = await this.performFullSync();
-        res.json({
-          success: true,
-          result,
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
-    });
-
     // Управление автосинхронизацией
     this.app.post("/api/start-auto-sync", (req, res) => {
       this.startAutoSync();
@@ -466,30 +418,6 @@ class RemonlineMatrixSync {
     this.app.post("/api/stop-auto-sync", (req, res) => {
       this.stopAutoSync();
       res.json({ success: true, message: "Автосинхронизация остановлена" });
-    });
-
-    // Новый endpoint для пересоздания таблицы:
-    this.app.post("/api/recreate-table", async (req, res) => {
-      try {
-        const success = await this.recreateBigQueryTable();
-        if (success) {
-          res.json({
-            success: true,
-            message:
-              "Таблица пересоздана с правильной схемой (FLOAT для остатков)",
-          });
-        } else {
-          res.status(500).json({
-            success: false,
-            error: "Не удалось пересоздать таблицу",
-          });
-        }
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
     });
 
     // Синхронизация истории оприходований
@@ -1063,32 +991,6 @@ class RemonlineMatrixSync {
       }
     });
 
-    this.app.get("/api/debug-warehouse/:warehouseId", async (req, res) => {
-      try {
-        const warehouseId = req.params.warehouseId;
-        console.log(`🔍 ОТЛАДКА: Получение всех товаров склада ${warehouseId}`);
-
-        const goods = await this.fetchWarehouseGoods(warehouseId);
-
-        res.json({
-          success: true,
-          warehouseId,
-          totalGoods: goods.length,
-          uniqueProducts: new Set(goods.map((g) => g.title)).size,
-          pagesLoaded: Math.ceil(goods.length / 100),
-          sampleGoods: goods.slice(0, 5).map((item) => ({
-            title: item.title,
-            residue: item.residue,
-          })),
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error.message,
-        });
-      }
-    });
-
     this.app.get("/api/employees", async (req, res) => {
       try {
         const employees = await this.fetchEmployees();
@@ -1561,41 +1463,6 @@ class RemonlineMatrixSync {
       }
     );
 
-    // Добавьте временный endpoint для отладки
-    this.app.get("/api/debug-postings/:warehouseId", async (req, res) => {
-      const warehouseId = req.params.warehouseId;
-      const options = {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          authorization: `Bearer ${process.env.REMONLINE_API_TOKEN}`,
-        },
-      };
-
-      let allPostings = [];
-      let page = 1;
-      const maxPages = 10; // проверим первые 10 страниц
-
-      while (page <= maxPages) {
-        const url = `https://api.roapp.io/warehouse/postings/?page=${page}&warehouse_ids[]=${warehouseId}&per_page=100`;
-        const response = await fetch(url, options);
-        const data = await response.json();
-        const postings = data.data || [];
-
-        allPostings.push(...postings);
-        console.log(`Страница ${page}: ${postings.length} постингов`);
-
-        if (postings.length === 0) break;
-        page++;
-      }
-
-      res.json({
-        total: allPostings.length,
-        pages: page - 1,
-        sample: allPostings.slice(0, 5),
-      });
-    });
-
     // ТИМЧАСОВО для тестування
     this.app.get("/api/set-cookies/:cookieString", async (req, res) => {
       try {
@@ -1697,14 +1564,6 @@ class RemonlineMatrixSync {
   }
 
   setupScheduledSync() {
-    // Остатки товарів - щогодини о 00 хвилині
-    // cron.schedule("0 * * * *", async () => {
-    //   if (this.isRunning) {
-    //     console.log("🔄 Запуск запланированной синхронизации остатков...");
-    //     await this.performFullSync();
-    //   }
-    // });
-
     // Оприбуткування - щогодини о 30 хвилині
     cron.schedule("30 * * * *", async () => {
       if (this.isRunning) {
@@ -2214,67 +2073,6 @@ class RemonlineMatrixSync {
     return data.data || [];
   }
 
-  async fetchWarehouseGoods(warehouseId) {
-    const options = {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${process.env.REMONLINE_API_TOKEN}`,
-      },
-    };
-
-    let allGoods = [];
-    let page = 1;
-    let hasMore = true;
-
-    console.log(`📡 Получение товаров для склада ${warehouseId}...`);
-
-    while (hasMore) {
-      try {
-        const url = `https://api.roapp.io/warehouse/goods/${warehouseId}?exclude_zero_residue=false&page=${page}`;
-
-        const response = await fetch(url, options);
-
-        if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status} для склада ${warehouseId}, страница ${page}`
-          );
-        }
-
-        const data = await response.json();
-        const goods = data.data || [];
-
-        console.log(`📄 Страница ${page}: получено ${goods.length} товаров`);
-
-        if (goods.length === 0) {
-          console.log(`✅ Страница ${page} пустая, завершаем загрузку`);
-          hasMore = false;
-        } else {
-          allGoods = allGoods.concat(goods);
-          console.log(`📈 Всего загружено: ${allGoods.length} товаров`);
-
-          // Якщо отримали менше 50 товарів - це остання сторінка
-          if (goods.length < 50) {
-            console.log(
-              `✅ Получена последняя страница (${goods.length} товаров)`
-            );
-            hasMore = false;
-          } else {
-            page++;
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Ошибка получения страницы ${page}:`, error.message);
-        hasMore = false;
-      }
-    }
-
-    console.log(
-      `✅ Склад ${warehouseId}: всего получено ${allGoods.length} товаров`
-    );
-    return allGoods;
-  }
-
   async fetchGoodsFlowForProduct(productId, startDate, endDate, cookies) {
     if (!cookies) {
       throw new Error("Потрібні cookies для доступу до goods-flow");
@@ -2468,349 +2266,6 @@ class RemonlineMatrixSync {
     console.log(`🔍 Найден сотрудник в кеше:`, employee);
 
     return employee ? employee.fullName : `ID: ${employeeId}`;
-  }
-  async performFullSync() {
-    console.log("🔄 Начинается полная синхронизация товаров в наличии...");
-
-    const syncStart = Date.now();
-    const errors = [];
-    let totalGoods = 0;
-    let warehousesProcessed = 0;
-    const uniqueProducts = new Set();
-
-    try {
-      const warehouses = await this.fetchWarehouses();
-
-      console.log(
-        `📍 Обробляємо ${warehouses.length} складів (виключено склад ${excludedWarehouseIds[0]})`
-      );
-
-      // const warehouses = await this.fetchWarehouses();
-      console.log(`📍 Найдено ${warehouses.length} складов для обработки`);
-
-      const batchSize = 20;
-
-      for (let i = 0; i < warehouses.length; i += batchSize) {
-        const warehouseBatch = warehouses.slice(i, i + batchSize);
-        const batchData = [];
-
-        for (const warehouse of warehouseBatch) {
-          try {
-            console.log(
-              `\n📦 [${warehousesProcessed + 1}/${warehouses.length}] Склад: ${
-                warehouse.title
-              }`
-            );
-
-            const goodsInStock = await this.fetchWarehouseGoods(warehouse.id);
-
-            if (goodsInStock.length > 0) {
-              console.log(`   📊 Обработка ${goodsInStock.length} товаров...`);
-
-              goodsInStock.forEach((item) => {
-                uniqueProducts.add(item.title);
-
-                const processedItem = {
-                  warehouse_id: warehouse.id,
-                  warehouse_title: warehouse.title || "Неизвестный склад",
-                  warehouse_type: warehouse.type || "product",
-                  warehouse_is_global: warehouse.is_global || false,
-                  good_id: item.id,
-                  product_id: item.product_id || item.id,
-                  title: item.title,
-                  code: item.code || "",
-                  article: item.article || "",
-                  residue: item.residue,
-                  price_json: JSON.stringify(item.price || {}),
-                  category: item.category?.title || "",
-                  category_id: item.category?.id || null,
-                  description: item.description || "",
-                  uom_title: item.uom?.title || "",
-                  uom_description: item.uom?.description || "",
-                  image_url: Array.isArray(item.image)
-                    ? item.image[0] || ""
-                    : item.image || "",
-                  is_serial: item.is_serial || false,
-                  warranty: item.warranty || 0,
-                  warranty_period: item.warranty_period || 0,
-                  updated_at: new Date().toISOString(),
-                };
-                batchData.push(processedItem);
-              });
-
-              totalGoods += goodsInStock.length;
-            }
-
-            warehousesProcessed++;
-          } catch (error) {
-            const errorMsg = `Ошибка: ${warehouse.title} - ${error.message}`;
-            console.error(`❌ ${errorMsg}`);
-            errors.push(errorMsg);
-            warehousesProcessed++;
-          }
-        }
-
-        if (batchData.length > 0) {
-          console.log(
-            `\n💾 Сохранение порции ${batchData.length} записей в BigQuery...`
-          );
-          await this.saveToBigQuery(batchData);
-
-          if (global.gc) {
-            global.gc();
-          }
-        }
-
-        console.log(
-          `📊 Прогресс: ${warehousesProcessed}/${warehouses.length} складов`
-        );
-      }
-
-      this.lastSyncData = {
-        timestamp: new Date().toISOString(),
-        warehousesProcessed,
-        goodsFound: totalGoods,
-        uniqueProducts: uniqueProducts.size,
-        errors,
-        duration: Date.now() - syncStart,
-      };
-
-      return this.lastSyncData;
-    } catch (error) {
-      console.error(`❌ ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Дополнительно: функция для тестирования пагинации на одном складе
-  async testPaginationForWarehouse(warehouseId) {
-    console.log(`🧪 Тестирование пагинации для склада ${warehouseId}:`);
-
-    try {
-      const goods = await this.fetchWarehouseGoods(warehouseId);
-
-      console.log(`📊 Результаты тестирования:`);
-      console.log(`- Всего товаров: ${goods.length}`);
-      console.log(
-        `- Уникальных названий: ${new Set(goods.map((g) => g.title)).size}`
-      );
-      console.log(
-        `- Общий остаток: ${goods.reduce((sum, item) => sum + item.residue, 0)}`
-      );
-
-      // Показываем топ-10 товаров по остаткам
-      const topGoods = goods.sort((a, b) => b.residue - a.residue).slice(0, 10);
-
-      console.log(`📈 Топ-10 товаров по остаткам:`);
-      topGoods.forEach((item, index) => {
-        console.log(
-          `   ${index + 1}. "${item.title}" - остаток: ${item.residue}`
-        );
-      });
-
-      return goods;
-    } catch (error) {
-      console.error(`❌ Ошибка тестирования: ${error.message}`);
-      return [];
-    }
-  }
-
-  async createBigQueryTable() {
-    if (!this.bigquery) {
-      console.log("❌ BigQuery не инициализирована");
-      return false;
-    }
-
-    try {
-      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-      const [datasetExists] = await dataset.exists();
-
-      if (!datasetExists) {
-        console.log("📁 Создаем датасет...");
-        await dataset.create({
-          location: "EU",
-          description: "Dataset for Remonline inventory matrix",
-        });
-        console.log("✅ Датасет создан");
-      }
-
-      const table = dataset.table(process.env.BIGQUERY_TABLE);
-      const [tableExists] = await table.exists();
-
-      if (tableExists) {
-        console.log("✅ Таблица BigQuery уже существует");
-
-        // Проверяем схему существующей таблицы
-        const [metadata] = await table.getMetadata();
-        const existingFields = metadata.schema.fields.map(
-          (field) => field.name
-        );
-        console.log("📋 Существующие поля:", existingFields.join(", "));
-
-        // Проверяем тип поля residue
-        const residueField = metadata.schema.fields.find(
-          (field) => field.name === "residue"
-        );
-        if (residueField && residueField.type === "INTEGER") {
-          console.log(
-            "⚠️ Поле residue имеет тип INTEGER, но нужен FLOAT для дробных остатков"
-          );
-          console.log(
-            "💡 Рекомендация: пересоздайте таблицу или измените тип поля"
-          );
-
-          // Можно автоматически пересоздать таблицу
-          if (process.env.AUTO_RECREATE_TABLE === "true") {
-            console.log("🔄 Пересоздание таблицы с правильной схемой...");
-            await table.delete();
-            console.log("🗑️ Старая таблица удалена");
-            // Продолжаем создание новой таблицы ниже
-          } else {
-            console.log(
-              "❌ Невозможно вставить дробные остатки в INTEGER поле"
-            );
-            return false;
-          }
-        } else {
-          return true;
-        }
-      }
-
-      console.log("🔨 Создаем новую таблицу BigQuery с правильной схемой...");
-
-      // ИСПРАВЛЕННАЯ схема с FLOAT для residue
-      const schema = [
-        { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" },
-        { name: "warehouse_title", type: "STRING", mode: "REQUIRED" },
-        { name: "warehouse_type", type: "STRING", mode: "NULLABLE" },
-        { name: "warehouse_is_global", type: "BOOLEAN", mode: "NULLABLE" },
-        { name: "good_id", type: "INTEGER", mode: "REQUIRED" },
-        { name: "product_id", type: "INTEGER", mode: "REQUIRED" },
-        { name: "title", type: "STRING", mode: "REQUIRED" },
-        { name: "code", type: "STRING", mode: "NULLABLE" },
-        { name: "article", type: "STRING", mode: "NULLABLE" },
-        { name: "residue", type: "FLOAT", mode: "REQUIRED" },
-        { name: "price_json", type: "STRING", mode: "NULLABLE" },
-        { name: "category", type: "STRING", mode: "NULLABLE" },
-        { name: "category_id", type: "INTEGER", mode: "NULLABLE" },
-        { name: "description", type: "STRING", mode: "NULLABLE" },
-        { name: "uom_title", type: "STRING", mode: "NULLABLE" },
-        { name: "uom_description", type: "STRING", mode: "NULLABLE" },
-        { name: "image_url", type: "STRING", mode: "NULLABLE" },
-        { name: "is_serial", type: "BOOLEAN", mode: "NULLABLE" },
-        { name: "warranty", type: "INTEGER", mode: "NULLABLE" },
-        { name: "warranty_period", type: "INTEGER", mode: "NULLABLE" },
-        { name: "updated_at", type: "TIMESTAMP", mode: "REQUIRED" },
-        { name: "sync_id", type: "STRING", mode: "NULLABLE" },
-      ];
-
-      await table.create({ schema, location: "EU" });
-      console.log("✅ Таблица BigQuery создана с FLOAT типом для остатков");
-      return true;
-    } catch (error) {
-      console.error("❌ Ошибка создания таблицы BigQuery:", error.message);
-      return false;
-    }
-  }
-
-  // Функция для принудительного пересоздания таблицы:
-  async recreateBigQueryTable() {
-    if (!this.bigquery) {
-      console.log("❌ BigQuery не инициализирована");
-      return false;
-    }
-
-    try {
-      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-      const table = dataset.table(process.env.BIGQUERY_TABLE);
-
-      const [tableExists] = await table.exists();
-      if (tableExists) {
-        console.log("🗑️ Удаление существующей таблицы...");
-        await table.delete();
-        console.log("✅ Таблица удалена");
-      }
-
-      // Создаем новую таблицу с правильной схемой
-      return await this.createBigQueryTable();
-    } catch (error) {
-      console.error("❌ Ошибка пересоздания таблицы:", error.message);
-      return false;
-    }
-  }
-
-  async saveToBigQuery(data) {
-    if (!this.bigquery || !data.length) return;
-
-    try {
-      await this.createBigQueryTable();
-
-      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-      const table = dataset.table(process.env.BIGQUERY_TABLE);
-
-      const syncId = Date.now().toString();
-      const enhancedData = data.map((item) => ({
-        ...item,
-        sync_id: syncId,
-      }));
-
-      // Вставляємо порцію без видалення старих даних
-      console.log("📊 Вставка порції даних в BigQuery...");
-
-      const batchSize = 500;
-      let insertedCount = 0;
-
-      for (let i = 0; i < enhancedData.length; i += batchSize) {
-        const batch = enhancedData.slice(i, i + batchSize);
-
-        try {
-          await table.insert(batch);
-          insertedCount += batch.length;
-          console.log(
-            `📊 Вставлено ${insertedCount}/${enhancedData.length} записей`
-          );
-        } catch (error) {
-          console.error(`❌ Ошибка вставки батча:`, error.message);
-        }
-      }
-
-      console.log(`✅ Сохранено ${insertedCount} записей`);
-    } catch (error) {
-      console.error("❌ Ошибка сохранения в BigQuery:", error.message);
-      throw error;
-    }
-  }
-
-  async clearPostingsTable() {
-    if (!this.bigquery) return;
-
-    try {
-      const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-      const table = dataset.table(`${process.env.BIGQUERY_TABLE}_postings`);
-
-      // Проверяем существование таблицы перед попыткой очистки
-      const [exists] = await table.exists();
-      if (!exists) {
-        console.log("ℹ️ Таблица постингов не существует, очистка не требуется");
-        return;
-      }
-
-      const query = `
-        DELETE FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-        WHERE TRUE
-      `;
-
-      const [job] = await this.bigquery.createQueryJob({
-        query,
-        location: "EU",
-      });
-      await job.getQueryResults();
-
-      console.log("✅ Старые данные истории удалены");
-    } catch (error) {
-      console.error("❌ Ошибка очистки таблицы истории:", error.message);
-      // НЕ выбрасываем ошибку, чтобы процесс продолжился
-    }
   }
 
   // Добавить методы для работы с поставщиками
@@ -4117,7 +3572,7 @@ class RemonlineMatrixSync {
   // Створює SQL view для розрахунку остатків
   async createStockCalculationView() {
     if (!this.bigquery) {
-      console.log("❌ BigQuery не інціалізована");
+      console.log("❌ BigQuery не ініціалізована");
       return false;
     }
 
@@ -4127,169 +3582,188 @@ class RemonlineMatrixSync {
 
       console.log(`🔨 Створення view ${viewName}...`);
 
-      const [exists] = await dataset.table(viewName).exists();
-      if (exists) {
+      // Перевіряємо чи існують таблиці
+      const requiredTables = [
+        `${process.env.BIGQUERY_TABLE}_postings`,
+        `${process.env.BIGQUERY_TABLE}_moves`,
+        `${process.env.BIGQUERY_TABLE}_outcomes`,
+        `${process.env.BIGQUERY_TABLE}_sales`,
+        `${process.env.BIGQUERY_TABLE}_orders`,
+      ];
+
+      console.log("🔍 Перевірка наявності таблиць...");
+      for (const tableName of requiredTables) {
+        const table = dataset.table(tableName);
+        const [exists] = await table.exists();
+
+        if (!exists) {
+          console.log(`⚠️ Таблиця ${tableName} не існує!`);
+          console.log(`💡 Спочатку запустіть синхронізацію даних`);
+          return false;
+        } else {
+          console.log(`✅ Таблиця ${tableName} існує`);
+        }
+      }
+
+      // Видаляємо старий view
+      const [viewExists] = await dataset.table(viewName).exists();
+      if (viewExists) {
         await dataset.table(viewName).delete();
         console.log(`🗑️ Старий view видалено`);
       }
 
       const viewQuery = `
-      WITH initial_stock AS (
-          -- Початкові остатки з повної синхронізації
-          SELECT 
-              warehouse_id,
-              warehouse_title,
-              product_id,
-              title as product_title,
-              code as product_code,
-              article as product_article,
-              uom_title,
-              residue as movement,
-              updated_at as operation_date
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          WHERE residue > 0
-          
-          UNION ALL
-          
-          -- Оприбуткування (+)
-          SELECT 
-              warehouse_id,
-              warehouse_title,
-              product_id,
-              product_title,
-              product_code,
-              product_article,
-              uom_title,
-              amount as movement,
-              posting_created_at as operation_date
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-          
-          UNION ALL
-          
-          -- Вхідні переміщення (+)
-          SELECT 
-              w.warehouse_id,
-              m.target_warehouse_title as warehouse_title,
-              m.product_id,
-              m.product_title,
-              m.product_code,
-              m.product_article,
-              m.uom_title,
-              m.amount as movement,
-              m.move_created_at as operation_date
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
-          JOIN (
-              SELECT DISTINCT warehouse_id, warehouse_title 
-              FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          ) w ON m.target_warehouse_title = w.warehouse_title
-          
-          UNION ALL
-          
-          -- Вихідні переміщення (-)
-          SELECT 
-              w.warehouse_id,
-              m.source_warehouse_title as warehouse_title,
-              m.product_id,
-              m.product_title,
-              m.product_code,
-              m.product_article,
-              m.uom_title,
-              -m.amount as movement,
-              m.move_created_at as operation_date
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
-          JOIN (
-              SELECT DISTINCT warehouse_id, warehouse_title 
-              FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          ) w ON m.source_warehouse_title = w.warehouse_title
-          
-          UNION ALL
-          
-          -- Списання (-)
-          SELECT 
-              w.warehouse_id,
-              o.source_warehouse_title as warehouse_title,
-              o.product_id,
-              o.product_title,
-              o.product_code,
-              o.product_article,
-              o.uom_title,
-              -o.amount as movement,
-              o.outcome_created_at as operation_date
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
-          JOIN (
-              SELECT DISTINCT warehouse_id, warehouse_title 
-              FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          ) w ON o.source_warehouse_title = w.warehouse_title
-          
-          UNION ALL
-          
-          -- Продажі (-)
-          SELECT 
-              s.warehouse_id,
-              w.warehouse_title,
-              NULL as product_id,
-              s.product_title,
-              s.product_code,
-              s.product_article,
-              s.uom_title,
-              -s.amount as movement,
-              s.sale_created_at as operation_date
-          FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\` s
-          JOIN (
-              SELECT DISTINCT warehouse_id, warehouse_title 
-              FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-          ) w ON s.warehouse_id = w.warehouse_id
-      )
-      
-      SELECT 
-          warehouse_id,
-          MAX(warehouse_title) as warehouse_title,
-          product_id,
-          MAX(product_title) as title,
-          MAX(product_code) as code,
-          MAX(product_article) as article,
-          MAX(uom_title) as uom_title,
-          SUM(movement) as residue,
-          MAX(operation_date) as updated_at
-      FROM initial_stock
-      WHERE warehouse_id IS NOT NULL
-      GROUP BY warehouse_id, product_id
-      HAVING SUM(movement) > 0
-
-      UNION ALL
-
--- ✅ ДОДАНО: Замовлення (-)
-SELECT 
-    o.warehouse_id,
-    w.warehouse_title,
-    o.product_id,
-    o.product_title,
-    -o.amount as movement,
-    o.created_at as operation_date
-FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
-JOIN (
-    SELECT DISTINCT warehouse_id, warehouse_title 
-    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-) w ON o.warehouse_id = w.warehouse_id
-WHERE o.relation_type = 0  -- Тільки замовлення
-
-UNION ALL
-
--- ✅ ДОДАНО: Повернення (+)
-SELECT 
-    o.warehouse_id,
-    w.warehouse_title,
-    o.product_id,
-    o.product_title,
-    o.amount as movement,
-    o.created_at as operation_date
-FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
-JOIN (
-    SELECT DISTINCT warehouse_id, warehouse_title 
-    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-) w ON o.warehouse_id = w.warehouse_id
-WHERE o.relation_type = 7  -- Тільки повернення
-    `;
+            WITH all_operations AS (
+                -- Оприбуткування (+)
+                SELECT 
+                    warehouse_id,
+                    warehouse_title,
+                    product_id,
+                    product_title,
+                    product_code,
+                    product_article,
+                    uom_title,
+                    amount as quantity_delta,
+                    posting_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                WHERE posting_created_at >= '2022-05-01 00:00:00'
+                
+                UNION ALL
+                
+                -- Вхідні переміщення (+)
+                SELECT 
+                    w.warehouse_id,
+                    m.target_warehouse_title as warehouse_title,
+                    m.product_id,
+                    m.product_title,
+                    m.product_code,
+                    m.product_article,
+                    m.uom_title,
+                    m.amount as quantity_delta,
+                    m.move_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                ) w ON m.target_warehouse_title = w.warehouse_title
+                WHERE m.move_created_at >= '2022-05-01 00:00:00'
+                
+                UNION ALL
+                
+                -- Вихідні переміщення (-)
+                SELECT 
+                    w.warehouse_id,
+                    m.source_warehouse_title as warehouse_title,
+                    m.product_id,
+                    m.product_title,
+                    m.product_code,
+                    m.product_article,
+                    m.uom_title,
+                    -m.amount as quantity_delta,
+                    m.move_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                ) w ON m.source_warehouse_title = w.warehouse_title
+                WHERE m.move_created_at >= '2022-05-01 00:00:00'
+                
+                UNION ALL
+                
+                -- Списання (-)
+                SELECT 
+                    w.warehouse_id,
+                    o.source_warehouse_title as warehouse_title,
+                    o.product_id,
+                    o.product_title,
+                    o.product_code,
+                    o.product_article,
+                    o.uom_title,
+                    -o.amount as quantity_delta,
+                    o.outcome_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                ) w ON o.source_warehouse_title = w.warehouse_title
+                WHERE o.outcome_created_at >= '2022-05-01 00:00:00'
+                
+                UNION ALL
+                
+                -- Продажі (-)
+                SELECT 
+                    s.warehouse_id,
+                    w.warehouse_title,
+                    NULL as product_id,
+                    s.product_title,
+                    s.product_code,
+                    s.product_article,
+                    s.uom_title,
+                    -s.amount as quantity_delta,
+                    s.sale_created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\` s
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                ) w ON s.warehouse_id = w.warehouse_id
+                WHERE s.sale_created_at >= '2022-05-01 00:00:00'
+                
+                UNION ALL
+                
+                -- Замовлення (-)
+                SELECT 
+                    o.warehouse_id,
+                    w.warehouse_title,
+                    o.product_id,
+                    o.product_title,
+                    NULL as product_code,
+                    NULL as product_article,
+                    NULL as uom_title,
+                    -o.amount as quantity_delta,
+                    o.created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                ) w ON o.warehouse_id = w.warehouse_id
+                WHERE o.relation_type = 0 AND o.created_at >= '2022-05-01 00:00:00'
+                
+                UNION ALL
+                
+                -- Повернення (+)
+                SELECT 
+                    o.warehouse_id,
+                    w.warehouse_title,
+                    o.product_id,
+                    o.product_title,
+                    NULL as product_code,
+                    NULL as product_article,
+                    NULL as uom_title,
+                    o.amount as quantity_delta,
+                    o.created_at as operation_date
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
+                JOIN (
+                    SELECT DISTINCT warehouse_id, warehouse_title 
+                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                ) w ON o.warehouse_id = w.warehouse_id
+                WHERE o.relation_type = 7 AND o.created_at >= '2022-05-01 00:00:00'
+            )
+            
+            SELECT 
+                warehouse_id,
+                MAX(warehouse_title) as warehouse_title,
+                COALESCE(product_id, 0) as product_id,
+                MAX(product_title) as title,
+                MAX(product_code) as code,
+                MAX(product_article) as article,
+                MAX(uom_title) as uom_title,
+                SUM(quantity_delta) as residue,
+                MAX(operation_date) as updated_at
+            FROM all_operations
+            WHERE warehouse_id IS NOT NULL
+            GROUP BY warehouse_id, product_id, product_title
+            HAVING SUM(quantity_delta) > 0
+        `;
 
       const metadata = {
         view: {
@@ -4301,6 +3775,7 @@ WHERE o.relation_type = 7  -- Тільки повернення
 
       await dataset.createTable(viewName, metadata);
       console.log(`✅ View ${viewName} успішно створено`);
+      console.log(`📊 Розрахунок остатків з 01.05.2022`);
       return true;
     } catch (error) {
       console.error("❌ Помилка створення view:", error.message);
@@ -4347,10 +3822,6 @@ WHERE o.relation_type = 7  -- Тільки повернення
     }
   }
 
-  // async initialize() {
-  //   await this.refreshCookiesAutomatically();
-  //   console.log("✅ Сервер повністю ініціалізовано");
-  // }
   async initialize() {
     console.log("🚀 Ініціалізація сервера...");
 
