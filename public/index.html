@@ -2615,7 +2615,11 @@
             const currentBalance = data.currentBalances?.[warehouseTitle] || 0;
 
             // Обчислюємо суму всіх змін (дельт) за всіма операціями
-            const totalDelta = operationsSorted.reduce((sum, op) => sum + (op.delta || 0), 0);
+            const totalDelta = (operationsSorted || operations || allOperations || []).reduce(
+                (sum, op) => sum + (op.delta || 0),
+                0
+            );
+
 
             // Початковий залишок = Поточний - сума всіх змін
             let initialBalance = currentBalance - totalDelta;
