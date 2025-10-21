@@ -2332,169 +2332,437 @@
             }
         }
 
-        async function displaySeparatedProductHistory(data, filterWarehouseId, warehouseTitle) {
-            try {
-                console.log("🎬 displaySeparatedProductHistory:", {
-                    productTitle: data.productTitle,
-                    warehouseTitle,
+        function displaySeparatedProductHistory(data, productTitle, warehouseTitle, filterWarehouseId = null) {
+            console.log('🎬 displaySeparatedProductHistory:', {
+                productTitle,
+                warehouseTitle,
+                filterWarehouseId
+            });
+
+            console.log('📊 Вхідні дані:', {
+                postings: data.postings?.length || 0,
+                moves: data.moves?.length || 0,
+                outcomes: data.outcomes?.length || 0,
+                sales: data.sales?.length || 0,
+                goodsFlow: data.data?.length || 0
+            });
+
+            const allOperations = [];
+
+            // ============================================
+            // 1. ЗБІР ОПЕРАЦІЙ
+            // ============================================
+
+            // Оприбуткування
+            if (data.postings) {
+                console.log(`📦 Обробка ${data.postings.length} оприбуткувань`);
+                data.postings.forEach((item) => {
+                    allOperations.push({
+                        date: new Date(item.posting_created_at?.value || item.posting_created_at),
+                        type: 'posting',
+                        typeName: '📦 Оприбуткування',
+                        typeColor: '#059669',
+                        label: item.posting_label || '-',
+                        user: item.created_by_name || '-',
+                        warehouse: item.warehouse_title || warehouseTitle,
+                        warehouseId: item.warehouse_id || null,
+                        amount: item.amount || 0,
+                        description: item.posting_description || '-',
+                        delta: +item.amount
+                    });
+                });
+            }
+
+            // Переміщення
+            if (data.moves) {
+                console.log(`🔄 Обробка ${data.moves.length} переміщень`);
+                data.moves.forEach((item, idx) => {
+                    const date = new Date(item.move_created_at?.value || item.move_created_at);
+
+                    // Очищаємо назви від префіксів
+                    let sourceTitle = item.source_warehouse_title || '';
+                    let targetTitle = item.target_warehouse_title || '';
+
+                    if (sourceTitle.includes(' > ')) {
+                        sourceTitle = sourceTitle.split(' > ')[1].trim();
+                    }
+                    if (targetTitle.includes(' > ')) {
+                        targetTitle = targetTitle.split(' > ')[1].trim();
+                    }
+
+                    if (idx === 0) {
+                        console.log('Перше переміщення:', {
+                            sourceTitle,
+                            targetTitle,
+                            warehouseTitle,
+                            source_match: sourceTitle.includes(warehouseTitle),
+                            target_match: targetTitle.includes(warehouseTitle)
+                        });
+                    }
+
+                    // Вихід зі складу
+                    if (sourceTitle.includes(warehouseTitle)) {
+                        allOperations.push({
+                            date,
+                            type: 'move_out',
+                            typeName: '➡️ Переміщення (вихід)',
+                            typeColor: '#f59e0b',
+                            label: item.move_label || '-',
+                            user: item.created_by_name || '-',
+                            warehouse: `${sourceTitle} → ${targetTitle}`,
+                            warehouseId: null,
+                            sourceWarehouseTitle: sourceTitle,
+                            targetWarehouseTitle: targetTitle,
+                            amount: item.amount || 0,
+                            description: item.move_description || '-',
+                            delta: -(item.amount || 0)
+                        });
+                    }
+
+                    // Вхід на склад
+                    if (targetTitle.includes(warehouseTitle)) {
+                        allOperations.push({
+                            date,
+                            type: 'move_in',
+                            typeName: '⬅️ Переміщення (вхід)',
+                            typeColor: '#3b82f6',
+                            label: item.move_label || '-',
+                            user: item.created_by_name || '-',
+                            warehouse: `${sourceTitle} → ${targetTitle}`,
+                            warehouseId: filterWarehouseId,
+                            sourceWarehouseTitle: sourceTitle,
+                            targetWarehouseTitle: targetTitle,
+                            amount: item.amount || 0,
+                            description: item.move_description || '-',
+                            delta: +(item.amount || 0)
+                        });
+                    }
+                });
+            }
+
+            // Списання
+            if (data.outcomes) {
+                console.log(`🗑️ Обробка ${data.outcomes.length} списань`);
+                data.outcomes.forEach(item => {
+                    let outcomeWarehouse = item.source_warehouse_title || warehouseTitle;
+
+                    if (outcomeWarehouse.includes(' > ')) {
+                        outcomeWarehouse = outcomeWarehouse.split(' > ')[1].trim();
+                    }
+
+                    allOperations.push({
+                        date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
+                        type: 'outcome',
+                        typeName: '🗑️ Списання',
+                        typeColor: '#ef4444',
+                        label: item.outcome_label || '-',
+                        user: item.created_by_name || '-',
+                        counterparty: outcomeWarehouse,
+                        warehouse: outcomeWarehouse,
+                        warehouseId: item.warehouse_id || null,
+                        amount: item.amount || 0,
+                        description: item.outcome_description || '-',
+                        delta: -(item.amount || 0)
+                    });
+                });
+            }
+
+            // Продажі
+            if (data.sales) {
+                console.log(`💰 Обробка ${data.sales.length} продажів`);
+                data.sales.forEach(item => {
+                    allOperations.push({
+                        date: new Date(item.sale_created_at?.value || item.sale_created_at),
+                        type: 'sale',
+                        typeName: '💰 Продаж',
+                        typeColor: '#8b5cf6',
+                        label: item.sale_label || '-',
+                        user: item.created_by_name || '-',
+                        warehouse: warehouseTitle,
+                        warehouseId: item.warehouse_id || null,
+                        amount: item.amount || 0,
+                        description: item.sale_description || '-',
+                        delta: -(item.amount || 0)
+                    });
+                });
+            }
+
+            // Goods-flow (замовлення та повернення)
+            if (data.data && Array.isArray(data.data)) {
+                console.log(`🛒 Обробка ${data.data.length} goods-flow операцій`);
+                data.data.forEach((item, idx) => {
+                    const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
+
+                    const itemAmount = item.amount || item.quantity || 1;
+                    let delta = 0;
+                    let icon = '📋';
+                    let typeName = 'Невідомо';
+
+                    switch (item.relation_type) {
+                        case 0: // Замовлення
+                            delta = -itemAmount;
+                            icon = '🛒';
+                            typeName = 'Замовлення';
+                            break;
+                        case 7: // Повернення
+                            delta = +itemAmount;
+                            icon = '↩️';
+                            typeName = 'Повернення';
+                            break;
+                        case 2: // Інше
+                            delta = 0;
+                            icon = '📋';
+                            typeName = typeInfo.name || 'Інше';
+                            break;
+                        case 1: // Продаж (є в sales)
+                        case 3: // Оприбуткування (є в postings)
+                        case 4: // Списання (є в outcomes)
+                        case 5: // Переміщення (є в moves)
+                            return; // Пропускаємо
+                        default:
+                            delta = 0;
+                            icon = '📋';
+                            typeName = typeInfo.name || 'Невідомо';
+                    }
+
+                    if (idx === 0) {
+                        console.log('📋 Перший goods-flow запис:', {
+                            employee_id: item.employee_id,
+                            relation_id_label: item.relation_id_label,
+                            amount: item.amount,
+                            quantity: item.quantity,
+                            itemAmount: itemAmount,
+                            delta: delta
+                        });
+                    }
+
+                    allOperations.push({
+                        date: new Date(item.created_at?.value || item.created_at),
+                        type: `goods_flow_${item.relation_type}`,
+                        typeName: `${icon} ${typeName}`,
+                        typeColor: typeInfo.color || '#6b7280',
+                        label: item.relation_id_label || item.relation_label || item.id || '-',
+                        user: item.employee_id || '-',
+                        counterparty: '-',
+                        warehouseId: null,
+                        amount: Math.abs(itemAmount),
+                        description: item.comment || item.relation_label || '-',
+                        delta: delta
+                    });
+                });
+            }
+
+            console.log(`📊 Всього операцій зібрано: ${allOperations.length}`);
+
+            // ============================================
+            // 2. ФІЛЬТРАЦІЯ ПО СКЛАДУ
+            // ============================================
+
+            let filteredOperations = allOperations;
+
+            if (filterWarehouseId) {
+                console.log('🔍 Починаємо фільтрацію по складу:', {
                     filterWarehouseId,
+                    warehouseTitle,
+                    totalOperations: allOperations.length
                 });
 
-                // Статистика по операциям
-                const counts = {
-                    postings: data.postings?.length || 0,
-                    moves: data.moves?.length || 0,
-                    outcomes: data.outcomes?.length || 0,
-                    sales: data.sales?.length || 0,
-                    goodsFlow: data.goodsFlow?.length || 0,
-                };
-                console.log("📊 Вхідні дані:", counts);
-
-                // Об’єднуємо всі операції в один масив
-                let allOperations = [];
-
-                if (Array.isArray(data.postings)) {
-                    console.log(`📦 Обробка ${data.postings.length} оприбуткувань`);
-                    data.postings.forEach((p) => {
-                        allOperations.push({
-                            type: "posting",
-                            date: p.date,
-                            delta: p.quantity || 0,
-                            warehouseId: p.warehouse_id,
-                            counterparty: p.counterparty_title,
-                        });
-                    });
-                }
-
-                if (Array.isArray(data.moves)) {
-                    console.log(`🔄 Обробка ${data.moves.length} переміщень`);
-                    data.moves.forEach((m) => {
-                        const sourceMatch = m.source_warehouse_id === filterWarehouseId;
-                        const targetMatch = m.target_warehouse_id === filterWarehouseId;
-                        const delta = targetMatch ? (m.quantity || 0) : sourceMatch ? -(m.quantity || 0) : 0;
-                        allOperations.push({
-                            type: "move",
-                            date: m.date,
-                            delta,
-                            warehouseId: targetMatch ? m.target_warehouse_id : m.source_warehouse_id,
-                            counterparty: targetMatch ? m.source_title : m.target_title,
-                        });
-                    });
-                }
-
-                if (Array.isArray(data.outcomes)) {
-                    console.log(`🗑️ Обробка ${data.outcomes.length} списань`);
-                    data.outcomes.forEach((o) => {
-                        allOperations.push({
-                            type: "outcome",
-                            date: o.date,
-                            delta: -(o.quantity || 0),
-                            warehouseId: o.warehouse_id,
-                            counterparty: o.counterparty_title,
-                        });
-                    });
-                }
-
-                if (Array.isArray(data.sales)) {
-                    console.log(`💰 Обробка ${data.sales.length} продажів`);
-                    data.sales.forEach((s) => {
-                        allOperations.push({
-                            type: "sale",
-                            date: s.date,
-                            delta: -(s.quantity || 0),
-                            warehouseId: s.warehouse_id,
-                            counterparty: s.counterparty_title,
-                        });
-                    });
-                }
-
-                if (Array.isArray(data.goodsFlow)) {
-                    console.log(`🛒 Обробка ${data.goodsFlow.length} goods-flow операцій`);
-                    data.goodsFlow.forEach((g, i) => {
-                        const delta = g.itemAmount
-                            ? g.itemAmount * (g.operationType === "in" ? 1 : -1)
-                            : g.delta || 0;
-                        allOperations.push({
-                            type: `goods_flow_${i}`,
-                            date: g.date,
-                            delta,
-                            warehouseId: g.warehouse_id,
-                            counterparty: g.relation_id_label || "-",
-                        });
-                    });
-                }
-
-                console.log(`📊 Всього операцій зібрано: ${allOperations.length}`);
-
-                // Фільтрація по складу
-                console.log("🔍 Починаємо фільтрацію по складу:", { filterWarehouseId, warehouseTitle, totalOperations: allOperations.length });
-                const filteredOperations = allOperations.filter((op) => {
-                    if (op.warehouseId === filterWarehouseId) return true;
-                    if (typeof op.counterparty === "string" && op.counterparty.includes(warehouseTitle)) return true;
-                    return false;
+                // ✅ ДОДАЙ ДЕТАЛЬНИЙ ЛОГ КОЖНОЇ ОПЕРАЦІЇ
+                console.log('📋 Операції ДО фільтрації:');
+                allOperations.forEach((op, i) => {
+                    console.log(`  ${i + 1}. ${op.type} | warehouseId: ${op.warehouseId} | counterparty: ${op.counterparty || op.warehouse}`);
                 });
+
+                filteredOperations = allOperations.filter((op, index) => {
+                    // Переміщення - вже відфільтровані
+                    if (op.type === 'move_in' || op.type === 'move_out') {
+                        console.log(`✅ ${index + 1}. Залишаємо ${op.type}`);
+                        return true;
+                    }
+
+                    // Операції з warehouseId
+                    if (op.warehouseId !== null && op.warehouseId !== undefined) {
+                        const match = op.warehouseId == filterWarehouseId;
+                        console.log(`${match ? '✅' : '❌'} ${index + 1}. ${op.type} | warehouseId: ${op.warehouseId} ${match ? '==' : '!='} ${filterWarehouseId}`);
+                        return match;
+                    }
+
+                    // Goods-flow
+                    if (op.type && op.type.startsWith('goods_flow_')) {
+                        console.log(`✅ ${index + 1}. Залишаємо ${op.type}`);
+                        return true;
+                    }
+
+                    // Інші - по назві складу
+                    const match = op.counterparty && op.counterparty.includes(warehouseTitle);
+                    console.log(`${match ? '✅' : '❌'} ${index + 1}. ${op.type} | counterparty: ${op.counterparty} ${match ? 'містить' : 'НЕ містить'} ${warehouseTitle}`);
+                    return match;
+                });
+
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
 
-                // Поточний баланс (з BigQuery)
-                const currentBalance = data.currentBalances?.[warehouseTitle] || 0;
+                console.log('📋 Операції ПІСЛЯ фільтрації:');
+                filteredOperations.forEach((op, i) => {
+                    console.log(`  ${i + 1}. ${op.typeName} | ${op.amount} шт | delta: ${op.delta}`);
+                });
+            }
 
-                // Отримуємо безпечний масив операцій для розрахунку
-                const opsForCalc =
-                    (typeof filteredOperations !== "undefined" && Array.isArray(filteredOperations) && filteredOperations.length > 0)
-                        ? filteredOperations
-                        : (typeof operationsSorted !== "undefined" && Array.isArray(operationsSorted)
-                            ? operationsSorted
-                            : (typeof allOperations !== "undefined" && Array.isArray(allOperations)
-                                ? allOperations
-                                : []));
+            // ============================================
+            // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
+            // ============================================
 
-                // Сума всіх змін (дельт)
-                const totalDelta = opsForCalc.reduce((sum, op) => sum + (op.delta || 0), 0);
+            // ✅ ВИПРАВЛЕНО: Сортуємо від старих до нових
+            const sortedOps = [...filteredOperations].sort((a, b) => a.date - b.date);
 
-                // Початковий залишок = Поточний - сума змін
-                let initialBalance = currentBalance - totalDelta;
+            console.log('📅 Сортовані операції (від старих до нових):');
+            sortedOps.forEach((op, i) => {
+                if (i < 5) {
+                    console.log(`  ${i + 1}. ${op.date.toLocaleDateString()} ${op.typeName} | delta: ${op.delta}`);
+                }
+            });
 
-                // Починаємо розрахунок з початкового залишку
-                let runningBalance = initialBalance;
+            // ✅ ВИПРАВЛЕНО: Починаємо з 0
+            const initialBalance = 0;
+            console.log(`📊 Початковий залишок (01.05.2022): ${initialBalance}`);
 
-                console.log("📊 Розрахунок залишків:");
-                console.log("   Поточний баланс:", currentBalance);
-                console.log("   Отримано операцій для розрахунку:", opsForCalc.length);
-                console.log("   Сума всіх змін (totalDelta):", totalDelta);
-                console.log("   Обчислений початковий залишок:", initialBalance);
-                console.log("📊 Початок побудови таблиці: runningBalance =", runningBalance);
+            // ✅ ВИПРАВЛЕНО: Рахуємо фінальний баланс
+            let calculatedFinalBalance = initialBalance;
+            sortedOps.forEach(op => {
+                calculatedFinalBalance += op.delta;
+            });
 
-                // Сортування операцій за датою
-                const operationsSorted = filteredOperations.sort(
-                    (a, b) => new Date(a.date) - new Date(b.date)
-                );
-                console.log("📅 Сортовані операції (від старих до нових):", operationsSorted);
+            console.log(`📊 Розрахований кінцевий баланс: ${calculatedFinalBalance}`);
 
-                // Побудова таблиці
-                const table = document.getElementById("productHistoryTableBody");
-                table.innerHTML = "";
-                operationsSorted.forEach((op, i) => {
-                    const before = runningBalance;
-                    runningBalance += op.delta;
+            // Поточний баланс з BigQuery (для порівняння)
+            const currentBalanceFromBQ = data.currentBalances?.[warehouseTitle] || 0;
+            console.log(`📊 Поточний баланс з BigQuery: ${currentBalanceFromBQ}`);
 
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-        <td>${i + 1}</td>
-        <td>${new Date(op.date).toLocaleDateString("uk-UA")}</td>
-        <td>${op.type}</td>
-        <td>${op.counterparty || "-"}</td>
-        <td>${op.delta > 0 ? "+" + op.delta : op.delta}</td>
-        <td>${runningBalance}</td>
-      `;
-                    table.appendChild(row);
+            // Перевірка
+            if (Math.abs(calculatedFinalBalance - currentBalanceFromBQ) > 0.01) {
+                console.warn(`⚠️ УВАГА: Розбіжність балансів!`);
+                console.warn(`   Розрахований: ${calculatedFinalBalance}`);
+                console.warn(`   З BigQuery: ${currentBalanceFromBQ}`);
+                console.warn(`   Різниця: ${calculatedFinalBalance - currentBalanceFromBQ}`);
+            } else {
+                console.log(`✅ Баланси співпадають!`);
+            }
 
-                    console.log(`Крок ${i + 1}: було ${before}, зміна ${op.delta}, стало ${runningBalance}`);
+            // ============================================
+            // ПОБУДОВА ТАБЛИЦІ
+            // ============================================
+
+            let tableRows = '';
+            let runningBalance = initialBalance; // ✅ Починаємо з 0
+
+            console.log(`📊 Початок побудови таблиці: runningBalance = ${runningBalance}`);
+
+            sortedOps.forEach((op, idx) => {
+                runningBalance += op.delta; // ✅ Додаємо дельту
+
+                if (idx < 3) {
+                    console.log(`  Крок ${idx + 1}: було ${runningBalance - op.delta}, зміна ${op.delta}, стало ${runningBalance}`);
+                }
+
+                const formattedDate = op.date.toLocaleString('uk-UA', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 });
 
-                console.log(`✅ Таблиця побудована: ${operationsSorted.length} рядків, кінцевий баланс: ${runningBalance}, очікуваний: ${currentBalance}`);
-            } catch (err) {
-                console.error("❌ Помилка:", err);
+                const plusAmount = op.delta > 0 ? op.amount : '';
+                const minusAmount = op.delta < 0 ? op.amount : '';
+
+                // ✅ ВИПРАВЛЕНО: Додаємо рядок ЗВЕРХУ (щоб нові операції були вгорі)
+                tableRows = `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px 8px; white-space: nowrap;">${formattedDate}</td>
+                <td style="padding: 12px 8px;">
+                    <span style="background: ${op.typeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; white-space: nowrap;">
+                        ${op.typeName}
+                    </span>
+                </td>
+                <td style="padding: 12px 8px;">${op.label}</td>
+                <td style="padding: 12px 8px;">${op.user}</td>
+                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.counterparty || op.warehouse || '-'}</td>
+                <td style="padding: 12px 8px; text-align: right; color: #059669; font-weight: 600;">${plusAmount}</td>
+                <td style="padding: 12px 8px; text-align: right; color: #dc2626; font-weight: 600;">${minusAmount}</td>
+                <td style="padding: 12px 8px; text-align: right; font-weight: 600; ${Math.abs(runningBalance - currentBalanceFromBQ) < 0.01 && idx === sortedOps.length - 1 ? 'background: #dcfce7; color: #166534;' : ''}">${runningBalance.toFixed(2)}</td>
+                <td style="padding: 12px 8px; font-size: 0.85rem; color: #6b7280;">${op.description}</td>
+            </tr>
+        ` + tableRows;
+            });
+
+            console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance}`);
+
+            // ✅ Перевірка
+            if (Math.abs(runningBalance - currentBalanceFromBQ) > 0.01) {
+                console.error(`❌ ПОМИЛКА: Кінцевий баланс ${runningBalance} не дорівнює поточному ${currentBalanceFromBQ}!`);
+            } else {
+                console.log(`✅ Перевірка пройдена: балансі співпадають (${runningBalance})`);
             }
+
+            // ============================================
+            // СТВОРЕННЯ МОДАЛЬНОГО ВІКНА
+            // ============================================
+
+            const historyHtml = `
+        <div id="historyModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <div style="background: white; border-radius: 8px; max-width: 95vw; max-height: 90vh; width: 100%; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.5rem; font-weight: 600;">📊 Історія операцій: ${productTitle}</h3>
+                        <p style="margin: 0; color: #6b7280; font-size: 0.95rem;">Склад: ${warehouseTitle}</p>
+                        <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 0.9rem;">
+                            Початковий залишок (01.05.2022): <strong style="color: #374151;">0 шт</strong>
+                        </p>
+                        <p style="margin: 4px 0 0 0; color: ${Math.abs(runningBalance - currentBalanceFromBQ) < 0.01 ? '#059669' : '#dc2626'}; font-size: 0.9rem; font-weight: 600;">
+                            Поточний залишок: ${currentBalanceFromBQ} шт
+                            ${Math.abs(runningBalance - currentBalanceFromBQ) < 0.01 ? '✅' : `⚠️ (розрахований: ${runningBalance})`}
+                        </p>
+                    </div>
+                    ${filterWarehouseId ? `
+                        <button onclick="showFullProductHistory('${encodeURIComponent(productTitle)}')" 
+                            style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;">
+                            📊 Вся історія товару
+                        </button>
+                    ` : ''}
+                </div>
+
+                <div style="overflow: auto; flex: 1; padding: 20px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead style="background: #f3f4f6; position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Дата</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Тип операції</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Документ</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Співробітник</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Контрагент/Склад</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Прихід (+)</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Витрата (-)</th>
+                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Залишок</th>
+                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Опис</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="padding: 20px; border-top: 1px solid #e5e7eb; text-align: right;">
+                    <button onclick="closeHistoryModal()" 
+                        style="padding: 10px 24px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background 0.2s;">
+                        ✕ Закрити
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+            document.body.insertAdjacentHTML('beforeend', historyHtml);
+            console.log('✅ Modal відображено');
         }
 
 
