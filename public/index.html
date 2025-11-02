@@ -1201,7 +1201,6 @@
             }
 
             if (body) {
-                // ИСПРАВЛЕНО: Передаем currentWarehouseId
                 body.innerHTML = data.map((item, index) => `
             <tr>
                 <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
@@ -1213,7 +1212,7 @@
                 <td>${item.uom_title || '-'}</td>
                 <td>
                     <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;" 
-                        onclick="showProductHistoryFromWarehouse('${currentWarehouseId}', '${encodeURIComponent(currentWarehouseTitle)}', '${encodeURIComponent(item.title)}')">
+                        onclick="showProductHistoryFromWarehouseInBrowser('${currentWarehouseId}', '${encodeURIComponent(currentWarehouseTitle)}', '${encodeURIComponent(item.title)}')">
                         История
                     </button>
                 </td>
@@ -1356,10 +1355,21 @@
 
         // ФУНКЦИЯ для истории из выбранного склада
         async function showProductHistoryFromWarehouse(warehouseId, warehouseTitle, productTitle) {
-            console.log('🚀 showProductHistoryFromWarehouse:', { warehouseId, warehouseTitle, productTitle });
+            console.log('🚀 === НАЧАЛО ДИАГНОСТИКИ showProductHistoryFromWarehouse ===');
+            console.log('📋 Входные параметры:', {
+                warehouseId,
+                warehouseTitle: decodeURIComponent(warehouseTitle),
+                productTitle: decodeURIComponent(productTitle)
+            });
 
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
+
+            console.log('📋 Декодированные значения:', {
+                decodedWarehouseTitle,
+                decodedProductTitle,
+                warehouseId
+            });
 
             if (!warehouseId) {
                 alert('Помилка: не вказано ID складу');
@@ -1367,14 +1377,42 @@
             }
 
             try {
-                // Получаем историю
-                const standardHistory = await apiCall(
-                    `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`
-                );
+                // ============================================
+                // 1. ПОЛУЧАЕМ СТАНДАРТНУЮ ИСТОРИЮ
+                // ============================================
+                console.log('📡 Шаг 1: Запрос стандартной истории...');
+                const apiUrl = `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`;
+                console.log('🔗 API URL:', apiUrl);
 
-                console.log('✅ Отримано standardHistory:', standardHistory);
+                const standardHistory = await apiCall(apiUrl);
+
+                console.log('📦 Результат стандартной истории:', {
+                    success: standardHistory.success,
+                    productId: standardHistory.productId,
+                    warehouseId: standardHistory.warehouseId,
+                    currentBalance: standardHistory.currentBalance,
+                    postings: standardHistory.data?.postings?.length || 0,
+                    moves: standardHistory.data?.moves?.length || 0,
+                    outcomes: standardHistory.data?.outcomes?.length || 0,
+                    sales: standardHistory.data?.sales?.length || 0
+                });
+
+                // ✅ Выводим первые записи каждого типа операций
+                if (standardHistory.data?.postings?.length > 0) {
+                    console.log('📦 Первое оприбуткування:', standardHistory.data.postings[0]);
+                }
+                if (standardHistory.data?.moves?.length > 0) {
+                    console.log('🔄 Первое перемещение:', standardHistory.data.moves[0]);
+                }
+                if (standardHistory.data?.outcomes?.length > 0) {
+                    console.log('🗑️ Первое списание:', standardHistory.data.outcomes[0]);
+                }
+                if (standardHistory.data?.sales?.length > 0) {
+                    console.log('💰 Первый продаж:', standardHistory.data.sales[0]);
+                }
 
                 if (!standardHistory.success) {
+                    console.error('❌ API вернул ошибку:', standardHistory.error);
                     alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
                     return;
                 }
@@ -1382,23 +1420,36 @@
                 const productId = standardHistory.productId;
 
                 if (!productId) {
-                    alert('Не вдалось знайти ID товару');
+                    console.error('❌ Не вдалося знайти ID товару');
+                    alert('Не вдалося знайти ID товару');
                     return;
                 }
 
-                // Получаем goods-flow
-                console.log('📡 Запит goods-flow...');
-                console.log(`📡 Запит goods-flow для складу ${warehouseId}...`);
-                let goodsFlowResult = await apiCall(`/api/goods-flow-items/${productId}/${warehouseId}`);
+                console.log('✅ Product ID знайдено:', productId);
+
+                // ============================================
+                // 2. ПОЛУЧАЕМ GOODS-FLOW
+                // ============================================
+                console.log('📡 Шаг 2: Запрос goods-flow...');
+                const goodsFlowUrl = `/api/goods-flow-items/${productId}/${warehouseId}`;
+                console.log('🔗 Goods-flow URL:', goodsFlowUrl);
+
+                let goodsFlowResult = await apiCall(goodsFlowUrl);
 
                 console.log('📦 Результат goods-flow:', {
                     success: goodsFlowResult.success,
                     totalRecords: goodsFlowResult.totalRecords,
                     totalBeforeFilter: goodsFlowResult.totalBeforeFilter,
-                    filtered: goodsFlowResult.totalBeforeFilter - goodsFlowResult.totalRecords
+                    needManualUpdate: goodsFlowResult.needManualUpdate,
+                    error: goodsFlowResult.error
                 });
 
-                console.log('📦 Результат goods-flow:', goodsFlowResult);
+                if (goodsFlowResult.data && goodsFlowResult.data.length > 0) {
+                    console.log('📋 Первая goods-flow операция:', goodsFlowResult.data[0]);
+                    console.log('📋 Типы операций в goods-flow:',
+                        [...new Set(goodsFlowResult.data.map(item => `${item.relation_type} (${item.type_info?.name || 'unknown'})`))].join(', ')
+                    );
+                }
 
                 let showWarning = false;
                 let warningMessage = '';
@@ -1410,26 +1461,66 @@
                         warningMessage = '⚠️ Cookies застарілі!\n\n';
                         warningMessage += 'Для відображення замовлень та повернень потрібно оновити Cookies:\n';
                         warningMessage += '1. Відкрийте адмін-панель (⚙️)\n';
-                        warningMessage += '2. Натисніть "🔐 Оновити Cookies API"\n';
+                        warningMessage += '2. Натисніть "🍪 Оновити Cookies API"\n';
                         warningMessage += '3. Слідуйте інструкціям';
                         showWarning = true;
                     }
                 }
 
-                console.log('📊 Повна структура standardHistory:', {
-                    currentBalances: standardHistory.currentBalances,
-                    dataCurrentBalances: standardHistory.data?.currentBalances
-                });
+                // ============================================
+                // 3. ОБЪЕДИНЯЕМ ВСЕ ДАННЫЕ
+                // ============================================
+                console.log('🔗 Шаг 3: Объединяем все данные...');
 
                 const combinedData = {
                     ...standardHistory.data,
                     data: goodsFlowResult.success ? goodsFlowResult.data : [],
-                    currentBalances: standardHistory.currentBalances
+                    currentBalance: standardHistory.currentBalance || 0,
+                    warehouseTitleFromBQ: standardHistory.warehouseTitleFromBQ || decodedWarehouseTitle
                 };
 
-                // ✅ КРИТИЧНО: Передаємо warehouseId для фільтрації!
+                console.log('📊 Итоговые данные для отображения:', {
+                    postings: combinedData.postings?.length || 0,
+                    moves: combinedData.moves?.length || 0,
+                    outcomes: combinedData.outcomes?.length || 0,
+                    sales: combinedData.sales?.length || 0,
+                    goodsFlow: combinedData.data?.length || 0,
+                    currentBalance: combinedData.currentBalance,
+                    warehouseTitle: combinedData.warehouseTitleFromBQ
+                });
+
+                // ============================================
+                // 4. ПРОВЕРЯЕМ, ЕСТЬ ЛИ ХОТЬ ЧТО-ТО
+                // ============================================
+                const totalOperations =
+                    (combinedData.postings?.length || 0) +
+                    (combinedData.moves?.length || 0) +
+                    (combinedData.outcomes?.length || 0) +
+                    (combinedData.sales?.length || 0) +
+                    (combinedData.data?.length || 0);
+
+                console.log(`📊 Всього операцій знайдено: ${totalOperations}`);
+
+                if (totalOperations === 0) {
+                    console.warn('⚠️ УВАГА: Не знайдено жодної операції!');
+                    console.warn('Можливі причини:');
+                    console.warn('1. Товар не має операцій на цьому складі');
+                    console.warn('2. Помилка фільтрації по warehouse_id');
+                    console.warn('3. Дані не синхронізовані в BigQuery');
+
+                    alert(`⚠️ Не знайдено операцій з товаром "${decodedProductTitle}" на складі "${decodedWarehouseTitle}".\n\nМожливі причини:\n- Товар не має операцій на цьому складі\n- Потрібна синхронізація даних`);
+                    return;
+                }
+
+                // ============================================
+                // 5. ОТОБРАЖАЕМ ИСТОРИЮ
+                // ============================================
+                console.log('🎨 Шаг 4: Отображаем историю...');
                 displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
 
+                // ============================================
+                // 6. ПОКАЗЫВАЕМ ПРЕДУПРЕЖДЕНИЕ О COOKIES
+                // ============================================
                 if (showWarning) {
                     setTimeout(() => {
                         if (confirm(warningMessage + '\n\nВідкрити інструкцію зараз?')) {
@@ -1438,11 +1529,213 @@
                     }, 500);
                 }
 
+                console.log('✅ === ЗАВЕРШЕНИЕ showProductHistoryFromWarehouse ===');
+
             } catch (error) {
-                console.error('❌ Помилка:', error);
+                console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
+                console.error('📋 Stack trace:', error.stack);
                 alert(`Помилка: ${error.message}`);
             }
         }
+
+        async function showProductHistoryFromWarehouseInBrowser(warehouseId, warehouseTitle, productTitle) {
+            console.log('🚀 === НАЧАЛО ДИАГНОСТИКИ showProductHistoryFromWarehouse ===');
+            console.log('📋 Входные параметры:', {
+                warehouseId,
+                warehouseTitle: decodeURIComponent(warehouseTitle),
+                productTitle: decodeURIComponent(productTitle)
+            });
+
+            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
+            const decodedProductTitle = decodeURIComponent(productTitle);
+
+            if (!warehouseId) {
+                alert('Помилка: не вказано ID складу');
+                return;
+            }
+
+            try {
+                // 1. ПОЛУЧАЕМ СТАНДАРТНУЮ ИСТОРИЮ
+                console.log('📡 Шаг 1: Запрос стандартной истории...');
+                const apiUrl = `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`;
+                console.log('🔗 API URL:', apiUrl);
+
+                const standardHistory = await apiCall(apiUrl);
+
+                console.log('📦 Результат стандартной истории:', {
+                    success: standardHistory.success,
+                    productId: standardHistory.productId,
+                    warehouseId: standardHistory.warehouseId,
+                    currentBalance: standardHistory.currentBalance,
+                    postings: standardHistory.data?.postings?.length || 0,
+                    moves: standardHistory.data?.moves?.length || 0,
+                    outcomes: standardHistory.data?.outcomes?.length || 0,
+                    sales: standardHistory.data?.sales?.length || 0
+                });
+
+                // Добавим детальный вывод первых записей каждого типа
+                if (standardHistory.data?.postings?.length > 0) {
+                    console.log('📦 Примеры оприходований:', standardHistory.data.postings.slice(0, 2));
+                }
+                if (standardHistory.data?.moves?.length > 0) {
+                    console.log('🔄 Примеры перемещений:', standardHistory.data.moves.slice(0, 2));
+                }
+
+                if (!standardHistory.success) {
+                    console.error('❌ API вернул ошибку:', standardHistory.error);
+
+                    // Попробуем альтернативный поиск
+                    console.log('🔍 Пробуем альтернативный поиск без фильтра по складу...');
+
+                    // Делаем запрос без warehouse_id в URL для получения всех операций
+                    const allHistoryUrl = `/api/product-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`;
+                    console.log('🔗 Альтернативный URL:', allHistoryUrl);
+
+                    alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
+                    return;
+                }
+
+                const productId = standardHistory.productId;
+
+                if (!productId) {
+                    console.error('❌ Не вдалося знайти ID товару');
+                    alert('Не вдалося знайти ID товару');
+                    return;
+                }
+
+                console.log('✅ Product ID знайдено:', productId);
+
+                // 2. ПОЛУЧАЕМ GOODS-FLOW
+                console.log('📡 Шаг 2: Запрос goods-flow...');
+                const goodsFlowUrl = `/api/goods-flow-items/${productId}/${warehouseId}`;
+                console.log('🔗 Goods-flow URL:', goodsFlowUrl);
+
+                let goodsFlowResult = await apiCall(goodsFlowUrl);
+
+                console.log('📦 Результат goods-flow:', {
+                    success: goodsFlowResult.success,
+                    totalRecords: goodsFlowResult.totalRecords,
+                    totalBeforeFilter: goodsFlowResult.totalBeforeFilter,
+                    needManualUpdate: goodsFlowResult.needManualUpdate
+                });
+
+                // Выведем примеры goods-flow операций
+                if (goodsFlowResult.data && goodsFlowResult.data.length > 0) {
+                    console.log('📋 Примеры goods-flow операций:', goodsFlowResult.data.slice(0, 3));
+                }
+
+                let showWarning = false;
+                let warningMessage = '';
+
+                if (!goodsFlowResult.success && goodsFlowResult.needManualUpdate) {
+                    warningMessage = '⚠️ Cookies застарілі!\n\n';
+                    warningMessage += 'Для відображення замовлень та повернень потрібно оновити Cookies:\n';
+                    warningMessage += '1. Відкрийте адмін-панель (⚙️)\n';
+                    warningMessage += '2. Натисніть "🔐 Оновити Cookies API"\n';
+                    warningMessage += '3. Слідуйте інструкціям';
+                    showWarning = true;
+                }
+
+                // 3. ОБЪЕДИНЯЕМ ВСЕ ДАННЫЕ
+                console.log('🔗 Шаг 3: Объединяем все данные...');
+
+                const combinedData = {
+                    ...standardHistory.data,
+                    data: goodsFlowResult.success ? goodsFlowResult.data : [],
+                    currentBalance: standardHistory.currentBalance || 0,
+                    warehouseTitleFromBQ: standardHistory.warehouseTitleFromBQ || decodedWarehouseTitle
+                };
+
+                console.log('📊 Итоговые данные для отображения:', {
+                    postings: combinedData.postings?.length || 0,
+                    moves: combinedData.moves?.length || 0,
+                    outcomes: combinedData.outcomes?.length || 0,
+                    sales: combinedData.sales?.length || 0,
+                    goodsFlow: combinedData.data?.length || 0,
+                    currentBalance: combinedData.currentBalance,
+                    warehouseTitle: combinedData.warehouseTitleFromBQ
+                });
+
+                const totalOperations =
+                    (combinedData.postings?.length || 0) +
+                    (combinedData.moves?.length || 0) +
+                    (combinedData.outcomes?.length || 0) +
+                    (combinedData.sales?.length || 0) +
+                    (combinedData.data?.length || 0);
+
+                console.log(`📊 Всього операцій знайдено: ${totalOperations}`);
+
+                if (totalOperations === 0) {
+                    console.warn('⚠️ УВАГА: Не знайдено жодної операції!');
+                    console.warn('Можливі причини:');
+                    console.warn('1. Товар не має операцій на цьому складі');
+                    console.warn('2. Помилка фільтрації по warehouse_id');
+                    console.warn('3. Дані не синхронізовані в BigQuery');
+                    console.warn('4. Різниця в назві товару в базі даних');
+
+                    alert(`⚠️ Не знайдено операцій з товаром "${decodedProductTitle}" на складі "${decodedWarehouseTitle}".\n\nМожливі причини:\n- Товар не має операцій на цьому складі\n- Потрібна синхронізація даних\n- Перевірте правильність назви товару`);
+                    return;
+                }
+
+                // 4. ОТОБРАЖАЕМ ИСТОРИЮ
+                console.log('🎨 Шаг 4: Отображаем историю...');
+                displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
+
+                // 5. ПОКАЗЫВАЕМ ПРЕДУПРЕЖДЕНИЕ О COOKIES
+                if (showWarning) {
+                    setTimeout(() => {
+                        if (confirm(warningMessage + '\n\nВідкрити інструкцію зараз?')) {
+                            showCookiesUpdateModal();
+                        }
+                    }, 500);
+                }
+
+                console.log('✅ === ЗАВЕРШЕНИЕ showProductHistoryFromWarehouse ===');
+
+            } catch (error) {
+                console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
+                console.error('📋 Stack trace:', error.stack);
+                alert(`Помилка: ${error.message}`);
+            }
+        }
+
+        // ============================================
+        // ДОПОЛНИТЕЛЬНАЯ ДИАГНОСТИЧЕСКАЯ ФУНКЦИЯ
+        // ============================================
+        async function debugProductHistory(warehouseId, productTitle) {
+            console.log('🔍 === ДЕТАЛЬНА ДІАГНОСТИКА ===');
+
+            try {
+                // Проверяем, есть ли товар в calculated_stock
+                const stockCheck = await apiCall(`/api/selected-warehouse-goods/${warehouseId}`);
+                console.log('📦 Товары на складе:', stockCheck);
+
+                const foundProduct = stockCheck.data?.find(item =>
+                    item.title.toLowerCase().includes(productTitle.toLowerCase())
+                );
+
+                if (foundProduct) {
+                    console.log('✅ Товар найден в остатках:', foundProduct);
+                } else {
+                    console.log('❌ Товар НЕ найден в остатках склада');
+                }
+
+                // Проверяем прямой запрос к истории
+                const historyUrl = `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(productTitle)}`;
+                console.log('🔗 Прямой запрос к истории:', historyUrl);
+
+                const historyResult = await fetch(historyUrl);
+                const historyData = await historyResult.json();
+
+                console.log('📋 Результат прямого запроса:', historyData);
+
+            } catch (error) {
+                console.error('❌ Ошибка диагностики:', error);
+            }
+        }
+
+        // Добавьте эту функцию в глобальную область видимости для ручной проверки
+        window.debugProductHistory = debugProductHistory;
 
         async function loadMatrixData() {
             // Показать индикатор загрузки
@@ -1511,8 +1804,8 @@
         function displayMatrix(matrix, warehouses, products) {
             try {
                 console.log('🖥️ ДИАГНОСТИКА: Отображение матрицы...');
-                console.log(`📊 Товаров для отображения: ${products.length}`);
-                console.log(`📊 Складов для отображения: ${warehouses.length}`);
+                console.log('📊 Товаров для отображения:', products.length);
+                console.log('📊 Складов для отображения:', warehouses.length);
 
                 const table = safeGetElement('matrixTable');
                 const tbody = safeGetElement('matrixBody');
@@ -1522,24 +1815,25 @@
                     return;
                 }
 
-                // Маппинг префиксов складов на названия локаций
-                const locationMapping = {
-                    '01_': '01.1_G_CAR_KY',
-                    '021_': '02.1_G_CAR_LV',
-                    '022_': '02.2_G_CAR_LV',
-                    '023_': '02.3_G_CAR_LV',
-                    '03_': '03_G_CAR_OD',
-                    '07_': '07_G_CAR_VN',
-                    '08_': '08_G_CAR_PLT',
-                    '09_': '09_G_CAR_IF',
-                    '15_': '15_G_CAR_CK',
-                    '16_': '16_G_CAR_CV',
-                    '181_': '18.1_G_CAR_LU',
-                    '182_': '18.2_G_CAR_LU',
-                    '183_': '18.3_G_CAR_LU',
-                    '191_': '19.1_G_CAR_RV',
-                    '192_': '19.2_G_CAR_RV'
-                };
+                // ✅ ИСПРАВЛЕНО: Маппинг префиксов складов на названия локаций
+                // Важно: проверяем от более ДЛИННЫХ префиксов к более КОРОТКИМ!
+                const locationMapping = [
+                    { prefix: '023_', location: '02.3_G_CAR_LV' },
+                    { prefix: '022_', location: '02.2_G_CAR_LV' },
+                    { prefix: '021_', location: '02.1_G_CAR_LV' },
+                    { prefix: '183_', location: '18.3_G_CAR_LU' },
+                    { prefix: '182_', location: '18.2_G_CAR_LU' },
+                    { prefix: '181_', location: '18.1_G_CAR_LU' },
+                    { prefix: '192_', location: '19.2_G_CAR_RV' },
+                    { prefix: '191_', location: '19.1_G_CAR_RV' },
+                    { prefix: '01_', location: '01.1_G_CAR_KY' },
+                    { prefix: '03_', location: '03_G_CAR_OD' },
+                    { prefix: '07_', location: '07_G_CAR_VN' },
+                    { prefix: '08_', location: '08_G_CAR_PLT' },
+                    { prefix: '09_', location: '09_G_CAR_IF' },
+                    { prefix: '15_', location: '15_G_CAR_CK' },
+                    { prefix: '16_', location: '16_G_CAR_CV' }
+                ];
 
                 // Группируем склады по локациям
                 const warehousesByLocation = {};
@@ -1547,11 +1841,11 @@
                 warehouses.forEach(warehouse => {
                     let location = 'Другие';
 
-                    // Ищем соответствующую локацию по префиксу склада
-                    for (const [prefix, locationName] of Object.entries(locationMapping)) {
-                        if (warehouse.startsWith(prefix)) {
-                            location = locationName;
-                            break;
+                    // ✅ Ищем соответствующую локацию по префиксу (от длинных к коротким)
+                    for (const mapping of locationMapping) {
+                        if (warehouse.startsWith(mapping.prefix)) {
+                            location = mapping.location;
+                            break; // Важно: прерываем после первого совпадения
                         }
                     }
 
@@ -1563,6 +1857,19 @@
 
                 console.log(`📊 Найдено локаций: ${Object.keys(warehousesByLocation).length}`);
                 console.log('📊 Локации:', Object.keys(warehousesByLocation));
+
+                // Выводим детальную информацию о каждой локации
+                Object.entries(warehousesByLocation).forEach(([location, whs]) => {
+                    console.log(`  📍 ${location}: ${whs.length} складов`);
+                    whs.forEach((wh, idx) => {
+                        if (idx < 3) {
+                            console.log(`    - ${wh}`);
+                        }
+                    });
+                    if (whs.length > 3) {
+                        console.log(`    ... и еще ${whs.length - 3} складов`);
+                    }
+                });
 
                 // Создаем заголовок таблицы с группировкой
                 const thead = table.querySelector('thead');
@@ -2035,11 +2342,6 @@
             const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
             const decodedProductTitle = decodeURIComponent(productTitle);
 
-            if (!warehouseTitle || warehouseTitle === 'null' || warehouseTitle === 'undefined') {
-                alert('Помилка: не вказано склад');
-                return;
-            }
-
             try {
                 const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
 
@@ -2048,8 +2350,8 @@
                     return;
                 }
 
-                // ИСПРАВЛЕНО: Вызываем новую функцию
-                await showProductHistoryFromWarehouse(warehouseId, warehouseTitle, productTitle);
+                // Вызываем функцию браузера, а не серверную
+                await showProductHistoryFromWarehouseInBrowser(warehouseId, warehouseTitle, productTitle);
 
             } catch (error) {
                 console.error('❌ Помилка:', error);
@@ -2336,7 +2638,8 @@
             console.log('🎬 displaySeparatedProductHistory:', {
                 productTitle,
                 warehouseTitle,
-                filterWarehouseId
+                filterWarehouseId,
+                currentBalance: data.currentBalance
             });
 
             console.log('📊 Вхідні дані:', {
@@ -2366,6 +2669,7 @@
                         user: item.created_by_name || '-',
                         warehouse: item.warehouse_title || warehouseTitle,
                         warehouseId: item.warehouse_id || null,
+                        counterparty: item.supplier_name || '-',
                         amount: item.amount || 0,
                         description: item.posting_description || '-',
                         delta: +item.amount
@@ -2373,13 +2677,12 @@
                 });
             }
 
-            // Переміщення
+            // Переміщення (вихідні та вхідні)
             if (data.moves) {
                 console.log(`🔄 Обробка ${data.moves.length} переміщень`);
-                data.moves.forEach((item, idx) => {
+                data.moves.forEach((item) => {
                     const date = new Date(item.move_created_at?.value || item.move_created_at);
 
-                    // Очищаємо назви від префіксів
                     let sourceTitle = item.source_warehouse_title || '';
                     let targetTitle = item.target_warehouse_title || '';
 
@@ -2388,16 +2691,6 @@
                     }
                     if (targetTitle.includes(' > ')) {
                         targetTitle = targetTitle.split(' > ')[1].trim();
-                    }
-
-                    if (idx === 0) {
-                        console.log('Перше переміщення:', {
-                            sourceTitle,
-                            targetTitle,
-                            warehouseTitle,
-                            source_match: sourceTitle.includes(warehouseTitle),
-                            target_match: targetTitle.includes(warehouseTitle)
-                        });
                     }
 
                     // Вихід зі складу
@@ -2411,6 +2704,7 @@
                             user: item.created_by_name || '-',
                             warehouse: `${sourceTitle} → ${targetTitle}`,
                             warehouseId: null,
+                            counterparty: targetTitle,
                             sourceWarehouseTitle: sourceTitle,
                             targetWarehouseTitle: targetTitle,
                             amount: item.amount || 0,
@@ -2430,6 +2724,7 @@
                             user: item.created_by_name || '-',
                             warehouse: `${sourceTitle} → ${targetTitle}`,
                             warehouseId: filterWarehouseId,
+                            counterparty: sourceTitle,
                             sourceWarehouseTitle: sourceTitle,
                             targetWarehouseTitle: targetTitle,
                             amount: item.amount || 0,
@@ -2480,6 +2775,7 @@
                         user: item.created_by_name || '-',
                         warehouse: warehouseTitle,
                         warehouseId: item.warehouse_id || null,
+                        counterparty: '-',
                         amount: item.amount || 0,
                         description: item.sale_description || '-',
                         delta: -(item.amount || 0)
@@ -2490,50 +2786,38 @@
             // Goods-flow (замовлення та повернення)
             if (data.data && Array.isArray(data.data)) {
                 console.log(`🛒 Обробка ${data.data.length} goods-flow операцій`);
-                data.data.forEach((item, idx) => {
+                data.data.forEach((item) => {
                     const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
-
                     const itemAmount = item.amount || item.quantity || 1;
                     let delta = 0;
                     let icon = '📋';
                     let typeName = 'Невідомо';
 
                     switch (item.relation_type) {
-                        case 0: // Замовлення
+                        case 0:
                             delta = -itemAmount;
                             icon = '🛒';
                             typeName = 'Замовлення';
                             break;
-                        case 7: // Повернення
+                        case 7:
                             delta = +itemAmount;
                             icon = '↩️';
                             typeName = 'Повернення';
                             break;
-                        case 2: // Інше
+                        case 2:
                             delta = 0;
                             icon = '📋';
                             typeName = typeInfo.name || 'Інше';
                             break;
-                        case 1: // Продаж (є в sales)
-                        case 3: // Оприбуткування (є в postings)
-                        case 4: // Списання (є в outcomes)
-                        case 5: // Переміщення (є в moves)
-                            return; // Пропускаємо
+                        case 1:
+                        case 3:
+                        case 4:
+                        case 5:
+                            return;
                         default:
                             delta = 0;
                             icon = '📋';
                             typeName = typeInfo.name || 'Невідомо';
-                    }
-
-                    if (idx === 0) {
-                        console.log('📋 Перший goods-flow запис:', {
-                            employee_id: item.employee_id,
-                            relation_id_label: item.relation_id_label,
-                            amount: item.amount,
-                            quantity: item.quantity,
-                            itemAmount: itemAmount,
-                            delta: delta
-                        });
                     }
 
                     allOperations.push({
@@ -2542,7 +2826,7 @@
                         typeName: `${icon} ${typeName}`,
                         typeColor: typeInfo.color || '#6b7280',
                         label: item.relation_id_label || item.relation_label || item.id || '-',
-                        user: item.employee_id || '-',
+                        user: item.employee_name || item.employee_id || '-',
                         counterparty: '-',
                         warehouseId: null,
                         amount: Math.abs(itemAmount),
@@ -2561,57 +2845,40 @@
             let filteredOperations = allOperations;
 
             if (filterWarehouseId) {
-                console.log('🔍 Починаємо фільтрацію по складу:', {
+                console.log('🔍 Фільтрація по складу:', {
                     filterWarehouseId,
                     warehouseTitle,
                     totalOperations: allOperations.length
                 });
 
-                // ✅ ДОДАЙ ДЕТАЛЬНИЙ ЛОГ КОЖНОЇ ОПЕРАЦІЇ
-                console.log('📋 Операції ДО фільтрації:');
-                allOperations.forEach((op, i) => {
-                    console.log(`  ${i + 1}. ${op.type} | warehouseId: ${op.warehouseId} | counterparty: ${op.counterparty || op.warehouse}`);
-                });
-
-                filteredOperations = allOperations.filter((op, index) => {
-                    // Переміщення - вже відфільтровані
+                filteredOperations = allOperations.filter((op) => {
                     if (op.type === 'move_in' || op.type === 'move_out') {
-                        console.log(`✅ ${index + 1}. Залишаємо ${op.type}`);
                         return true;
                     }
 
-                    // Операції з warehouseId
                     if (op.warehouseId !== null && op.warehouseId !== undefined) {
-                        const match = op.warehouseId == filterWarehouseId;
-                        console.log(`${match ? '✅' : '❌'} ${index + 1}. ${op.type} | warehouseId: ${op.warehouseId} ${match ? '==' : '!='} ${filterWarehouseId}`);
-                        return match;
+                        return op.warehouseId == filterWarehouseId;
                     }
 
-                    // Goods-flow
                     if (op.type && op.type.startsWith('goods_flow_')) {
-                        console.log(`✅ ${index + 1}. Залишаємо ${op.type}`);
                         return true;
                     }
 
-                    // Інші - по назві складу
-                    const match = op.counterparty && op.counterparty.includes(warehouseTitle);
-                    console.log(`${match ? '✅' : '❌'} ${index + 1}. ${op.type} | counterparty: ${op.counterparty} ${match ? 'містить' : 'НЕ містить'} ${warehouseTitle}`);
-                    return match;
+                    return op.counterparty && op.counterparty.includes(warehouseTitle);
                 });
 
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
-
-                console.log('📋 Операції ПІСЛЯ фільтрації:');
-                filteredOperations.forEach((op, i) => {
-                    console.log(`  ${i + 1}. ${op.typeName} | ${op.amount} шт | delta: ${op.delta}`);
-                });
             }
 
             // ============================================
             // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
             // ============================================
 
-            // ✅ ВИПРАВЛЕНО: Сортуємо від старих до нових
+            // ✅ Поточний баланс з BigQuery
+            const currentBalanceFromBQ = data.currentBalance || 0;
+            console.log(`📊 Поточний баланс з BigQuery для складу "${warehouseTitle}": ${currentBalanceFromBQ}`);
+
+            // ✅ Сортуємо операції
             const sortedOps = [...filteredOperations].sort((a, b) => a.date - b.date);
 
             console.log('📅 Сортовані операції (від старих до нових):');
@@ -2621,23 +2888,19 @@
                 }
             });
 
-            // ✅ ВИПРАВЛЕНО: Починаємо з 0
+            // ✅ Починаємо з 0
             const initialBalance = 0;
             console.log(`📊 Початковий залишок (01.05.2022): ${initialBalance}`);
 
-            // ✅ ВИПРАВЛЕНО: Рахуємо фінальний баланс
+            // ✅ Рахуємо фінальний баланс
             let calculatedFinalBalance = initialBalance;
-            sortedOps.forEach(op => {
+            sortedOps.forEach(op => {  // ✅ ИСПРАВЛЕНО: было operationsSorted, стало sortedOps
                 calculatedFinalBalance += op.delta;
             });
 
             console.log(`📊 Розрахований кінцевий баланс: ${calculatedFinalBalance}`);
 
-            // Поточний баланс з BigQuery (для порівняння)
-            const currentBalanceFromBQ = data.currentBalances?.[warehouseTitle] || 0;
-            console.log(`📊 Поточний баланс з BigQuery: ${currentBalanceFromBQ}`);
-
-            // Перевірка
+            // ✅ Перевірка
             if (Math.abs(calculatedFinalBalance - currentBalanceFromBQ) > 0.01) {
                 console.warn(`⚠️ УВАГА: Розбіжність балансів!`);
                 console.warn(`   Розрахований: ${calculatedFinalBalance}`);
@@ -2648,16 +2911,16 @@
             }
 
             // ============================================
-            // ПОБУДОВА ТАБЛИЦІ
+            // 4. ПОБУДОВА ТАБЛИЦІ
             // ============================================
 
             let tableRows = '';
-            let runningBalance = initialBalance; // ✅ Починаємо з 0
+            let runningBalance = initialBalance;
 
             console.log(`📊 Початок побудови таблиці: runningBalance = ${runningBalance}`);
 
-            sortedOps.forEach((op, idx) => {
-                runningBalance += op.delta; // ✅ Додаємо дельту
+            sortedOps.forEach((op, idx) => {  // ✅ ИСПРАВЛЕНО: было operationsSorted, стало sortedOps
+                runningBalance += op.delta;
 
                 if (idx < 3) {
                     console.log(`  Крок ${idx + 1}: було ${runningBalance - op.delta}, зміна ${op.delta}, стало ${runningBalance}`);
@@ -2674,7 +2937,6 @@
                 const plusAmount = op.delta > 0 ? op.amount : '';
                 const minusAmount = op.delta < 0 ? op.amount : '';
 
-                // ✅ ВИПРАВЛЕНО: Додаємо рядок ЗВЕРХУ (щоб нові операції були вгорі)
                 tableRows = `
             <tr style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 12px 8px; white-space: nowrap;">${formattedDate}</td>
@@ -2694,40 +2956,25 @@
         ` + tableRows;
             });
 
-            console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance}`);
+            console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance.toFixed(2)}`);
 
-            // ✅ Перевірка
+            // ✅ Фінальна перевірка
             if (Math.abs(runningBalance - currentBalanceFromBQ) > 0.01) {
-                console.error(`❌ ПОМИЛКА: Кінцевий баланс ${runningBalance} не дорівнює поточному ${currentBalanceFromBQ}!`);
+                console.error(`❌ ПОМИЛКА: Кінцевий баланс ${runningBalance.toFixed(2)} не дорівнює поточному ${currentBalanceFromBQ}!`);
             } else {
-                console.log(`✅ Перевірка пройдена: балансі співпадають (${runningBalance})`);
+                console.log(`✅ Перевірка пройдена: баланси співпадають (${runningBalance.toFixed(2)})`);
             }
 
             // ============================================
-            // СТВОРЕННЯ МОДАЛЬНОГО ВІКНА
+            // 5. СТВОРЕННЯ МОДАЛЬНОГО ВІКНА
             // ============================================
 
             const historyHtml = `
         <div id="historyModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
             <div style="background: white; border-radius: 8px; max-width: 95vw; max-height: 90vh; width: 100%; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h3 style="margin: 0 0 8px 0; font-size: 1.5rem; font-weight: 600;">📊 Історія операцій: ${productTitle}</h3>
-                        <p style="margin: 0; color: #6b7280; font-size: 0.95rem;">Склад: ${warehouseTitle}</p>
-                        <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 0.9rem;">
-                            Початковий залишок (01.05.2022): <strong style="color: #374151;">0 шт</strong>
-                        </p>
-                        <p style="margin: 4px 0 0 0; color: ${Math.abs(runningBalance - currentBalanceFromBQ) < 0.01 ? '#059669' : '#dc2626'}; font-size: 0.9rem; font-weight: 600;">
-                            Поточний залишок: ${currentBalanceFromBQ} шт
-                            ${Math.abs(runningBalance - currentBalanceFromBQ) < 0.01 ? '✅' : `⚠️ (розрахований: ${runningBalance})`}
-                        </p>
-                    </div>
-                    ${filterWarehouseId ? `
-                        <button onclick="showFullProductHistory('${encodeURIComponent(productTitle)}')" 
-                            style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;">
-                            📊 Вся історія товару
-                        </button>
-                    ` : ''}
+                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.5rem; font-weight: 600;">📊 Історія операцій: ${productTitle}</h3>
+                    <p style="margin: 0; color: #6b7280; font-size: 0.95rem;">Склад: ${warehouseTitle}</p>
                 </div>
 
                 <div style="overflow: auto; flex: 1; padding: 20px;">
@@ -2753,7 +3000,7 @@
 
                 <div style="padding: 20px; border-top: 1px solid #e5e7eb; text-align: right;">
                     <button onclick="closeHistoryModal()" 
-                        style="padding: 10px 24px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background 0.2s;">
+                        style="padding: 10px 24px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500;">
                         ✕ Закрити
                     </button>
                 </div>
@@ -2764,7 +3011,6 @@
             document.body.insertAdjacentHTML('beforeend', historyHtml);
             console.log('✅ Modal відображено');
         }
-
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', () => {

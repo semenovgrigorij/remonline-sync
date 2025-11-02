@@ -1237,6 +1237,7 @@ class RemonlineMatrixSync {
       }
     );
 
+    // Добавьте это в server.js, заменив существующий endpoint
     this.app.get(
       "/api/product-warehouse-history/:warehouseId/:productTitle",
       async (req, res) => {
@@ -1280,6 +1281,28 @@ class RemonlineMatrixSync {
           if (postingRows.length > 0) {
             productId = postingRows[0].product_id;
             console.log(`✅ Знайдено product_id: ${productId}`);
+
+            const checkQuery = `
+                SELECT 
+                    'postings' as table_name,
+                    COUNT(*) as count
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
+                WHERE product_id = @product_id
+                
+                UNION ALL
+                
+                SELECT 
+                    'moves' as table_name,
+                    COUNT(*) as count
+                FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\`
+                WHERE product_id = @product_id
+            `;
+            const [checkRows] = await this.bigquery.query({
+              query: checkQuery,
+              location: "EU",
+              params: { product_id: productId },
+            });
+            console.log("📊 Общая статистика операций с товаром:", checkRows);
           } else {
             console.log(`❌ product_id НЕ знайдено для "${productTitle}"`);
             return res.json({
@@ -1320,8 +1343,11 @@ class RemonlineMatrixSync {
           });
 
           console.log(`✅ Оприбуткувань: ${postingsData.length}`);
+          if (postingsData.length > 0) {
+            console.log("📋 Перше оприбуткування:", postingsData[0]);
+          }
 
-          // ✅ ПЕРЕМІЩЕННЯ - БЕЗ ФІЛЬТРАЦІЇ (НОВИЙ КОД!)
+          // ПЕРЕМІЩЕННЯ
           console.log("🔄 Запит переміщень...");
           const movesQuery = `
         SELECT DISTINCT
@@ -1347,6 +1373,28 @@ class RemonlineMatrixSync {
 
           console.log(`✅ Переміщень (всього): ${movesData.length}`);
 
+          // Фильтруем переміщення по складу
+          const filteredMoves = movesData.filter((move) => {
+            const sourceId = move.warehouse_id;
+            const targetTitle = move.target_warehouse_title || "";
+            const sourceTitle = move.source_warehouse_title || "";
+
+            // Проверяем, относится ли перемещение к нашему складу
+            return (
+              sourceId == warehouseId ||
+              targetTitle.includes(warehouseId.toString()) ||
+              sourceTitle.includes(warehouseId.toString())
+            );
+          });
+
+          console.log(
+            `✅ Переміщень (для складу ${warehouseId}): ${filteredMoves.length}`
+          );
+
+          if (movesData.length > 0) {
+            console.log("📋 Перше переміщення:", movesData[0]);
+          }
+
           // СПИСАННЯ
           console.log("🗑️ Запит списань...");
           const outcomesQuery = `
@@ -1370,6 +1418,9 @@ class RemonlineMatrixSync {
           });
 
           console.log(`✅ Списань (всього): ${outcomesData.length}`);
+          if (outcomesData.length > 0) {
+            console.log("📋 Перше списання:", outcomesData[0]);
+          }
 
           // ПРОДАЖІ
           console.log("💰 Запит продажів...");
@@ -1400,21 +1451,20 @@ class RemonlineMatrixSync {
           });
 
           console.log(`✅ Продажів: ${salesData.length}`);
+          if (salesData.length > 0) {
+            console.log("📋 Перший продаж:", salesData[0]);
+          }
 
-          console.log("\n📊 === ПІДСУМОК API ===");
-          console.log(`Postings: ${postingsData.length}`);
-          console.log(`Moves: ${movesData.length}`);
-          console.log(`Outcomes: ${outcomesData.length}`);
-          console.log(`Sales: ${salesData.length}`);
-
+          // ПОТОЧНИЙ БАЛАНС
           const currentBalanceQuery = `
-  SELECT 
-      warehouse_title,
-      residue as current_balance
-  FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
-  WHERE product_id = @product_id
-    AND warehouse_id = @warehouse_id
-`;
+        SELECT 
+            warehouse_id,
+            warehouse_title,
+            residue as current_balance
+        FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_calculated_stock\`
+        WHERE product_id = @product_id
+          AND warehouse_id = @warehouse_id
+      `;
 
           const [balanceRows] = await this.bigquery.query({
             query: currentBalanceQuery,
@@ -1425,32 +1475,52 @@ class RemonlineMatrixSync {
             },
           });
 
-          const currentBalances = {};
-          balanceRows.forEach((row) => {
-            currentBalances[row.warehouse_title] = row.current_balance;
-          });
+          let currentBalance = 0;
+          let warehouseTitleFromBQ = "";
 
-          console.log(
-            `✅ Поточний залишок для складу ${warehouseId}:`,
-            currentBalances
-          );
+          if (balanceRows.length > 0) {
+            currentBalance = balanceRows[0].current_balance || 0;
+            warehouseTitleFromBQ = balanceRows[0].warehouse_title || "";
+            console.log(
+              `✅ Поточний залишок для складу ${warehouseId} (${warehouseTitleFromBQ}): ${currentBalance}`
+            );
+          } else {
+            console.log(
+              `⚠️ Товар не знайдено на складі ${warehouseId} (залишок 0)`
+            );
+          }
+
+          console.log("\n📊 === ПІДСУМОК API ===");
+          console.log(`Postings: ${postingsData.length}`);
+          console.log(`Moves: ${filteredMoves.length}`);
+          console.log(`Outcomes: ${outcomesData.length}`);
+          console.log(`Sales: ${salesData.length}`);
+          console.log(`Current Balance: ${currentBalance}`);
+
+          const totalOps =
+            postingsData.length +
+            filteredMoves.length +
+            outcomesData.length +
+            salesData.length;
+          console.log(`ВСЬОГО ОПЕРАЦІЙ: ${totalOps}`);
 
           res.json({
             success: true,
             productTitle,
             productId,
             warehouseId,
+            warehouseTitleFromBQ,
             data: {
               postings: postingsData,
-              moves: movesData,
+              moves: filteredMoves,
               outcomes: outcomesData,
               sales: salesData,
             },
             totalPostings: postingsData.length,
-            totalMoves: movesData.length,
+            totalMoves: filteredMoves.length,
             totalOutcomes: outcomesData.length,
             totalSales: salesData.length,
-            currentBalances: currentBalances,
+            currentBalance: currentBalance,
           });
         } catch (error) {
           console.error("❌ КРИТИЧНА ПОМИЛКА API:", error);
@@ -1639,7 +1709,7 @@ class RemonlineMatrixSync {
         { name: "created_by_name", type: "STRING", mode: "NULLABLE" },
         { name: "supplier_id", type: "INTEGER", mode: "NULLABLE" },
         { name: "supplier_name", type: "STRING", mode: "NULLABLE" },
-        { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" }, // ✅ УЖЕ ЕСТЬ!
+        { name: "warehouse_id", type: "INTEGER", mode: "REQUIRED" },
         { name: "warehouse_title", type: "STRING", mode: "NULLABLE" },
         { name: "product_id", type: "INTEGER", mode: "REQUIRED" },
         { name: "product_title", type: "STRING", mode: "REQUIRED" },
@@ -3582,7 +3652,6 @@ class RemonlineMatrixSync {
 
       console.log(`🔨 Створення view ${viewName}...`);
 
-      // Перевіряємо чи існують таблиці
       const requiredTables = [
         `${process.env.BIGQUERY_TABLE}_postings`,
         `${process.env.BIGQUERY_TABLE}_moves`,
@@ -3598,14 +3667,12 @@ class RemonlineMatrixSync {
 
         if (!exists) {
           console.log(`⚠️ Таблиця ${tableName} не існує!`);
-          console.log(`💡 Спочатку запустіть синхронізацію даних`);
           return false;
         } else {
           console.log(`✅ Таблиця ${tableName} існує`);
         }
       }
 
-      // Видаляємо старий view
       const [viewExists] = await dataset.table(viewName).exists();
       if (viewExists) {
         await dataset.table(viewName).delete();
@@ -3613,147 +3680,79 @@ class RemonlineMatrixSync {
       }
 
       const viewQuery = `
+      
             WITH all_operations AS (
-                -- Оприбуткування (+)
-                SELECT 
-                    warehouse_id,
-                    warehouse_title,
-                    product_id,
-                    product_title,
-                    product_code,
-                    product_article,
-                    uom_title,
-                    amount as quantity_delta,
-                    posting_created_at as operation_date
+                SELECT warehouse_id, warehouse_title, product_id, product_title, product_code, product_article, uom_title,
+                      amount as quantity_delta, posting_created_at as operation_date
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
                 WHERE posting_created_at >= '2022-05-01 00:00:00'
                 
                 UNION ALL
                 
-                -- Вхідні переміщення (+)
-                SELECT 
-                    w.warehouse_id,
-                    m.target_warehouse_title as warehouse_title,
-                    m.product_id,
-                    m.product_title,
-                    m.product_code,
-                    m.product_article,
-                    m.uom_title,
-                    m.amount as quantity_delta,
-                    m.move_created_at as operation_date
+                SELECT w.warehouse_id, m.target_warehouse_title, m.product_id, m.product_title, m.product_code, m.product_article, m.uom_title,
+                      m.amount, m.move_created_at
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
-                JOIN (
-                    SELECT DISTINCT warehouse_id, warehouse_title 
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-                ) w ON m.target_warehouse_title = w.warehouse_title
+                JOIN (SELECT DISTINCT warehouse_id, warehouse_title FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`) w 
+                ON m.target_warehouse_title = w.warehouse_title
                 WHERE m.move_created_at >= '2022-05-01 00:00:00'
                 
                 UNION ALL
                 
-                -- Вихідні переміщення (-)
-                SELECT 
-                    w.warehouse_id,
-                    m.source_warehouse_title as warehouse_title,
-                    m.product_id,
-                    m.product_title,
-                    m.product_code,
-                    m.product_article,
-                    m.uom_title,
-                    -m.amount as quantity_delta,
-                    m.move_created_at as operation_date
+                -- 1. ОПРИБУТКУВАННЯ (+)
+                SELECT w.warehouse_id, m.source_warehouse_title, m.product_id, m.product_title, m.product_code, m.product_article, m.uom_title,
+                      -m.amount, m.move_created_at
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_moves\` m
-                JOIN (
-                    SELECT DISTINCT warehouse_id, warehouse_title 
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-                ) w ON m.source_warehouse_title = w.warehouse_title
+                JOIN (SELECT DISTINCT warehouse_id, warehouse_title FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`) w 
+                ON m.source_warehouse_title = w.warehouse_title
                 WHERE m.move_created_at >= '2022-05-01 00:00:00'
                 
                 UNION ALL
                 
-                -- Списання (-)
-                SELECT 
-                    w.warehouse_id,
-                    o.source_warehouse_title as warehouse_title,
-                    o.product_id,
-                    o.product_title,
-                    o.product_code,
-                    o.product_article,
-                    o.uom_title,
-                    -o.amount as quantity_delta,
-                    o.outcome_created_at as operation_date
+                -- 2. ВХІДНІ ПЕРЕМІЩЕННЯ (+)
+                SELECT w.warehouse_id, o.source_warehouse_title, o.product_id, o.product_title, o.product_code, o.product_article, o.uom_title,
+                       -o.amount, o.outcome_created_at
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_outcomes\` o
-                JOIN (
-                    SELECT DISTINCT warehouse_id, warehouse_title 
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-                ) w ON o.source_warehouse_title = w.warehouse_title
+                JOIN (SELECT DISTINCT warehouse_id, warehouse_title FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`) w 
+                ON o.source_warehouse_title = w.warehouse_title
                 WHERE o.outcome_created_at >= '2022-05-01 00:00:00'
                 
                 UNION ALL
                 
-                -- Продажі (-)
-                SELECT 
-                    s.warehouse_id,
-                    w.warehouse_title,
-                    NULL as product_id,
-                    s.product_title,
-                    s.product_code,
-                    s.product_article,
-                    s.uom_title,
-                    -s.amount as quantity_delta,
-                    s.sale_created_at as operation_date
+                -- 3. ВИХІДНІ ПЕРЕМІЩЕННЯ (-)
+                SELECT s.warehouse_id, w.warehouse_title, NULL as product_id, s.product_title, s.product_code, s.product_article, s.uom_title,
+                       -s.amount, s.sale_created_at
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_sales\` s
-                JOIN (
-                    SELECT DISTINCT warehouse_id, warehouse_title 
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-                ) w ON s.warehouse_id = w.warehouse_id
+                JOIN (SELECT DISTINCT warehouse_id, warehouse_title FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`) w 
+                ON s.warehouse_id = w.warehouse_id
                 WHERE s.sale_created_at >= '2022-05-01 00:00:00'
                 
                 UNION ALL
                 
-                -- Замовлення (-)
-                SELECT 
-                    o.warehouse_id,
-                    w.warehouse_title,
-                    o.product_id,
-                    o.product_title,
-                    NULL as product_code,
-                    NULL as product_article,
-                    NULL as uom_title,
-                    -o.amount as quantity_delta,
-                    o.created_at as operation_date
+                -- 4. СПИСАННЯ (-)
+                SELECT o.warehouse_id, w.warehouse_title, o.product_id, o.product_title, NULL, NULL, NULL,
+                       -o.amount, o.created_at
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
-                JOIN (
-                    SELECT DISTINCT warehouse_id, warehouse_title 
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-                ) w ON o.warehouse_id = w.warehouse_id
+                JOIN (SELECT DISTINCT warehouse_id, warehouse_title FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`) w 
+                ON o.warehouse_id = w.warehouse_id
                 WHERE o.relation_type = 0 AND o.created_at >= '2022-05-01 00:00:00'
                 
                 UNION ALL
-                
-                -- Повернення (+)
-                SELECT 
-                    o.warehouse_id,
-                    w.warehouse_title,
-                    o.product_id,
-                    o.product_title,
-                    NULL as product_code,
-                    NULL as product_article,
-                    NULL as uom_title,
-                    o.amount as quantity_delta,
-                    o.created_at as operation_date
+
+                -- 5. ПРОДАЖІ (-)
+                SELECT o.warehouse_id, w.warehouse_title, o.product_id, o.product_title, NULL, NULL, NULL,
+                       o.amount, o.created_at
                 FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_orders\` o
-                JOIN (
-                    SELECT DISTINCT warehouse_id, warehouse_title 
-                    FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`
-                ) w ON o.warehouse_id = w.warehouse_id
+                JOIN (SELECT DISTINCT warehouse_id, warehouse_title FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}_postings\`) w 
+                ON o.warehouse_id = w.warehouse_id
                 WHERE o.relation_type = 7 AND o.created_at >= '2022-05-01 00:00:00'
             )
             
+            -- ФІНАЛЬНИЙ РОЗРАХУНОК
             SELECT 
                 warehouse_id,
                 MAX(warehouse_title) as warehouse_title,
-                COALESCE(product_id, 0) as product_id,
-                MAX(product_title) as title,
+                MAX(product_id) as product_id,
+                product_title as title,
                 MAX(product_code) as code,
                 MAX(product_article) as article,
                 MAX(uom_title) as uom_title,
@@ -3761,24 +3760,21 @@ class RemonlineMatrixSync {
                 MAX(operation_date) as updated_at
             FROM all_operations
             WHERE warehouse_id IS NOT NULL
-            GROUP BY warehouse_id, product_id, product_title
+            GROUP BY warehouse_id, product_title
             HAVING SUM(quantity_delta) > 0
+            ORDER BY warehouse_id, product_title;
         `;
 
       const metadata = {
-        view: {
-          query: viewQuery,
-          useLegacySql: false,
-        },
+        view: { query: viewQuery, useLegacySql: false },
         location: "EU",
       };
 
       await dataset.createTable(viewName, metadata);
-      console.log(`✅ View ${viewName} успішно створено`);
-      console.log(`📊 Розрахунок остатків з 01.05.2022`);
+      console.log(`✅ View створено (групування по назві товару)`);
       return true;
     } catch (error) {
-      console.error("❌ Помилка створення view:", error.message);
+      console.error("❌ Помилка:", error.message);
       return false;
     }
   }
