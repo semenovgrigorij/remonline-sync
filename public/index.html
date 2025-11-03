@@ -1,3208 +1,438 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remonline Matrix Dashboard</title>
-    <link rel="icon" type="image/x-icon" href="./img/favicon.ico" />
-    <link rel="shortcut icon" type="image/x-icon" href="./img/favicon.ico" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Реальные остатки — RemOnline</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
-            min-height: 100vh;
-            /* padding: 20px; */
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            background: #f3f4f6;
+            color: #111827;
+            margin: 0;
+            padding: 20px;
         }
 
         .container {
-            max-width: 100%;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
-            /* border-radius: 15px; */
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
         }
 
-        .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            padding: 10px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 1.5rem;
-            /* margin-bottom: 10px; */
-            font-weight: 600;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1rem;
+        h1 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
         }
 
         .controls {
-            padding: 10px;
             display: flex;
-            align-items: center;
-            gap: 5px;
+            gap: 12px;
             flex-wrap: wrap;
-            justify-content: center;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+            align-items: center;
         }
 
-        .btn {
-            padding: 6px 10px;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        select,
+        button,
+        input {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            font-size: 0.95rem;
+        }
+
+        button.primary {
+            background: #4f46e5;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 0.6rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 180px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn.secondary {
-            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        }
-
-        .btn.back {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            min-width: auto;
-            padding: 8px 16px;
-            font-size: 0.9rem;
-        }
-
-        /* Стили для новых выпадающих списков */
-        .location-selector {
-            padding: 10px 30px;
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .selector-container {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            max-width: 800px;
-            margin: 0 auto;
-            flex-wrap: wrap;
-        }
-
-        .selector-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .selector-label {
-            font-weight: 600;
-            color: #374151;
-            font-size: 0.7rem;
-        }
-
-        .selector {
-            padding: 6px 8px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            outline: none;
-            transition: border-color 0.2s ease;
-            background: white;
             cursor: pointer;
         }
 
-        .selector:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .selector:disabled {
-            background: #f3f4f6;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .selector-btn {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 6px 10px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            align-self: flex-end;
-        }
-
-        .selector-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
-        }
-
-        .selector-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .status-panel {
-            padding: 10px;
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px;
-            gap: 5px;
-            border-radius: 5px;
-            background: #f8fafc;
-            border-left: 4px solid #e2e8f0;
-            transition: all 0.3s ease;
-        }
-
-        .status-item.success {
-            border-left-color: #10b981;
-            background: #ecfdf5;
-        }
-
-        .status-item.error {
-            border-left-color: #ef4444;
-            background: #fef2f2;
-        }
-
-        .status-item.info {
-            border-left-color: #3b82f6;
-            background: #eff6ff;
-        }
-
-        .status-label {
-            font-size: 0.6rem;
-            font-weight: 600;
+        button.ghost {
+            background: #fff;
             color: #374151;
+            border: 1px solid #e5e7eb;
         }
 
-        .status-value {
-            font-size: 0.6rem;
-            color: #6b7280;
-        }
-
-        .matrix-container {
-            padding: 10px 0;
-            background: #f8fafc;
-            overflow: auto;
-        }
-
-        .matrix-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 10px;
-            padding: 0 0 0 105px;
-        }
-
-        .matrix-container h3 {
-            color: #374151;
-            font-size: 1rem;
-            margin: 0;
-        }
-
-        .matrix-table-wrapper {
-            overflow: auto;
-            max-height: 70vh;
-            /* border-radius: 10px; */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            background: white;
-        }
-
-        .matrix-table {
+        table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            margin-top: 12px;
         }
 
-        .matrix-table thead tr:first-child th {
-            background: #1e1b4b;
-            font-weight: 700;
-            font-size: 0.95rem;
-            padding: 15px 8px;
-        }
-
-        .matrix-table thead tr:nth-child(2) th {
-            background: #4f46e5;
-            font-size: 0.8rem;
-            padding: 10px 6px;
-        }
-
-        .matrix-table th {
-            background: #4f46e5;
+        thead th {
+            text-align: left;
+            background: #111827;
             color: white;
-            padding: 12px 8px;
-            text-align: center;
-            font-weight: 600;
+            padding: 10px;
             position: sticky;
             top: 0;
-            z-index: 10;
-            border-right: 1px solid #3730a3;
-            min-width: 120px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
         }
 
-        .matrix-table th:hover {
-            background: #3730a3;
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #eef2f7;
+            vertical-align: middle;
         }
 
-        .matrix-table th:first-child {
-            background: #1e1b4b;
-            position: sticky;
-            left: 0;
-            z-index: 11;
-            text-align: left;
-            min-width: 20px;
-            max-width: 20px;
-            cursor: default;
-        }
-
-        .matrix-table th:nth-child(2) {
-            background: #1e1b4b;
-            position: sticky;
-            left: 60px;
-            z-index: 11;
-            text-align: left;
-            min-width: 200px;
-            max-width: 200px;
-            cursor: default;
-        }
-
-        .matrix-table td:nth-child(2) {
-            background: #f8fafc;
-            position: sticky;
-            left: 60px;
-            z-index: 9;
-            text-align: left;
-            font-weight: 500;
-            color: #374151;
-            border-right: 2px solid #d1d5db;
-            min-width: 200px;
-            max-width: 200px;
-            word-wrap: break-word;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .matrix-table td:nth-child(2):hover {
-            background: #e2e8f0;
-        }
-
-        .matrix-table tr:hover td:nth-child(2) {
-            background: #e2e8f0;
-        }
-
-        .matrix-table td {
-            padding: 8px;
-            border-bottom: 1px solid #e2e8f0;
-            border-right: 1px solid #e2e8f0;
-            text-align: center;
-            min-width: 120px;
-        }
-
-        .matrix-table td:first-child {
-            background: #f8fafc;
-            position: sticky;
-            left: 0;
-            z-index: 9;
-            text-align: left;
-            font-weight: 500;
-            color: #374151;
-            border-right: 2px solid #d1d5db;
-            min-width: 200px;
-            max-width: 200px;
-            word-wrap: break-word;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .matrix-table td:first-child:hover {
-            background: #e2e8f0;
-        }
-
-        .matrix-table tr:hover {
-            background: #f1f5f9;
-        }
-
-        .matrix-table tr:hover td:first-child {
-            background: #e2e8f0;
-        }
-
-        .quantity-cell {
-            font-weight: 600;
+        .quantity {
+            font-weight: 700;
             color: #059669;
         }
 
-        .quantity-cell.zero {
-            color: #9ca3af;
-            font-weight: normal;
-        }
-
-        .quantity-cell.high {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .quantity-cell.medium {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4f46e5;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .summary-stats {
-            margin-top: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #4f46e5;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #6b7280;
-            margin-top: 5px;
-        }
-
-        .detailed-table {
-            margin-top: 20px;
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            display: none;
-        }
-
-        .detailed-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .detailed-table th {
-            background: #374151;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .detailed-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .detailed-table tr:hover {
-            background: #f9fafb;
-        }
-
-        .filter-info {
-            background: #eff6ff;
-            border-top: 1px solid #3b82f6;
-            border-bottom: 1px solid #3b82f6;
-            padding: 10px 0 10px 105px;
-            margin-bottom: 20px;
-            color: #1e40af;
-            font-weight: 500;
-            display: none;
-            font-size: 0.8em;
-        }
-
-        .search-panel {
-            padding: 10px 30px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .search-container {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .search-input {
-            flex: 1;
+        .btn-history {
             padding: 6px 8px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            outline: none;
-            transition: border-color 0.2s ease;
-            background: white;
-        }
-
-        .search-input:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .btn-search {
-            padding: 6px 10px;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border-radius: 6px;
+            background: #0ea5a0;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 180px;
         }
 
-        .btn-search:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.5);
         }
 
-        .btn-search:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-search.secondary {
-            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        }
-
-
-
-        @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .btn {
-                min-width: auto;
-            }
-
-            .selector-container {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .selector-btn {
-                align-self: stretch;
-            }
-
-            .matrix-table {
-                font-size: 0.75rem;
-            }
-
-            .matrix-table th,
-            .matrix-table td {
-                padding: 6px 4px;
-                min-width: 80px;
-            }
-
-            .matrix-table th:first-child,
-            .matrix-table td:first-child {
-                min-width: 50px;
-                max-width: 50px;
-            }
-
-            .matrix-table th:nth-child(2),
-            .matrix-table td:nth-child(2) {
-                left: 50px;
-                min-width: 120px;
-                max-width: 120px;
-            }
-        }
-
-        /* Адміністративне меню */
-        .admin-menu {
-            position: relative;
-            display: inline-block;
-        }
-
-        .btn.admin-toggle {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            min-width: 200px;
-        }
-
-        .btn.admin-toggle:hover {
-            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
-        }
-
-        .admin-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 5px;
+        .modal-card {
+            width: 90%;
+            max-width: 900px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            min-width: 280px;
-            max-height: 400px;
-            overflow-y: auto;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(2, 6, 23, 0.4);
+            max-height: 85vh;
+            overflow: auto;
         }
 
-        .admin-dropdown.show {
-            display: block;
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
         }
 
-        .admin-btn {
-            display: block;
-            width: 100%;
-            padding: 10px 15px;
-            background: white;
-            color: #374151;
-            border: none;
-            border-bottom: 1px solid #e2e8f0;
-            text-align: left;
+        .small {
             font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
+            color: #6b7280;
         }
 
-        .admin-btn:last-child {
-            border-bottom: none;
-            border-radius: 0 0 8px 8px;
+        .operations-table th {
+            background: #374151;
         }
 
-        .admin-btn:first-child {
-            border-radius: 8px 8px 0 0;
-        }
-
-        .admin-btn:hover {
-            background: #f3f4f6;
-        }
-
-        .admin-btn:active {
-            background: #e5e7eb;
-        }
-
-        /* Закриття меню при кліку поза ним */
-        @media (max-width: 768px) {
-            .admin-dropdown {
-                right: auto;
-                left: 0;
-            }
+        .placeholder {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Матрица товаров по складам</h1>
-            <!-- <p>Остатки товаров на складах в формате таблицы</p> -->
-        </div>
-
-        <!-- Новый блок для выбора локации и склада -->
-        <div class="location-selector">
-            <div class="selector-container">
-                <div class="selector-group">
-                    <label class="selector-label" for="locationSelect">Локация</label>
-                    <select id="locationSelect" class="selector" onchange="onLocationChange()">
-                        <option value="">Выберите локацию</option>
-                    </select>
-                </div>
-                <div class="selector-group">
-                    <label class="selector-label" for="warehouseSelect">Склад</label>
-                    <select id="warehouseSelect" class="selector" disabled onchange="onWarehouseChange()">
-                        <option value="">Сначала выберите локацию</option>
-                    </select>
-                </div>
-                <button class="selector-btn" id="showWarehouseBtn" onclick="showSelectedWarehouse()" disabled>
-                    Показать товары
-                </button>
-            </div>
-        </div>
+        <h1>Реальные остатки по складу (RemOnline)</h1>
 
         <div class="controls">
-            <button class="btn secondary" onclick="exportMatrix()">Експорт матриці</button>
-
-            <div class="status-panel">
-                <div class="status-item" id="syncStatus">
-                    <span class="status-label">Автосинхронизация:</span>
-                    <span class="status-value">Остановлена</span>
-                </div>
-                <div class="status-item" id="lastSyncStatus">
-                    <span class="status-label">Последняя синхронизация:</span>
-                    <span class="status-value">Никогда</span>
-                </div>
+            <div>
+                <label class="small">Локация (branch)</label><br />
+                <select id="branchSelect">
+                    <option value="">— выберите локацию —</option>
+                </select>
             </div>
 
-            <!-- Об'єднана адмін панель -->
-            <div style="position: fixed; top: 20px; right: 20px; z-index: 2000;">
-                <button onclick="toggleAdminMenu()"
-                    style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; padding: 12px 16px; border-radius: 50%; cursor: pointer; font-size: 1.3rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: transform 0.2s;">
-                    ⚙️
-                </button>
-
-                <div id="adminDropdown" class="admin-dropdown"
-                    style="display: none; position: absolute; top: 60px; right: 0; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); min-width: 280px; max-width: 350px; max-height: 80vh; overflow-y: auto;">
-
-                    <div
-                        style="padding: 15px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; position: sticky; top: 0; z-index: 1;">
-                        <h4 style="margin: 0; font-size: 1rem;">⚙️ Адмін панель</h4>
-                    </div>
-
-                    <div style="padding: 10px;">
-                        <!-- Cookies -->
-                        <button class="admin-btn" onclick="showCookiesUpdateModal(); toggleAdminMenu();"
-                            style="width: 100%; padding: 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.95rem; margin-bottom: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 1.2rem;">🔐</span>
-                            <span>Оновити Cookies API</span>
-                        </button>
-
-                        <!-- Розділювач -->
-                        <div style="border-top: 2px solid #e5e7eb; margin: 15px 0;"></div>
-                        <div style="padding: 8px 12px; background: #f0f9ff; border-radius: 6px; margin-bottom: 10px;">
-                            <strong style="color: #1e40af; font-size: 0.85rem;">📊 Синхронізація даних</strong>
-                        </div>
-
-                        <!-- Синхронізація -->
-                        <button class="admin-btn" onclick="startAutoSync(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">▶</span>
-                            <span>Запустити автосинхронізацію</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="stopAutoSync(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">⏹</span>
-                            <span>Зупинити синхронізацію</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="syncPostings(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">📊</span>
-                            <span>Синхронізувати оприбуткування</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="syncMoves(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">📦</span>
-                            <span>Синхронізувати переміщення</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="syncOutcomes(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🗑️</span>
-                            <span>Синхронізувати списання</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="syncSales(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">💰</span>
-                            <span>Синхронізувати продажі</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="syncOrders(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🛒</span>
-                            <span>Синхронізувати замовлення та повернення</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="createStockView(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">📊</span>
-                            <span>Створити view остатків</span>
-                        </button>
-
-                        <!-- Розділювач -->
-                        <div style="border-top: 2px solid #e5e7eb; margin: 15px 0;"></div>
-                        <div style="padding: 8px 12px; background: #fef3c7; border-radius: 6px; margin-bottom: 10px;">
-                            <strong style="color: #92400e; font-size: 0.85rem;">🔧 Системні</strong>
-                        </div>
-
-                        <!-- Системні дії -->
-                        <button class="admin-btn" onclick="location.reload(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🔄</span>
-                            <span>Оновити сторінку</span>
-                        </button>
-
-                        <button class="admin-btn"
-                            onclick="localStorage.clear(); alert('Кеш очищено!'); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🗑️</span>
-                            <span>Очистити кеш</span>
-                        </button>
-
-                        <button class="admin-btn" onclick="checkCookiesStatus(); toggleAdminMenu();"
-                            style="width: 100%; padding: 10px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem;">🔍</span>
-                            <span>Перевірити статус Cookies</span>
-                        </button>
-                    </div>
-                </div>
+            <div>
+                <label class="small">Склад</label><br />
+                <select id="warehouseSelect" disabled>
+                    <option value="">— сначала выберите локацию —</option>
+                </select>
             </div>
 
-            <style>
-                .admin-btn:hover {
-                    background: #f3f4f6 !important;
-                    border-color: #6366f1 !important;
-                    transform: translateX(3px);
-                }
+            <div style="align-self:end;">
+                <button id="showBtn" class="primary" disabled>Показать товары</button>
+            </div>
 
-                .admin-dropdown.show {
-                    display: block !important;
-                }
-            </style>
-
-            <style>
-                .admin-btn:hover {
-                    background: #f3f4f6 !important;
-                    border-color: #6366f1 !important;
-                    transform: translateX(5px);
-                }
-
-                .admin-dropdown.show {
-                    display: block !important;
-                }
-            </style>
-
-            <script>
-                function toggleAdminMenu() {
-                    const dropdown = document.getElementById('adminDropdown');
-                    console.log('Toggle clicked, dropdown:', dropdown);
-
-                    if (!dropdown) {
-                        console.error('adminDropdown не знайдено!');
-                        return;
-                    }
-
-                    if (dropdown.style.display === 'none' || dropdown.style.display === '') {
-                        dropdown.style.display = 'block';
-                        console.log('Відкрито меню');
-                    } else {
-                        dropdown.style.display = 'none';
-                        console.log('Закрито меню');
-                    }
-                }
-
-                // Закриття по кліку поза меню
-                document.addEventListener('click', function (e) {
-                    const dropdown = document.getElementById('adminDropdown');
-                    const adminButton = e.target.closest('button[onclick*="toggleAdminMenu"]');
-
-                    // Якщо клік НЕ по кнопці адміна і НЕ всередині меню
-                    if (dropdown &&
-                        dropdown.style.display === 'block' &&
-                        !adminButton &&
-                        !dropdown.contains(e.target)) {
-                        dropdown.style.display = 'none';
-                        console.log('Закрито меню (клік поза)');
-                    }
-                });
-
-                // Закриття по Escape
-                document.addEventListener('keydown', function (e) {
-                    if (e.key === 'Escape') {
-                        const dropdown = document.getElementById('adminDropdown');
-                        if (dropdown && dropdown.style.display === 'block') {
-                            dropdown.style.display = 'none';
-                            console.log('Закрито меню (Escape)');
-                        }
-                    }
-                });
-            </script>
-        </div>
-
-
-
-        <!-- Поле поиска -->
-        <div class="search-panel">
-            <div class="search-container">
-                <input type="text" id="searchInput" class="search-input" placeholder="Поиск товара по названию..."
-                    onkeyup="handleSearchKeyup(event)">
-                <button class="btn-search" onclick="searchProducts()">
-                    Поиск
-                </button>
-                <button class="btn-search secondary" onclick="clearSearch()">
-                    Очистить
-                </button>
+            <div style="margin-left:auto; display:flex; gap:8px; align-items:end;">
+                <input id="searchInput" placeholder="Поиск товара..." />
+                <button id="clearBtn" class="ghost">Очистить</button>
             </div>
         </div>
 
-        <div class="matrix-container">
-            <div class="matrix-header">
-                <h3 id="matrixTitle"></h3>
-                <button class="btn back" id="backButton" onclick="showFullMatrix()" style="display: none;">
-                    ← Вернуться к полной матрице
-                </button>
-            </div>
-
-            <div id="filterInfo" class="filter-info"></div>
-
-            <div class="matrix-table-wrapper" id="matrixWrapper">
-                <table class="matrix-table" id="matrixTable">
-                    <thead>
-                        <tr>
-                            <th>Товар</th>
-                            <th colspan="100" style="text-align: center; color: #9ca3af;">Данные загрузятся после
-                                синхронизации</th>
-                        </tr>
-                    </thead>
-                    <tbody id="matrixBody">
-                        <tr>
-                            <td colspan="100" style="text-align: center; color: #6b7280; padding: 40px;">
-                                Нет данных для отображения
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Детализованная таблица -->
-            <div id="detailTable" class="detailed-table">
-                <table>
-                    <thead id="detailTableHeader">
-                        <!-- Заголовки будут динамически генерироваться -->
-                    </thead>
-                    <tbody id="detailTableBody">
-                        <!-- Данные будут динамически генерироваться -->
-                    </tbody>
-                </table>
-            </div>
+        <div id="matrixArea">
+            <table id="goodsTable">
+                <thead>
+                    <tr>
+                        <th style="width:38%;">Товар</th>
+                        <th style="width:12%;">Артикул</th>
+                        <th style="width:10%;">Код</th>
+                        <th style="width:10%;">Ед.</th>
+                        <th style="width:10%;">Остаток</th>
+                        <th style="width:20%;">История</th>
+                    </tr>
+                </thead>
+                <tbody id="goodsBody">
+                    <tr>
+                        <td colspan="6" class="placeholder">Выберите локацию и склад чтобы загрузить товары</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <script>
-        console.log('🔄 JavaScript версія: 2.0 - з переміщеннями');
-
-        let statusInterval;
-        let matrixData = {};
-        let currentView = 'matrix'; // 'matrix', 'warehouse', 'product', 'search', 'selected_warehouse'
-        let currentFilter = null;
-        let searchResults = null;
-
-        // Массив локаций
-        const branchIds = [
-            { name: "01.1_G_CAR_KY", id: 134397 },
-            { name: "02.1_G_CAR_LV", id: 137783 },
-            { name: "02.2_G_CAR_LV", id: 170450 },
-            { name: "02.3_G_CAR_LV", id: 198255 },
-            { name: "03_G_CAR_OD", id: 171966 },
-            { name: "07_G_CAR_VN", id: 189625 },
-            { name: "08_G_CAR_PLT", id: 147848 },
-            { name: "09_G_CAR_IF", id: 186381 },
-            { name: "15_G_CAR_CK", id: 185929 },
-            { name: "16_G_CAR_CV", id: 155210 },
-            { name: "18.1_G_CAR_LU", id: 158504 },
-            { name: "18.2_G_CAR_LU", id: 177207 },
-            { name: "18.3_G_CAR_LU", id: 205571 },
-            { name: "19.1_G_CAR_RV", id: 154905 },
-            { name: "19.2_G_CAR_RV", id: 184657 },
-        ];
-
-        // Переменные для выпадающих списков
-        let currentBranchId = null;
-        let currentWarehouseId = null;
-        let currentWarehouseTitle = null;
-        let employeesCache = new Map();
-        let suppliersCache = new Map();
-        let branchWarehouses = [];
-
-        // Безопасные DOM операции
-        function safeGetElement(id) {
-            const element = document.getElementById(id);
-            if (!element) {
-                console.warn(`Элемент ${id} не найден`);
-            }
-            return element;
-        }
-
-        function safeSetDisplay(id, display) {
-            const element = safeGetElement(id);
-            if (element) {
-                element.style.display = display;
-            }
-        }
-
-        function safeSetText(id, text) {
-            const element = safeGetElement(id);
-            if (element) {
-                element.textContent = text;
-            }
-        }
-
-        function safeSetHTML(id, html) {
-            const element = safeGetElement(id);
-            if (element) {
-                element.innerHTML = html;
-            }
-        }
-
-        // Инициализация выпадающих списков
-        function initializeSelectors() {
-            const locationSelect = safeGetElement('locationSelect');
-            if (locationSelect) {
-                // Заполняем список локаций
-                branchIds.forEach(branch => {
-                    const option = document.createElement('option');
-                    option.value = branch.id;
-                    option.textContent = branch.name;
-                    locationSelect.appendChild(option);
-                });
-            }
-        }
-
-        // Обработчик изменения локации
-        async function onLocationChange() {
-            const locationSelect = safeGetElement('locationSelect');
-            const warehouseSelect = safeGetElement('warehouseSelect');
-            const showBtn = safeGetElement('showWarehouseBtn');
-
-            if (!locationSelect || !warehouseSelect || !showBtn) return;
-
-            const selectedBranchId = locationSelect.value;
-            console.log('onLocationChange: selectedBranchId =', selectedBranchId);
-
-            if (!selectedBranchId) {
-                warehouseSelect.disabled = true;
-                warehouseSelect.innerHTML = '<option value="">Сначала выберите локацию</option>';
-                showBtn.disabled = true;
-                currentBranchId = null;
-                return;
-            }
-
-            currentBranchId = selectedBranchId;
-
-            warehouseSelect.disabled = true;
-            warehouseSelect.innerHTML = '<option value="">Загрузка складов...</option>';
-            showBtn.disabled = true;
-
-            try {
-                console.log('Запрос складов для branch_id:', selectedBranchId);
-                const result = await apiCall(`/api/branch-warehouses/${selectedBranchId}`);
-                console.log('Ответ API branch-warehouses:', result);
-
-                if (result.success) {
-                    branchWarehouses = result.data;
-                    console.log('Получено складов:', branchWarehouses.length);
-
-                    warehouseSelect.innerHTML = '<option value="">Выберите склад</option>';
-                    branchWarehouses.forEach(warehouse => {
-                        const option = document.createElement('option');
-                        option.value = warehouse.id;
-                        option.textContent = warehouse.title;
-                        warehouseSelect.appendChild(option);
-                    });
-
-                    warehouseSelect.disabled = false;
-                } else {
-                    console.error('Ошибка от API:', result.error);
-                    warehouseSelect.innerHTML = '<option value="">Ошибка загрузки складов</option>';
-                    alert(`Ошибка загрузки складов: ${result.error}`);
-                }
-            } catch (error) {
-                console.error('Исключение при загрузке складов:', error);
-                warehouseSelect.innerHTML = '<option value="">Ошибка загрузки складов</option>';
-                alert(`Ошибка: ${error.message}`);
-            }
-        }
-
-        async function syncPostings() {
-            if (!confirm('Синхронизация истории оприходований займет много времени. Продолжить?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізувати оприбуткування';
-
-            try {
-                const result = await apiCall('/api/sync-postings', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронизация истории завершена!\n- Оприходований: ${result.totalPostings}\n- Позиций: ${result.processedProducts}\n- Время: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Ошибка синхронизации: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '📊 Синхронизировать историю';
-            }
-        }
-
-        // Обработчик изменения склада
-        function onWarehouseChange() {
-            const warehouseSelect = safeGetElement('warehouseSelect');
-            const showBtn = safeGetElement('showWarehouseBtn');
-
-            if (!warehouseSelect || !showBtn) return;
-
-            const selectedWarehouseId = warehouseSelect.value;
-
-            if (selectedWarehouseId) {
-                currentWarehouseId = selectedWarehouseId;
-                showBtn.disabled = false;
-            } else {
-                currentWarehouseId = null;
-                showBtn.disabled = true;
-            }
-        }
-
-        // Показать товары выбранного склада
-        async function showSelectedWarehouse() {
-            if (!currentWarehouseId) {
-                alert('Пожалуйста, выберите склад');
-                return;
-            }
-
-            const selectedWarehouse = branchWarehouses.find(w => w.id == currentWarehouseId);
-            if (!selectedWarehouse) {
-                alert('Не удалось найти выбранный склад');
-                return;
-            }
-
-            try {
-                currentView = 'selected_warehouse';
-                currentFilter = selectedWarehouse.title;
-                currentWarehouseTitle = selectedWarehouse.title;
-
-                safeSetText('matrixTitle', `Товары склада: ${selectedWarehouse.title}`);
-                safeSetDisplay('backButton', 'inline-block');
-                safeSetDisplay('filterInfo', 'block');
-
-                const result = await apiCall(`/api/selected-warehouse-goods/${currentWarehouseId}`);
-
-                if (result.success) {
-                    safeSetText('filterInfo', `Найдено ${result.totalItems} товаров, общий остаток: ${result.totalQuantity}`);
-                    safeSetDisplay('matrixWrapper', 'none');
-                    safeSetDisplay('summaryStats', 'none');
-
-                    displayWarehouseDetails(result.data);
-                } else {
-                    alert(`Ошибка: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-
-        function closeHistoryModal() {
-            const modal = document.getElementById('historyModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
-
-        async function apiCall(endpoint, method = 'GET', body = null) {
-            const options = {
-                method,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            };
-
-            if (body) options.body = JSON.stringify(body);
-
-            const response = await fetch(endpoint, options);
-            return await response.json();
-        }
-
-
-
-        // Модификация функции displayWarehouseDetails для добавления кликов по товарам
-        function displayWarehouseDetails(data) {
-            const header = safeGetElement('detailTableHeader');
-            const body = safeGetElement('detailTableBody');
-
-            if (header) {
-                header.innerHTML = `
-            <tr>
-                <th>№</th>
-                <th>Товар</th>
-                <th>Остаток</th>
-                <th>Код</th>
-                <th>Артикул</th>
-                <th>Категория</th>
-                <th>Ед. изм.</th>
-                <th>История</th>
-            </tr>
-        `;
-            }
-
-            if (body) {
-                body.innerHTML = data.map((item, index) => `
-            <tr>
-                <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
-                <td>${item.title}</td>
-                <td style="font-weight: 600; color: #059669;">${item.residue}</td>
-                <td>${item.code || '-'}</td>
-                <td>${item.article || '-'}</td>
-                <td>${item.category || '-'}</td>
-                <td>${item.uom_title || '-'}</td>
-                <td>
-                    <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;" 
-                        onclick="showProductHistoryFromWarehouseInBrowser('${currentWarehouseId}', '${encodeURIComponent(currentWarehouseTitle)}', '${encodeURIComponent(item.title)}')">
-                        История
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-            }
-
-            safeSetDisplay('detailTable', 'block');
-        }
-
-
-
-
-
-        async function startAutoSync() {
-            try {
-                const result = await apiCall('/api/start-auto-sync', 'POST');
-                if (result.success) {
-                    updateStatus('syncStatus', 'Активна', 'success');
-                    alert('Автоматическая синхронизация запущена (каждый час)!');
-                    await refreshStatus();
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            }
-        }
-
-        async function stopAutoSync() {
-            try {
-                const result = await apiCall('/api/stop-auto-sync', 'POST');
-                if (result.success) {
-                    updateStatus('syncStatus', 'Остановлена', 'info');
-                    alert('Автоматическая синхронизация остановлена!');
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            }
-        }
-
-        // Функции поиска
-        function handleSearchKeyup(event) {
-            if (event.key === 'Enter') {
-                searchProducts();
-            }
-        }
-
-        async function searchProducts() {
-            const searchInput = safeGetElement('searchInput');
-            if (!searchInput) return;
-
-            const searchTerm = searchInput.value.trim();
-
-            if (searchTerm.length < 2) {
-                alert('Введите минимум 2 символа для поиска');
-                return;
-            }
-
-            try {
-                safeSetText('matrixTitle', 'Поиск товаров...');
-
-                const result = await apiCall(`/api/search-products/${encodeURIComponent(searchTerm)}`);
-
-                if (result.success) {
-                    currentView = 'search';
-                    currentFilter = searchTerm;
-                    searchResults = result.data;
-
-                    safeSetText('matrixTitle', `Результаты поиска: "${searchTerm}"`);
-                    safeSetDisplay('backButton', 'inline-block');
-                    safeSetDisplay('filterInfo', 'block');
-                    safeSetText('filterInfo', `Найдено ${result.totalResults} записей, общий остаток: ${result.totalQuantity}`);
-
-                    safeSetDisplay('matrixWrapper', 'none');
-                    safeSetDisplay('summaryStats', 'none');
-
-                    displaySearchResults(result.data);
-                } else {
-                    alert(`Ошибка поиска: ${result.error}`);
-                    safeSetText('matrixTitle', 'Матрица остатков товаров');
-                }
-            } catch (error) {
-                alert(`Ошибка поиска: ${error.message}`);
-                safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-        function clearSearch() {
-            const searchInput = safeGetElement('searchInput');
-            if (searchInput) {
-                searchInput.value = '';
-            }
-            showFullMatrix();
-        }
-
-        function displaySearchResults(data) {
-            console.log('displaySearchResults получила данные:', data);
-
-            const header = safeGetElement('detailTableHeader');
-            const body = safeGetElement('detailTableBody');
-
-            if (header) {
-                header.innerHTML = `
-            <tr>
-                <th>№</th>
-                <th>Товар</th>
-                <th>Склад</th>
-                <th>Остаток</th>
-                <th>Код</th>
-                <th>Артикул</th>
-                <th>Ед. изм.</th>
-                <th>История</th>
-            </tr>
-        `;
-            }
-
-            if (body) {
-                body.innerHTML = data.map((item, index) => {
-                    return `
-                <tr>
-                    <td style="text-align: center;">${index + 1}</td>
-                    <td onclick="showProductDetails('${encodeURIComponent(item.title)}')">${item.title}</td>
-                    <td onclick="showWarehouseDetails('${encodeURIComponent(item.warehouse_title)}')">${item.warehouse_title}</td>
-                    <td style="font-weight: 600;">${item.residue}</td>
-                    <td>${item.code || '-'}</td>
-                    <td>${item.article || '-'}</td>
-                    <td>${item.uom_title || '-'}</td>
-                    <td>
-                        <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; min-width: auto; background: #059669;"
-                            onclick="showProductHistoryFromSearch('${encodeURIComponent(item.warehouse_title)}', '${encodeURIComponent(item.title)}')">
-                            История
-                        </button>
-                    </td>
-                </tr>
-            `;
-                }).join('');
-            }
-
-            safeSetDisplay('detailTable', 'block');
-        }
-
-        // ФУНКЦИЯ для истории из выбранного склада
-        async function showProductHistoryFromWarehouse(warehouseId, warehouseTitle, productTitle) {
-            console.log('🚀 === НАЧАЛО ДИАГНОСТИКИ showProductHistoryFromWarehouse ===');
-            console.log('📋 Входные параметры:', {
-                warehouseId,
-                warehouseTitle: decodeURIComponent(warehouseTitle),
-                productTitle: decodeURIComponent(productTitle)
-            });
-
-            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
-            const decodedProductTitle = decodeURIComponent(productTitle);
-
-            console.log('📋 Декодированные значения:', {
-                decodedWarehouseTitle,
-                decodedProductTitle,
-                warehouseId
-            });
-
-            if (!warehouseId) {
-                alert('Помилка: не вказано ID складу');
-                return;
-            }
-
-            try {
-                // ============================================
-                // 1. ПОЛУЧАЕМ СТАНДАРТНУЮ ИСТОРИЮ
-                // ============================================
-                console.log('📡 Шаг 1: Запрос стандартной истории...');
-                const apiUrl = `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`;
-                console.log('🔗 API URL:', apiUrl);
-
-                const standardHistory = await apiCall(apiUrl);
-
-                console.log('📦 Результат стандартной истории:', {
-                    success: standardHistory.success,
-                    productId: standardHistory.productId,
-                    warehouseId: standardHistory.warehouseId,
-                    currentBalance: standardHistory.currentBalance,
-                    postings: standardHistory.data?.postings?.length || 0,
-                    moves: standardHistory.data?.moves?.length || 0,
-                    outcomes: standardHistory.data?.outcomes?.length || 0,
-                    sales: standardHistory.data?.sales?.length || 0
-                });
-
-                // ✅ Выводим первые записи каждого типа операций
-                if (standardHistory.data?.postings?.length > 0) {
-                    console.log('📦 Первое оприбуткування:', standardHistory.data.postings[0]);
-                }
-                if (standardHistory.data?.moves?.length > 0) {
-                    console.log('🔄 Первое перемещение:', standardHistory.data.moves[0]);
-                }
-                if (standardHistory.data?.outcomes?.length > 0) {
-                    console.log('🗑️ Первое списание:', standardHistory.data.outcomes[0]);
-                }
-                if (standardHistory.data?.sales?.length > 0) {
-                    console.log('💰 Первый продаж:', standardHistory.data.sales[0]);
-                }
-
-                if (!standardHistory.success) {
-                    console.error('❌ API вернул ошибку:', standardHistory.error);
-                    alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
-                    return;
-                }
-
-                const productId = standardHistory.productId;
-
-                if (!productId) {
-                    console.error('❌ Не вдалося знайти ID товару');
-                    alert('Не вдалося знайти ID товару');
-                    return;
-                }
-
-                console.log('✅ Product ID знайдено:', productId);
-
-                // ============================================
-                // 2. ПОЛУЧАЕМ GOODS-FLOW
-                // ============================================
-                console.log('📡 Шаг 2: Запрос goods-flow...');
-                const goodsFlowUrl = `/api/goods-flow-items/${productId}/${warehouseId}`;
-                console.log('🔗 Goods-flow URL:', goodsFlowUrl);
-
-                let goodsFlowResult = await apiCall(goodsFlowUrl);
-
-                console.log('📦 Результат goods-flow:', {
-                    success: goodsFlowResult.success,
-                    totalRecords: goodsFlowResult.totalRecords,
-                    totalBeforeFilter: goodsFlowResult.totalBeforeFilter,
-                    needManualUpdate: goodsFlowResult.needManualUpdate,
-                    error: goodsFlowResult.error
-                });
-
-                if (goodsFlowResult.data && goodsFlowResult.data.length > 0) {
-                    console.log('📋 Первая goods-flow операция:', goodsFlowResult.data[0]);
-                    console.log('📋 Типы операций в goods-flow:',
-                        [...new Set(goodsFlowResult.data.map(item => `${item.relation_type} (${item.type_info?.name || 'unknown'})`))].join(', ')
-                    );
-                }
-
-                let showWarning = false;
-                let warningMessage = '';
-
-                if (!goodsFlowResult.success) {
-                    console.log('⚠️ Goods-flow недоступний:', goodsFlowResult.error);
-
-                    if (goodsFlowResult.needManualUpdate) {
-                        warningMessage = '⚠️ Cookies застарілі!\n\n';
-                        warningMessage += 'Для відображення замовлень та повернень потрібно оновити Cookies:\n';
-                        warningMessage += '1. Відкрийте адмін-панель (⚙️)\n';
-                        warningMessage += '2. Натисніть "🍪 Оновити Cookies API"\n';
-                        warningMessage += '3. Слідуйте інструкціям';
-                        showWarning = true;
-                    }
-                }
-
-                // ============================================
-                // 3. ОБЪЕДИНЯЕМ ВСЕ ДАННЫЕ
-                // ============================================
-                console.log('🔗 Шаг 3: Объединяем все данные...');
-
-                const combinedData = {
-                    ...standardHistory.data,
-                    data: goodsFlowResult.success ? goodsFlowResult.data : [],
-                    currentBalance: standardHistory.currentBalance || 0,
-                    warehouseTitleFromBQ: standardHistory.warehouseTitleFromBQ || decodedWarehouseTitle
-                };
-
-                console.log('📊 Итоговые данные для отображения:', {
-                    postings: combinedData.postings?.length || 0,
-                    moves: combinedData.moves?.length || 0,
-                    outcomes: combinedData.outcomes?.length || 0,
-                    sales: combinedData.sales?.length || 0,
-                    goodsFlow: combinedData.data?.length || 0,
-                    currentBalance: combinedData.currentBalance,
-                    warehouseTitle: combinedData.warehouseTitleFromBQ
-                });
-
-                // ============================================
-                // 4. ПРОВЕРЯЕМ, ЕСТЬ ЛИ ХОТЬ ЧТО-ТО
-                // ============================================
-                const totalOperations =
-                    (combinedData.postings?.length || 0) +
-                    (combinedData.moves?.length || 0) +
-                    (combinedData.outcomes?.length || 0) +
-                    (combinedData.sales?.length || 0) +
-                    (combinedData.data?.length || 0);
-
-                console.log(`📊 Всього операцій знайдено: ${totalOperations}`);
-
-                if (totalOperations === 0) {
-                    console.warn('⚠️ УВАГА: Не знайдено жодної операції!');
-                    console.warn('Можливі причини:');
-                    console.warn('1. Товар не має операцій на цьому складі');
-                    console.warn('2. Помилка фільтрації по warehouse_id');
-                    console.warn('3. Дані не синхронізовані в BigQuery');
-
-                    alert(`⚠️ Не знайдено операцій з товаром "${decodedProductTitle}" на складі "${decodedWarehouseTitle}".\n\nМожливі причини:\n- Товар не має операцій на цьому складі\n- Потрібна синхронізація даних`);
-                    return;
-                }
-
-                // ============================================
-                // 5. ОТОБРАЖАЕМ ИСТОРИЮ
-                // ============================================
-                console.log('🎨 Шаг 4: Отображаем историю...');
-                displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
-
-                // ============================================
-                // 6. ПОКАЗЫВАЕМ ПРЕДУПРЕЖДЕНИЕ О COOKIES
-                // ============================================
-                if (showWarning) {
-                    setTimeout(() => {
-                        if (confirm(warningMessage + '\n\nВідкрити інструкцію зараз?')) {
-                            showCookiesUpdateModal();
-                        }
-                    }, 500);
-                }
-
-                console.log('✅ === ЗАВЕРШЕНИЕ showProductHistoryFromWarehouse ===');
-
-            } catch (error) {
-                console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
-                console.error('📋 Stack trace:', error.stack);
-                alert(`Помилка: ${error.message}`);
-            }
-        }
-
-        async function showProductHistoryFromWarehouseInBrowser(warehouseId, warehouseTitle, productTitle) {
-            console.log('🚀 === НАЧАЛО ДИАГНОСТИКИ showProductHistoryFromWarehouse ===');
-            console.log('📋 Входные параметры:', {
-                warehouseId,
-                warehouseTitle: decodeURIComponent(warehouseTitle),
-                productTitle: decodeURIComponent(productTitle)
-            });
-
-            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
-            const decodedProductTitle = decodeURIComponent(productTitle);
-
-            if (!warehouseId) {
-                alert('Помилка: не вказано ID складу');
-                return;
-            }
-
-            try {
-                // 1. ПОЛУЧАЕМ СТАНДАРТНУЮ ИСТОРИЮ
-                console.log('📡 Шаг 1: Запрос стандартной истории...');
-                const apiUrl = `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`;
-                console.log('🔗 API URL:', apiUrl);
-
-                const standardHistory = await apiCall(apiUrl);
-
-                console.log('📦 Результат стандартной истории:', {
-                    success: standardHistory.success,
-                    productId: standardHistory.productId,
-                    warehouseId: standardHistory.warehouseId,
-                    currentBalance: standardHistory.currentBalance,
-                    postings: standardHistory.data?.postings?.length || 0,
-                    moves: standardHistory.data?.moves?.length || 0,
-                    outcomes: standardHistory.data?.outcomes?.length || 0,
-                    sales: standardHistory.data?.sales?.length || 0
-                });
-
-                // Добавим детальный вывод первых записей каждого типа
-                if (standardHistory.data?.postings?.length > 0) {
-                    console.log('📦 Примеры оприходований:', standardHistory.data.postings.slice(0, 2));
-                }
-                if (standardHistory.data?.moves?.length > 0) {
-                    console.log('🔄 Примеры перемещений:', standardHistory.data.moves.slice(0, 2));
-                }
-
-                if (!standardHistory.success) {
-                    console.error('❌ API вернул ошибку:', standardHistory.error);
-
-                    // Попробуем альтернативный поиск
-                    console.log('🔍 Пробуем альтернативный поиск без фильтра по складу...');
-
-                    // Делаем запрос без warehouse_id в URL для получения всех операций
-                    const allHistoryUrl = `/api/product-history/${warehouseId}/${encodeURIComponent(decodedProductTitle)}`;
-                    console.log('🔗 Альтернативный URL:', allHistoryUrl);
-
-                    alert(`Помилка: ${standardHistory.error || 'Невідома помилка'}`);
-                    return;
-                }
-
-                const productId = standardHistory.productId;
-
-                if (!productId) {
-                    console.error('❌ Не вдалося знайти ID товару');
-                    alert('Не вдалося знайти ID товару');
-                    return;
-                }
-
-                console.log('✅ Product ID знайдено:', productId);
-
-                // 2. ПОЛУЧАЕМ GOODS-FLOW
-                console.log('📡 Шаг 2: Запрос goods-flow...');
-                const goodsFlowUrl = `/api/goods-flow-items/${productId}/${warehouseId}`;
-                console.log('🔗 Goods-flow URL:', goodsFlowUrl);
-
-                let goodsFlowResult = await apiCall(goodsFlowUrl);
-
-                console.log('📦 Результат goods-flow:', {
-                    success: goodsFlowResult.success,
-                    totalRecords: goodsFlowResult.totalRecords,
-                    totalBeforeFilter: goodsFlowResult.totalBeforeFilter,
-                    needManualUpdate: goodsFlowResult.needManualUpdate
-                });
-
-                // Выведем примеры goods-flow операций
-                if (goodsFlowResult.data && goodsFlowResult.data.length > 0) {
-                    console.log('📋 Примеры goods-flow операций:', goodsFlowResult.data.slice(0, 3));
-                }
-
-                let showWarning = false;
-                let warningMessage = '';
-
-                if (!goodsFlowResult.success && goodsFlowResult.needManualUpdate) {
-                    warningMessage = '⚠️ Cookies застарілі!\n\n';
-                    warningMessage += 'Для відображення замовлень та повернень потрібно оновити Cookies:\n';
-                    warningMessage += '1. Відкрийте адмін-панель (⚙️)\n';
-                    warningMessage += '2. Натисніть "🔐 Оновити Cookies API"\n';
-                    warningMessage += '3. Слідуйте інструкціям';
-                    showWarning = true;
-                }
-
-                // 3. ОБЪЕДИНЯЕМ ВСЕ ДАННЫЕ
-                console.log('🔗 Шаг 3: Объединяем все данные...');
-
-                const combinedData = {
-                    ...standardHistory.data,
-                    data: goodsFlowResult.success ? goodsFlowResult.data : [],
-                    currentBalance: standardHistory.currentBalance || 0,
-                    warehouseTitleFromBQ: standardHistory.warehouseTitleFromBQ || decodedWarehouseTitle
-                };
-
-                console.log('📊 Итоговые данные для отображения:', {
-                    postings: combinedData.postings?.length || 0,
-                    moves: combinedData.moves?.length || 0,
-                    outcomes: combinedData.outcomes?.length || 0,
-                    sales: combinedData.sales?.length || 0,
-                    goodsFlow: combinedData.data?.length || 0,
-                    currentBalance: combinedData.currentBalance,
-                    warehouseTitle: combinedData.warehouseTitleFromBQ
-                });
-
-                const totalOperations =
-                    (combinedData.postings?.length || 0) +
-                    (combinedData.moves?.length || 0) +
-                    (combinedData.outcomes?.length || 0) +
-                    (combinedData.sales?.length || 0) +
-                    (combinedData.data?.length || 0);
-
-                console.log(`📊 Всього операцій знайдено: ${totalOperations}`);
-
-                if (totalOperations === 0) {
-                    console.warn('⚠️ УВАГА: Не знайдено жодної операції!');
-                    console.warn('Можливі причини:');
-                    console.warn('1. Товар не має операцій на цьому складі');
-                    console.warn('2. Помилка фільтрації по warehouse_id');
-                    console.warn('3. Дані не синхронізовані в BigQuery');
-                    console.warn('4. Різниця в назві товару в базі даних');
-
-                    alert(`⚠️ Не знайдено операцій з товаром "${decodedProductTitle}" на складі "${decodedWarehouseTitle}".\n\nМожливі причини:\n- Товар не має операцій на цьому складі\n- Потрібна синхронізація даних\n- Перевірте правильність назви товару`);
-                    return;
-                }
-
-                // 4. ОТОБРАЖАЕМ ИСТОРИЮ
-                console.log('🎨 Шаг 4: Отображаем историю...');
-                displaySeparatedProductHistory(combinedData, decodedProductTitle, decodedWarehouseTitle, warehouseId);
-
-                // 5. ПОКАЗЫВАЕМ ПРЕДУПРЕЖДЕНИЕ О COOKIES
-                if (showWarning) {
-                    setTimeout(() => {
-                        if (confirm(warningMessage + '\n\nВідкрити інструкцію зараз?')) {
-                            showCookiesUpdateModal();
-                        }
-                    }, 500);
-                }
-
-                console.log('✅ === ЗАВЕРШЕНИЕ showProductHistoryFromWarehouse ===');
-
-            } catch (error) {
-                console.error('❌ КРИТИЧНА ПОМИЛКА:', error);
-                console.error('📋 Stack trace:', error.stack);
-                alert(`Помилка: ${error.message}`);
-            }
-        }
-
-        // ============================================
-        // ДОПОЛНИТЕЛЬНАЯ ДИАГНОСТИЧЕСКАЯ ФУНКЦИЯ
-        // ============================================
-        async function debugProductHistory(warehouseId, productTitle) {
-            console.log('🔍 === ДЕТАЛЬНА ДІАГНОСТИКА ===');
-
-            try {
-                // Проверяем, есть ли товар в calculated_stock
-                const stockCheck = await apiCall(`/api/selected-warehouse-goods/${warehouseId}`);
-                console.log('📦 Товары на складе:', stockCheck);
-
-                const foundProduct = stockCheck.data?.find(item =>
-                    item.title.toLowerCase().includes(productTitle.toLowerCase())
-                );
-
-                if (foundProduct) {
-                    console.log('✅ Товар найден в остатках:', foundProduct);
-                } else {
-                    console.log('❌ Товар НЕ найден в остатках склада');
-                }
-
-                // Проверяем прямой запрос к истории
-                const historyUrl = `/api/product-warehouse-history/${warehouseId}/${encodeURIComponent(productTitle)}`;
-                console.log('🔗 Прямой запрос к истории:', historyUrl);
-
-                const historyResult = await fetch(historyUrl);
-                const historyData = await historyResult.json();
-
-                console.log('📋 Результат прямого запроса:', historyData);
-
-            } catch (error) {
-                console.error('❌ Ошибка диагностики:', error);
-            }
-        }
-
-        // Добавьте эту функцию в глобальную область видимости для ручной проверки
-        window.debugProductHistory = debugProductHistory;
-
-        async function loadMatrixData() {
-            // Показать индикатор загрузки
-            document.getElementById('matrixTitle').textContent = 'Загрузка данных...';
-
-            try {
-                const result = await apiCall('/api/preview-data?limit=50000');
-                buildMatrix(result.data);
-                document.getElementById('matrixTitle').textContent = 'Матрица остатков товаров';
-            } catch (error) {
-                document.getElementById('matrixTitle').textContent = 'Ошибка загрузки данных';
-                displayEmptyMatrix();
-            }
-        }
-
-        function buildMatrix(data) {
-            try {
-                console.log('🏗️ ДИАГНОСТИКА: Построение матрицы...');
-                console.log('📊 Входных данных:', data.length);
-
-                const matrix = {};
-                const warehouses = new Set();
-                const products = new Set();
-
-                let processedCount = 0;
-
-                data.forEach((item, index) => {
-                    const productName = item.title;
-                    const warehouseName = item.warehouse_title;
-                    const quantity = item.residue;
-
-                    // Логируем каждые 100 записей
-                    if (index % 100 === 0) {
-                        console.log(`📈 Обработано ${index}/${data.length} записей`);
-                    }
-
-                    products.add(productName);
-                    warehouses.add(warehouseName);
-
-                    if (!matrix[productName]) {
-                        matrix[productName] = {};
-                    }
-                    matrix[productName][warehouseName] = quantity;
-                    processedCount++;
-                });
-
-                console.log('📊 Результаты построения матрицы:');
-                console.log(`- Обработано записей: ${processedCount}`);
-                console.log(`- Уникальных товаров: ${products.size}`);
-                console.log(`- Уникальных складов: ${warehouses.size}`);
-                console.log(`- Первые 5 товаров:`, Array.from(products).slice(0, 5));
-                console.log(`- Первые 5 складов:`, Array.from(warehouses).slice(0, 5));
-
-                console.log('🖥️ Начинаем отображение матрицы...');
-                displayMatrix(matrix, Array.from(warehouses), Array.from(products));
-                updateSummaryStats(products.size, warehouses.size, data.reduce((sum, item) => sum + item.residue, 0));
-                console.log('✅ Отображение матрицы завершено');
-
-            } catch (error) {
-                console.error('❌ Ошибка построения матрицы:', error);
-                console.error('📊 Стек ошибки:', error.stack);
-                alert(`Ошибка построения матрицы: ${error.message}`);
-            }
-        }
-
-        function displayMatrix(matrix, warehouses, products) {
-            try {
-                console.log('🖥️ ДИАГНОСТИКА: Отображение матрицы...');
-                console.log('📊 Товаров для отображения:', products.length);
-                console.log('📊 Складов для отображения:', warehouses.length);
-
-                const table = safeGetElement('matrixTable');
-                const tbody = safeGetElement('matrixBody');
-
-                if (!table || !tbody) {
-                    console.error('❌ Не найдены элементы таблицы');
-                    return;
-                }
-
-                // ✅ ИСПРАВЛЕНО: Маппинг префиксов складов на названия локаций
-                // Важно: проверяем от более ДЛИННЫХ префиксов к более КОРОТКИМ!
-                const locationMapping = [
-                    { prefix: '023_', location: '02.3_G_CAR_LV' },
-                    { prefix: '022_', location: '02.2_G_CAR_LV' },
-                    { prefix: '021_', location: '02.1_G_CAR_LV' },
-                    { prefix: '183_', location: '18.3_G_CAR_LU' },
-                    { prefix: '182_', location: '18.2_G_CAR_LU' },
-                    { prefix: '181_', location: '18.1_G_CAR_LU' },
-                    { prefix: '192_', location: '19.2_G_CAR_RV' },
-                    { prefix: '191_', location: '19.1_G_CAR_RV' },
-                    { prefix: '01_', location: '01.1_G_CAR_KY' },
-                    { prefix: '03_', location: '03_G_CAR_OD' },
-                    { prefix: '07_', location: '07_G_CAR_VN' },
-                    { prefix: '08_', location: '08_G_CAR_PLT' },
-                    { prefix: '09_', location: '09_G_CAR_IF' },
-                    { prefix: '15_', location: '15_G_CAR_CK' },
-                    { prefix: '16_', location: '16_G_CAR_CV' }
-                ];
-
-                // Группируем склады по локациям
-                const warehousesByLocation = {};
-
-                warehouses.forEach(warehouse => {
-                    let location = 'Другие';
-
-                    // ✅ Ищем соответствующую локацию по префиксу (от длинных к коротким)
-                    for (const mapping of locationMapping) {
-                        if (warehouse.startsWith(mapping.prefix)) {
-                            location = mapping.location;
-                            break; // Важно: прерываем после первого совпадения
-                        }
-                    }
-
-                    if (!warehousesByLocation[location]) {
-                        warehousesByLocation[location] = [];
-                    }
-                    warehousesByLocation[location].push(warehouse);
-                });
-
-                console.log(`📊 Найдено локаций: ${Object.keys(warehousesByLocation).length}`);
-                console.log('📊 Локации:', Object.keys(warehousesByLocation));
-
-                // Выводим детальную информацию о каждой локации
-                Object.entries(warehousesByLocation).forEach(([location, whs]) => {
-                    console.log(`  📍 ${location}: ${whs.length} складов`);
-                    whs.forEach((wh, idx) => {
-                        if (idx < 3) {
-                            console.log(`    - ${wh}`);
-                        }
-                    });
-                    if (whs.length > 3) {
-                        console.log(`    ... и еще ${whs.length - 3} складов`);
-                    }
-                });
-
-                // Создаем заголовок таблицы с группировкой
-                const thead = table.querySelector('thead');
-                if (thead) {
-                    thead.innerHTML = '';
-
-                    // Первая строка - названия локаций
-                    const locationRow = document.createElement('tr');
-                    locationRow.innerHTML = '<th rowspan="2" style="min-width: 60px; max-width: 60px;">№</th><th rowspan="2" style="min-width: 200px; max-width: 200px;">Товар</th>';
-
-                    Object.keys(warehousesByLocation).sort().forEach(location => {
-                        const warehousesInLocation = warehousesByLocation[location];
-                        locationRow.innerHTML += `
-                    <th colspan="${warehousesInLocation.length}" 
-                        style="background: #1e1b4b; border-right: 3px solid #fff; text-align: center; font-size: 0.85rem; font-weight: 700; padding: 12px 8px;">
-                        ${location}
-                    </th>`;
-                    });
-
-                    // Вторая строка - названия складов (полные названия)
-                    const warehouseRow = document.createElement('tr');
-
-                    Object.keys(warehousesByLocation).sort().forEach(location => {
-                        const warehousesInLocation = warehousesByLocation[location];
-                        warehousesInLocation.forEach((warehouse, idx) => {
-                            const isLast = idx === warehousesInLocation.length - 1;
-
-                            warehouseRow.innerHTML += `
-                        <th title="${warehouse}" 
-                            onclick="showWarehouseDetails('${encodeURIComponent(warehouse)}')" 
-                            style="cursor: pointer; 
-                                   min-width: 150px; 
-                                   max-width: 200px;
-                                   white-space: normal; 
-                                   word-wrap: break-word; 
-                                   font-size: 0.75rem; 
-                                   padding: 8px 6px; 
-                                   line-height: 1.3;
-                                   ${isLast ? 'border-right: 3px solid #fff;' : ''}">
-                            ${warehouse}
-                        </th>`;
-                        });
-                    });
-
-                    thead.appendChild(locationRow);
-                    thead.appendChild(warehouseRow);
-                }
-
-                // Создаем строки для товаров
-                tbody.innerHTML = '';
-                let displayedProducts = 0;
-
-                products.forEach((product, index) => {
-                    if (index % 50 === 0) {
-                        console.log(`🖥️ Отображено товаров: ${index}/${products.length}`);
-                    }
-
-                    const row = document.createElement('tr');
-
-                    // Ячейка с номером
-                    const numberCell = document.createElement('td');
-                    numberCell.textContent = index + 1;
-                    numberCell.style.textAlign = 'center';
-                    numberCell.style.fontWeight = '600';
-                    numberCell.style.color = '#6b7280';
-                    numberCell.style.backgroundColor = '#f8fafc';
-                    numberCell.style.position = 'sticky';
-                    numberCell.style.left = '0';
-                    numberCell.style.zIndex = '9';
-                    numberCell.style.borderRight = '2px solid #d1d5db';
-                    numberCell.style.minWidth = '60px';
-                    numberCell.style.maxWidth = '60px';
-                    row.appendChild(numberCell);
-
-                    // Ячейка с названием товара
-                    const productCell = document.createElement('td');
-                    productCell.textContent = product;
-                    productCell.title = product;
-                    productCell.onclick = () => showProductDetails(encodeURIComponent(product));
-                    productCell.style.position = 'sticky';
-                    productCell.style.left = '60px';
-                    productCell.style.zIndex = '9';
-                    row.appendChild(productCell);
-
-                    // Ячейки с остатками
-                    Object.keys(warehousesByLocation).sort().forEach(location => {
-                        const warehousesInLocation = warehousesByLocation[location];
-                        warehousesInLocation.forEach((warehouse, idx) => {
-                            const quantityCell = document.createElement('td');
-                            const quantity = matrix[product][warehouse] || 0;
-
-                            quantityCell.textContent = quantity || '-';
-                            quantityCell.className = 'quantity-cell';
-
-                            if (quantity === 0) {
-                                quantityCell.className += ' zero';
-                            } else if (quantity >= 10) {
-                                quantityCell.className += ' high';
-                            } else if (quantity >= 5) {
-                                quantityCell.className += ' medium';
-                            }
-
-                            const isLast = idx === warehousesInLocation.length - 1;
-                            if (isLast) {
-                                quantityCell.style.borderRight = '3px solid #d1d5db';
-                            }
-
-                            row.appendChild(quantityCell);
-                        });
-                    });
-
-                    tbody.appendChild(row);
-                    displayedProducts++;
-                });
-
-                console.log(`✅ Отображено товаров в таблице: ${displayedProducts}`);
-
-                matrixData = { matrix, warehouses, products };
-                currentView = 'matrix';
-
-                safeSetDisplay('backButton', 'none');
-                safeSetDisplay('filterInfo', 'none');
-                safeSetDisplay('detailTable', 'none');
-
-            } catch (error) {
-                console.error('❌ Ошибка отображения матрицы:', error);
-                console.error('📊 Стек ошибки:', error.stack);
-                alert(`Ошибка отображения матрицы: ${error.message}`);
-            }
-        }
-
-        async function showWarehouseDetails(warehouseTitle) {
-            try {
-                safeSetText('matrixTitle', 'Загрузка товаров склада...');
-
-                const result = await apiCall(`/api/warehouse-goods/${warehouseTitle}`);
-
-                if (result.success) {
-                    currentView = 'warehouse';
-                    currentFilter = decodeURIComponent(warehouseTitle);
-                    currentWarehouseTitle = result.warehouseTitle; // ДОДАНО ЦЕЙ РЯДОК
-
-                    safeSetText('matrixTitle', `Товары склада: ${result.warehouseTitle}`);
-                    safeSetDisplay('backButton', 'inline-block');
-                    safeSetDisplay('filterInfo', 'block');
-                    safeSetText('filterInfo', `Найдено ${result.totalItems} товаров, общий остаток: ${result.totalQuantity}`);
-
-                    safeSetDisplay('matrixWrapper', 'none');
-                    safeSetDisplay('summaryStats', 'none');
-
-                    displayWarehouseDetails(result.data);
-                } else {
-                    alert(`Ошибка: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-        async function showProductDetails(productTitle) {
-            try {
-                safeSetText('matrixTitle', 'Загрузка складов товара...');
-
-                const result = await apiCall(`/api/product-warehouses/${productTitle}`);
-
-                if (result.success) {
-                    currentView = 'product';
-                    currentFilter = decodeURIComponent(productTitle);
-
-                    safeSetText('matrixTitle', `Склады товара: ${result.productTitle}`);
-                    safeSetDisplay('backButton', 'inline-block');
-                    safeSetDisplay('filterInfo', 'block');
-                    safeSetText('filterInfo', `Найдено на ${result.totalWarehouses} складах, общий остаток: ${result.totalQuantity}`);
-
-                    safeSetDisplay('matrixWrapper', 'none');
-                    safeSetDisplay('summaryStats', 'none');
-
-                    displayProductDetails(result.data);
-                } else {
-                    alert(`Ошибка: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-                safeSetText('matrixTitle', 'Матрица остатков товаров');
-            }
-        }
-
-
-        function displayProductDetails(data) {
-            const header = safeGetElement('detailTableHeader');
-            const body = safeGetElement('detailTableBody');
-
-            if (header) {
-                header.innerHTML = `
-                    <tr>
-                        <th>№</th>
-                        <th>Склад</th>
-                        <th>Остаток</th>
-                        <th>Код</th>
-                        <th>Артикул</th>
-                        <th>Категория</th>
-                        <th>Ед. изм.</th>
-                    </tr>
-                `;
-            }
-
-            if (body) {
-                body.innerHTML = data.map((item, index) => `
-                    <tr>
-                        <td style="text-align: center; font-weight: 600; color: #6b7280;">${index + 1}</td>
-                        <td>${item.warehouse_title}</td>
-                        <td style="font-weight: 600; color: #059669;">${item.residue}</td>
-                        <td>${item.code || '-'}</td>
-                        <td>${item.article || '-'}</td>
-                        <td>${item.category || '-'}</td>
-                        <td>${item.uom_title || '-'}</td>
-                    </tr>
-                `).join('');
-            }
-
-            safeSetDisplay('detailTable', 'block');
-        }
-
-        function showFullMatrix() {
-            currentView = 'matrix';
-            currentFilter = null;
-            searchResults = null;
-
-            // Очищаем поле поиска
-            const searchInput = safeGetElement('searchInput');
-            if (searchInput) {
-                searchInput.value = '';
-            }
-
-            // Сбрасываем выпадающие списки
-            const locationSelect = safeGetElement('locationSelect');
-            const warehouseSelect = safeGetElement('warehouseSelect');
-            const showBtn = safeGetElement('showWarehouseBtn');
-
-            if (locationSelect) locationSelect.value = '';
-            if (warehouseSelect) {
-                warehouseSelect.innerHTML = '<option value="">Сначала выберите локацию</option>';
-                warehouseSelect.disabled = true;
-            }
-            if (showBtn) showBtn.disabled = true;
-
-            currentBranchId = null;
-            currentWarehouseId = null;
-
-            safeSetText('matrixTitle', 'Матрица остатков товаров');
-            safeSetDisplay('backButton', 'none');
-            safeSetDisplay('filterInfo', 'none');
-            safeSetDisplay('detailTable', 'none');
-            safeSetDisplay('matrixWrapper', 'block');
-            safeSetDisplay('summaryStats', 'flex');
-        }
-
-        function displayEmptyMatrix() {
-            safeSetHTML('matrixBody', '<tr><td colspan="100" style="text-align: center; color: #6b7280; padding: 40px;">Нет данных для отображения</td></tr>');
-            safeSetDisplay('summaryStats', 'none');
-        }
-
-        function updateSummaryStats(totalProducts, totalWarehouses, totalQuantity) {
-            safeSetText('totalProducts', totalProducts);
-            safeSetText('totalWarehouses', totalWarehouses);
-            safeSetText('totalQuantity', totalQuantity);
-            safeSetDisplay('summaryStats', 'flex');
-        }
-
-        function truncateText(text, maxLength) {
-            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-        }
-
-        async function exportMatrix() {
-            if (currentView === 'search' && searchResults) {
-                // Экспорт результатов поиска
-                exportSearchData(searchResults, currentFilter);
-                return;
-            }
-
-            if (currentView === 'warehouse' && currentFilter) {
-                try {
-                    const result = await apiCall(`/api/warehouse-goods/${encodeURIComponent(currentFilter)}`);
-                    if (result.success) {
-                        exportWarehouseData(result.data, currentFilter);
-                    }
-                } catch (error) {
-                    alert(`Ошибка экспорта: ${error.message}`);
-                }
-                return;
-            }
-
-            if (currentView === 'selected_warehouse' && currentFilter) {
-                try {
-                    const result = await apiCall(`/api/selected-warehouse-goods/${currentWarehouseId}`);
-                    if (result.success) {
-                        exportWarehouseData(result.data, currentFilter);
-                    }
-                } catch (error) {
-                    alert(`Ошибка экспорта: ${error.message}`);
-                }
-                return;
-            }
-
-            if (currentView === 'product' && currentFilter) {
-                try {
-                    const result = await apiCall(`/api/product-warehouses/${encodeURIComponent(currentFilter)}`);
-                    if (result.success) {
-                        exportProductData(result.data, currentFilter);
-                    }
-                } catch (error) {
-                    alert(`Ошибка экспорта: ${error.message}`);
-                }
-                return;
-            }
-
-            // Экспорт полной матрицы
-            if (!matrixData.matrix || Object.keys(matrixData.matrix).length === 0) {
-                alert('Нет данных для экспорта');
-                return;
-            }
-
-            const { matrix, warehouses, products } = matrixData;
-
-            const headers = ['Товар', ...warehouses];
-            const rows = [headers.join(',')];
-
-            products.forEach(product => {
-                const row = [
-                    `"${product}"`,
-                    ...warehouses.map(warehouse => matrix[product][warehouse] || 0)
-                ];
-                rows.push(row.join(','));
-            });
-
-            const csvContent = rows.join('\n');
-            downloadCSV(csvContent, `matrix_inventory_${new Date().toISOString().split('T')[0]}.csv`);
-
-            alert(`Экспортирована матрица: ${products.length} товаров × ${warehouses.length} складов`);
-        }
-
-        function exportSearchData(data, searchTerm) {
-            const headers = ['Товар', 'Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм'];
-            const rows = [headers.join(',')];
-
-            data.forEach(item => {
-                const row = [
-                    `"${item.title}"`,
-                    `"${item.warehouse_title}"`,
-                    item.residue,
-                    `"${item.code || ''}"`,
-                    `"${item.article || ''}"`,
-                    `"${item.category || ''}"`,
-                    `"${item.uom_title || ''}"`,
-                    `"${new Date(item.updated_at).toLocaleString()}"`
-                ];
-                rows.push(row.join(','));
-            });
-
-            const csvContent = rows.join('\n');
-            const filename = `search_${searchTerm.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-            downloadCSV(csvContent, filename);
-
-            alert(`Экспортированы результаты поиска "${searchTerm}": ${data.length} записей`);
-        }
-
-        function exportWarehouseData(data, warehouseName) {
-            const headers = ['Товар', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм'];
-            const rows = [headers.join(',')];
-
-            data.forEach(item => {
-                const row = [
-                    `"${item.title}"`,
-                    item.residue,
-                    `"${item.code || ''}"`,
-                    `"${item.article || ''}"`,
-                    `"${item.category || ''}"`,
-                    `"${item.uom_title || ''}"`,
-                    `"${new Date(item.updated_at).toLocaleString()}"`
-                ];
-                rows.push(row.join(','));
-            });
-
-            const csvContent = rows.join('\n');
-            downloadCSV(csvContent, `warehouse_${warehouseName}_${new Date().toISOString().split('T')[0]}.csv`);
-
-            alert(`Экспортированы товары склада "${warehouseName}": ${data.length} позиций`);
-        }
-
-        function exportProductData(data, productName) {
-            const headers = ['Склад', 'Остаток', 'Код', 'Артикул', 'Категория', 'Ед_изм'];
-            const rows = [headers.join(',')];
-
-            data.forEach(item => {
-                const row = [
-                    `"${item.warehouse_title}"`,
-                    item.residue,
-                    `"${item.code || ''}"`,
-                    `"${item.article || ''}"`,
-                    `"${item.category || ''}"`,
-                    `"${item.uom_title || ''}"`,
-                    `"${new Date(item.updated_at).toLocaleString()}"`
-                ];
-                rows.push(row.join(','));
-            });
-
-            const csvContent = rows.join('\n');
-            downloadCSV(csvContent, `product_${productName.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
-
-            alert(`Экспортированы склады товара "${productName}": ${data.length} позиций`);
-        }
-
-        function downloadCSV(csvContent, filename) {
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-
-            link.setAttribute('href', url);
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        async function refreshStatus() {
-            try {
-                const status = await apiCall('/api/status');
-
-                updateStatus('syncStatus',
-                    status.isRunning ? 'Активна' : 'Остановлена',
-                    status.isRunning ? 'success' : 'info'
-                );
-
-                if (status.lastSync && status.lastSync.timestamp) {
-                    const errorCount = status.lastSync.errors ? status.lastSync.errors.length : 0;
-                    updateStatus('lastSyncStatus',
-                        `${new Date(status.lastSync.timestamp).toLocaleString()} (${status.lastSync.goodsFound} товаров)`,
-                        errorCount > 0 ? 'error' : 'success'
-                    );
-                }
-
-            } catch (error) {
-                console.error('Ошибка обновления статуса:', error);
-            }
-        }
-
-        // Функция для загрузки всех сотрудников
-        async function loadEmployeesCache() {
-            try {
-                const result = await apiCall('/api/employees');
-                if (result.success) {
-                    employeesCache.clear();
-                    result.data.forEach(employee => {
-                        employeesCache.set(employee.id, employee.fullName);
-                    });
-                    console.log(`Загружено ${employeesCache.size} сотрудников в кеш фронтенда`);
-                    return true;
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки сотрудников:', error);
-                return false;
-            }
-        }
-
-        async function showProductHistoryFromSearch(warehouseTitle, productTitle) {
-            console.log('🚀 showProductHistoryFromSearch:', { warehouseTitle, productTitle });
-
-            const decodedWarehouseTitle = decodeURIComponent(warehouseTitle);
-            const decodedProductTitle = decodeURIComponent(productTitle);
-
-            try {
-                const warehouseId = await getWarehouseIdByTitle(decodedWarehouseTitle);
-
-                if (!warehouseId) {
-                    alert(`Не вдалося знайти ID складу "${decodedWarehouseTitle}"`);
-                    return;
-                }
-
-                // Вызываем функцию браузера, а не серверную
-                await showProductHistoryFromWarehouseInBrowser(warehouseId, warehouseTitle, productTitle);
-
-            } catch (error) {
-                console.error('❌ Помилка:', error);
-                alert(`Помилка: ${error.message}`);
-            }
-        }
-
-
-        async function getWarehouseIdByTitle(warehouseTitle) {
-            try {
-                if (!warehouseTitle || warehouseTitle === 'null') {
-                    console.error('Некорректное название склада:', warehouseTitle);
-                    return null;
-                }
-
-                console.log(`Поиск ID для склада: "${warehouseTitle}"`);
-
-                const result = await apiCall('/api/all-warehouses');
-
-                if (result.success && result.warehouses) {
-                    console.log(`Получено ${result.warehouses.length} складов для поиска`);
-
-                    const warehouse = result.warehouses.find(w => {
-                        return w.title === warehouseTitle;
-                    });
-
-                    console.log(`Результат поиска склада:`, warehouse);
-                    return warehouse ? warehouse.id : null;
-                } else {
-                    console.error('API all-warehouses вернул ошибку:', result);
-                    return null;
-                }
-
-            } catch (error) {
-                console.error('Ошибка получения ID склада:', error);
-                return null;
-            }
-        }
-
-        // Функция для загрузки поставщиков
-        async function loadSuppliersCache() {
-            try {
-                const result = await apiCall('/api/suppliers');
-                if (result.success) {
-                    suppliersCache.clear();
-                    result.data.forEach(supplier => {
-                        suppliersCache.set(supplier.id, supplier.name);
-                    });
-                    console.log(`Загружено ${suppliersCache.size} поставщиков в кеш фронтенда`);
-                    return true;
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки поставщиков:', error);
-                return false;
-            }
-        }
-
-        async function syncMoves() {
-            if (!confirm('Синхронизация перемещений займет время. Продолжить?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронизация перемещений...';
-
-            try {
-                const result = await apiCall('/api/sync-moves', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронизация перемещений завершена!\n- Перемещений: ${result.totalMoves}\n- Позиций: ${result.processedProducts}\n- Время: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Ошибка синхронизации: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Ошибка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '📦 Синхронізувати переміщення';
-            }
-        }
-        // Функция дедупликации для сохранения в BigQuery
-        async function savePostingsToBigQuery(data) {
-            if (!this.bigquery || !data.length) return;
-
-            try {
-                await this.createPostingsTable();
-
-                const dataset = this.bigquery.dataset(process.env.BIGQUERY_DATASET);
-                const tableName = `${process.env.BIGQUERY_TABLE}_postings`;
-                const table = dataset.table(tableName);
-
-                const syncId = Date.now().toString();
-
-                // ДЕДУПЛИКАЦИЯ: создаем уникальный ключ для каждой записи
-                const uniqueRecords = new Map();
-
-                data.forEach(item => {
-                    // Уникальный ключ: posting_id + product_id + warehouse_id
-                    const uniqueKey = `${item.posting_id}_${item.product_id}_${item.warehouse_id}`;
-
-                    // Если запись с таким ключом уже есть, суммируем количество
-                    if (uniqueRecords.has(uniqueKey)) {
-                        const existing = uniqueRecords.get(uniqueKey);
-                        existing.amount += item.amount;
-                    } else {
-                        uniqueRecords.set(uniqueKey, {
-                            ...item,
-                            sync_id: syncId
-                        });
-                    }
-                });
-
-                const enhancedData = Array.from(uniqueRecords.values());
-
-                console.log(`📊 Исходных записей: ${data.length}, уникальных: ${enhancedData.length}`);
-
-                // Удаляем старые данные
-                console.log("🗑️ Удаление старых данных оприходований...");
-                try {
-                    const deleteQuery = `
-                DELETE FROM \`${process.env.BIGQUERY_PROJECT_ID}.${process.env.BIGQUERY_DATASET}.${tableName}\` 
-                WHERE TRUE
-            `;
-
-                    const [deleteJob] = await this.bigquery.createQueryJob({
-                        query: deleteQuery,
-                        location: "EU",
-                    });
-                    await deleteJob.getQueryResults();
-                    console.log("✅ Старые данные оприходований удалены");
-                } catch (deleteError) {
-                    console.log("⚠️ Не удалось удалить старые данные:", deleteError.message);
-                }
-
-                // Вставляем новые данные
-                console.log("📊 Вставка данных оприходований в BigQuery...");
-
-                const batchSize = 500;
-                let insertedCount = 0;
-
-                for (let i = 0; i < enhancedData.length; i += batchSize) {
-                    const batch = enhancedData.slice(i, i + batchSize);
-
-                    try {
-                        await table.insert(batch);
-                        insertedCount += batch.length;
-                        console.log(`📊 Вставлено ${insertedCount}/${enhancedData.length} записей`);
-                    } catch (error) {
-                        console.error(`❌ Ошибка вставки батча: ${error.message}`);
-                    }
-                }
-
-                if (insertedCount > 0) {
-                    console.log(`✅ Сохранено ${insertedCount} уникальных записей оприходований`);
-                }
-            } catch (error) {
-                console.error("❌ Критическая ошибка сохранения оприходований:", error.message);
-                throw error;
-            }
-        }
-
-        async function syncOutcomes() {
-            if (!confirm('Синхронізація списань займе час. Продовжити?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізація списань...';
-
-            try {
-                const result = await apiCall('/api/sync-outcomes', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронізація списань завершена!\n- Списань: ${result.totalOutcomes}\n- Позицій: ${result.processedProducts}\n- Час: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Помилка синхронізації: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Помилка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🗑️ Синхронізувати списання';
-            }
-        }
-
-        async function syncSales() {
-            if (!confirm('Синхронізація продажів займе час. Продовжити?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізація продажів...';
-
-            try {
-                const result = await apiCall('/api/sync-sales', 'POST');
-
-                if (result.success) {
-                    alert(`Синхронізація продажів завершена!\n- Продажів: ${result.totalSales}\n- Позицій: ${result.processedProducts}\n- Час: ${Math.round(result.duration / 1000)} сек`);
-                } else {
-                    alert(`Помилка синхронізації: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`Помилка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '💰 Синхронізувати продажі';
-            }
-        }
-
-        async function syncOrders() {
-            if (!confirm('Синхронізація замовлень займе час. Продовжити?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Синхронізація...';
-
-            try {
-                const result = await apiCall('/api/sync-orders', 'POST');
-                if (result.success) {
-                    alert(`✅ Готово!\nЗамовлень: ${result.totalOrders}`);
-                }
-            } catch (error) {
-                alert(`❌ Помилка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🛒 Синхронізувати замовлення';
-            }
-        }
-
-        async function createStockView() {
-            if (!confirm('Створити view для автоматичного розрахунку остатків?')) {
-                return;
-            }
-
-            const btn = event.target;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span>Створення view...';
-
-            try {
-                const result = await apiCall('/api/create-stock-view', 'POST');
-                if (result.success) {
-                    alert('✅ View створено! Тепер остатки розраховуються автоматично на основі операцій.');
-                } else {
-                    alert(`Помилка: ${result.message}`);
-                }
-            } catch (error) {
-                alert(`Помилка: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '📊 Створити view остатків';
-            }
-        }
-
-        // Функция для получения имени поставщика
-        function getSupplierName(supplierId) {
-            if (!supplierId) return 'Не указан';
-            return suppliersCache.get(supplierId) || `ID: ${supplierId}`;
-        }
-
-        // Функция для получения имени сотрудника
-        function getEmployeeName(employeeId) {
-            if (!employeeId) return 'Не указан';
-            return employeesCache.get(employeeId) || `ID: ${employeeId}`;
-        }
-
-
-        function updateStatus(elementId, text, type) {
-            const element = safeGetElement(elementId);
-            if (element) {
-                const valueSpan = element.querySelector('.status-value');
-                if (valueSpan) {
-                    valueSpan.textContent = text;
-                }
-                element.className = `status-item ${type}`;
-            }
-        }
-
-        function displaySeparatedProductHistory(data, productTitle, warehouseTitle, filterWarehouseId = null) {
-            console.log('🎬 displaySeparatedProductHistory:', {
-                productTitle,
-                warehouseTitle,
-                filterWarehouseId,
-                currentBalance: data.currentBalance
-            });
-
-            console.log('📊 Вхідні дані:', {
-                postings: data.postings?.length || 0,
-                moves: data.moves?.length || 0,
-                outcomes: data.outcomes?.length || 0,
-                sales: data.sales?.length || 0,
-                goodsFlow: data.data?.length || 0
-            });
-
-            const allOperations = [];
-
-            // ============================================
-            // 1. ЗБІР ОПЕРАЦІЙ
-            // ============================================
-
-            // Оприбуткування
-            if (data.postings) {
-                console.log(`📦 Обробка ${data.postings.length} оприбуткувань`);
-                data.postings.forEach((item) => {
-                    allOperations.push({
-                        date: new Date(item.posting_created_at?.value || item.posting_created_at),
-                        type: 'posting',
-                        typeName: '📦 Оприбуткування',
-                        typeColor: '#059669',
-                        label: item.posting_label || '-',
-                        user: item.created_by_name || '-',
-                        warehouse: item.warehouse_title || warehouseTitle,
-                        warehouseId: item.warehouse_id || null,
-                        counterparty: item.supplier_name || '-',
-                        amount: item.amount || 0,
-                        description: item.posting_description || '-',
-                        delta: +item.amount
-                    });
-                });
-            }
-
-            // Переміщення (вихідні та вхідні)
-            if (data.moves) {
-                console.log(`🔄 Обробка ${data.moves.length} переміщень`);
-                data.moves.forEach((item) => {
-                    const date = new Date(item.move_created_at?.value || item.move_created_at);
-
-                    let sourceTitle = item.source_warehouse_title || '';
-                    let targetTitle = item.target_warehouse_title || '';
-
-                    if (sourceTitle.includes(' > ')) {
-                        sourceTitle = sourceTitle.split(' > ')[1].trim();
-                    }
-                    if (targetTitle.includes(' > ')) {
-                        targetTitle = targetTitle.split(' > ')[1].trim();
-                    }
-
-                    // Вихід зі складу
-                    if (sourceTitle.includes(warehouseTitle)) {
-                        allOperations.push({
-                            date,
-                            type: 'move_out',
-                            typeName: '➡️ Переміщення (вихід)',
-                            typeColor: '#f59e0b',
-                            label: item.move_label || '-',
-                            user: item.created_by_name || '-',
-                            warehouse: `${sourceTitle} → ${targetTitle}`,
-                            warehouseId: null,
-                            counterparty: targetTitle,
-                            sourceWarehouseTitle: sourceTitle,
-                            targetWarehouseTitle: targetTitle,
-                            amount: item.amount || 0,
-                            description: item.move_description || '-',
-                            delta: -(item.amount || 0)
-                        });
-                    }
-
-                    // Вхід на склад
-                    if (targetTitle.includes(warehouseTitle)) {
-                        allOperations.push({
-                            date,
-                            type: 'move_in',
-                            typeName: '⬅️ Переміщення (вхід)',
-                            typeColor: '#3b82f6',
-                            label: item.move_label || '-',
-                            user: item.created_by_name || '-',
-                            warehouse: `${sourceTitle} → ${targetTitle}`,
-                            warehouseId: filterWarehouseId,
-                            counterparty: sourceTitle,
-                            sourceWarehouseTitle: sourceTitle,
-                            targetWarehouseTitle: targetTitle,
-                            amount: item.amount || 0,
-                            description: item.move_description || '-',
-                            delta: +(item.amount || 0)
-                        });
-                    }
-                });
-            }
-
-            // Списання
-            if (data.outcomes) {
-                console.log(`🗑️ Обробка ${data.outcomes.length} списань`);
-                data.outcomes.forEach(item => {
-                    let outcomeWarehouse = item.source_warehouse_title || warehouseTitle;
-
-                    if (outcomeWarehouse.includes(' > ')) {
-                        outcomeWarehouse = outcomeWarehouse.split(' > ')[1].trim();
-                    }
-
-                    allOperations.push({
-                        date: new Date(item.outcome_created_at?.value || item.outcome_created_at),
-                        type: 'outcome',
-                        typeName: '🗑️ Списання',
-                        typeColor: '#ef4444',
-                        label: item.outcome_label || '-',
-                        user: item.created_by_name || '-',
-                        counterparty: outcomeWarehouse,
-                        warehouse: outcomeWarehouse,
-                        warehouseId: item.warehouse_id || null,
-                        amount: item.amount || 0,
-                        description: item.outcome_description || '-',
-                        delta: -(item.amount || 0)
-                    });
-                });
-            }
-
-            // Продажі
-            if (data.sales) {
-                console.log(`💰 Обробка ${data.sales.length} продажів`);
-                data.sales.forEach(item => {
-                    allOperations.push({
-                        date: new Date(item.sale_created_at?.value || item.sale_created_at),
-                        type: 'sale',
-                        typeName: '💰 Продаж',
-                        typeColor: '#8b5cf6',
-                        label: item.sale_label || '-',
-                        user: item.created_by_name || '-',
-                        warehouse: warehouseTitle,
-                        warehouseId: item.warehouse_id || null,
-                        counterparty: '-',
-                        amount: item.amount || 0,
-                        description: item.sale_description || '-',
-                        delta: -(item.amount || 0)
-                    });
-                });
-            }
-
-            // Goods-flow (замовлення та повернення)
-            if (data.data && Array.isArray(data.data)) {
-                console.log(`🛒 Обробка ${data.data.length} goods-flow операцій`);
-                data.data.forEach((item) => {
-                    const typeInfo = item.type_info || { name: 'Невідомо', color: '#6b7280' };
-                    const itemAmount = item.amount || item.quantity || 1;
-                    let delta = 0;
-                    let icon = '📋';
-                    let typeName = 'Невідомо';
-
-                    switch (item.relation_type) {
-                        case 0:
-                            delta = -itemAmount;
-                            icon = '🛒';
-                            typeName = 'Замовлення';
-                            break;
-                        case 7:
-                            delta = +itemAmount;
-                            icon = '↩️';
-                            typeName = 'Повернення';
-                            break;
-                        case 2:
-                            delta = 0;
-                            icon = '📋';
-                            typeName = typeInfo.name || 'Інше';
-                            break;
-                        case 1:
-                        case 3:
-                        case 4:
-                        case 5:
-                            return;
-                        default:
-                            delta = 0;
-                            icon = '📋';
-                            typeName = typeInfo.name || 'Невідомо';
-                    }
-
-                    allOperations.push({
-                        date: new Date(item.created_at?.value || item.created_at),
-                        type: `goods_flow_${item.relation_type}`,
-                        typeName: `${icon} ${typeName}`,
-                        typeColor: typeInfo.color || '#6b7280',
-                        label: item.relation_id_label || item.relation_label || item.id || '-',
-                        user: item.employee_name || item.employee_id || '-',
-                        counterparty: '-',
-                        warehouseId: null,
-                        amount: Math.abs(itemAmount),
-                        description: item.comment || item.relation_label || '-',
-                        delta: delta
-                    });
-                });
-            }
-
-            console.log(`📊 Всього операцій зібрано: ${allOperations.length}`);
-
-            // ============================================
-            // 2. ФІЛЬТРАЦІЯ ПО СКЛАДУ
-            // ============================================
-
-            let filteredOperations = allOperations;
-
-            if (filterWarehouseId) {
-                console.log('🔍 Фільтрація по складу:', {
-                    filterWarehouseId,
-                    warehouseTitle,
-                    totalOperations: allOperations.length
-                });
-
-                filteredOperations = allOperations.filter((op) => {
-                    if (op.type === 'move_in' || op.type === 'move_out') {
-                        return true;
-                    }
-
-                    if (op.warehouseId !== null && op.warehouseId !== undefined) {
-                        return op.warehouseId == filterWarehouseId;
-                    }
-
-                    if (op.type && op.type.startsWith('goods_flow_')) {
-                        return true;
-                    }
-
-                    return op.counterparty && op.counterparty.includes(warehouseTitle);
-                });
-
-                console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
-            }
-
-            ///////////////////////////////
-            // После фильтрации операций
-            console.log(`🔍 Отладка для склада ${warehouseTitle} (ID: ${filterWarehouseId})`);
-            console.log(`Операций до фильтрации: ${allOperations.length}`);
-            console.log(`Операций после фильтрации: ${filteredOperations.length}`);
-
-            // Группировка по типам
-            const operationsByType = {};
-            filteredOperations.forEach(op => {
-                if (!operationsByType[op.type]) {
-                    operationsByType[op.type] = { count: 0, totalDelta: 0 };
-                }
-                operationsByType[op.type].count++;
-                operationsByType[op.type].totalDelta += op.delta;
-            });
-
-            console.table(operationsByType);
-
-            // Проверка расчета
-            const calculatedBalance = filteredOperations.reduce((sum, op) => sum + op.delta, 0);
-            console.log(`📊 Рассчитанный остаток: ${calculatedBalance}`);
-            console.log(`📊 Остаток из BigQuery: ${data.currentBalance}`);
-            console.log(`📊 Разница: ${calculatedBalance - data.currentBalance}`);
-            ////////////////////////////////
-            // ============================================
-            // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
-            // ============================================
-
-            // ✅ Поточний баланс з BigQuery
-            const currentBalanceFromBQ = data.currentBalance || 0;
-            console.log(`📊 Поточний баланс з BigQuery для складу "${warehouseTitle}": ${currentBalanceFromBQ}`);
-
-            // ✅ Сортуємо операції
-            const sortedOps = [...filteredOperations].sort((a, b) => a.date - b.date);
-
-            console.log('📅 Сортовані операції (від старих до нових):');
-            sortedOps.forEach((op, i) => {
-                if (i < 5) {
-                    console.log(`  ${i + 1}. ${op.date.toLocaleDateString()} ${op.typeName} | delta: ${op.delta}`);
-                }
-            });
-
-            // ✅ Починаємо з 0
-            const initialBalance = 0;
-            console.log(`📊 Початковий залишок (01.05.2022): ${initialBalance}`);
-
-            // ✅ Рахуємо фінальний баланс
-            let calculatedFinalBalance = initialBalance;
-            sortedOps.forEach(op => {  // ✅ ИСПРАВЛЕНО: было operationsSorted, стало sortedOps
-                calculatedFinalBalance += op.delta;
-            });
-
-            console.log(`📊 Розрахований кінцевий баланс: ${calculatedFinalBalance}`);
-
-            // ✅ Перевірка
-            if (Math.abs(calculatedFinalBalance - currentBalanceFromBQ) > 0.01) {
-                console.warn(`⚠️ УВАГА: Розбіжність балансів!`);
-                console.warn(`   Розрахований: ${calculatedFinalBalance}`);
-                console.warn(`   З BigQuery: ${currentBalanceFromBQ}`);
-                console.warn(`   Різниця: ${calculatedFinalBalance - currentBalanceFromBQ}`);
-            } else {
-                console.log(`✅ Баланси співпадають!`);
-            }
-
-            // ============================================
-            // 4. ПОБУДОВА ТАБЛИЦІ
-            // ============================================
-
-            let tableRows = '';
-            let runningBalance = initialBalance;
-
-            console.log(`📊 Початок побудови таблиці: runningBalance = ${runningBalance}`);
-
-            sortedOps.forEach((op, idx) => {  // ✅ ИСПРАВЛЕНО: было operationsSorted, стало sortedOps
-                runningBalance += op.delta;
-
-                if (idx < 3) {
-                    console.log(`  Крок ${idx + 1}: було ${runningBalance - op.delta}, зміна ${op.delta}, стало ${runningBalance}`);
-                }
-
-                const formattedDate = op.date.toLocaleString('uk-UA', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                const plusAmount = op.delta > 0 ? op.amount : '';
-                const minusAmount = op.delta < 0 ? op.amount : '';
-
-                tableRows = `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 12px 8px; white-space: nowrap;">${formattedDate}</td>
-                <td style="padding: 12px 8px;">
-                    <span style="background: ${op.typeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; white-space: nowrap;">
-                        ${op.typeName}
-                    </span>
-                </td>
-                <td style="padding: 12px 8px;">${op.label}</td>
-                <td style="padding: 12px 8px;">${op.user}</td>
-                <td style="padding: 12px 8px; font-size: 0.9rem; color: #6b7280;">${op.counterparty || op.warehouse || '-'}</td>
-                <td style="padding: 12px 8px; text-align: right; color: #059669; font-weight: 600;">${plusAmount}</td>
-                <td style="padding: 12px 8px; text-align: right; color: #dc2626; font-weight: 600;">${minusAmount}</td>
-                <td style="padding: 12px 8px; text-align: right; font-weight: 600; ${Math.abs(runningBalance - currentBalanceFromBQ) < 0.01 && idx === sortedOps.length - 1 ? 'background: #dcfce7; color: #166534;' : ''}">${runningBalance.toFixed(2)}</td>
-                <td style="padding: 12px 8px; font-size: 0.85rem; color: #6b7280;">${op.description}</td>
-            </tr>
-        ` + tableRows;
-            });
-
-            console.log(`✅ Таблиця побудована: ${sortedOps.length} рядків, кінцевий баланс: ${runningBalance.toFixed(2)}`);
-
-            // ✅ Фінальна перевірка
-            if (Math.abs(runningBalance - currentBalanceFromBQ) > 0.01) {
-                console.error(`❌ ПОМИЛКА: Кінцевий баланс ${runningBalance.toFixed(2)} не дорівнює поточному ${currentBalanceFromBQ}!`);
-            } else {
-                console.log(`✅ Перевірка пройдена: баланси співпадають (${runningBalance.toFixed(2)})`);
-            }
-
-            // ============================================
-            // 5. СТВОРЕННЯ МОДАЛЬНОГО ВІКНА
-            // ============================================
-
-            const historyHtml = `
-        <div id="historyModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
-            <div style="background: white; border-radius: 8px; max-width: 95vw; max-height: 90vh; width: 100%; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 1.5rem; font-weight: 600;">📊 Історія операцій: ${productTitle}</h3>
-                    <p style="margin: 0; color: #6b7280; font-size: 0.95rem;">Склад: ${warehouseTitle}</p>
+    <!-- Modal -->
+    <div id="historyModal" style="display:none;" class="">
+        <div class="modal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="modalTitle" style="margin:0;">История</h3>
+                        <div class="small" id="modalSubtitle"></div>
+                    </div>
+                    <div>
+                        <button id="closeModal" class="ghost">Закрыть</button>
+                    </div>
                 </div>
 
-                <div style="overflow: auto; flex: 1; padding: 20px;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                        <thead style="background: #f3f4f6; position: sticky; top: 0; z-index: 1;">
+                <div id="modalContent">
+                    <table class="operations-table" style="width:100%; border-collapse:collapse;">
+                        <thead>
                             <tr>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Дата</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Тип операції</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Документ</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Співробітник</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Контрагент/Склад</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Прихід (+)</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Витрата (-)</th>
-                                <th style="padding: 12px 8px; text-align: right; font-weight: 600;">Залишок</th>
-                                <th style="padding: 12px 8px; text-align: left; font-weight: 600;">Опис</th>
+                                <th>Дата</th>
+                                <th>Операция</th>
+                                <th>Delta</th>
+                                <th>Документ</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            ${tableRows}
+                        <tbody id="opsBody">
                         </tbody>
                     </table>
+
+                    <div id="opsPlaceholder" class="placeholder" style="display:none;">Нет операций</div>
                 </div>
-
-                <div style="padding: 20px; border-top: 1px solid #e5e7eb; text-align: right;">
-                    <button onclick="closeHistoryModal()" 
-                        style="padding: 10px 24px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500;">
-                        ✕ Закрити
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-            document.body.insertAdjacentHTML('beforeend', historyHtml);
-            console.log('✅ Modal відображено');
-        }
-
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM загружен, инициализация...');
-            initializeSelectors();
-            loadEmployeesCache();
-            loadSuppliersCache();
-            refreshStatus();
-            loadMatrixData();
-
-            // Автообновление статуса каждые 30 секунд
-            statusInterval = setInterval(refreshStatus, 30000);
-        });
-    </script>
-    <!-- Модальне вікно для детальної історії товару -->
-    <div id="productHistoryModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
-        <div
-            style="background: white; padding: 30px; border-radius: 12px; width: 100%; height: 100%; max-width: 95%; max-height: 90%; overflow-y: auto; position: relative;">
-            <button onclick="closeProductHistoryModal()"
-                style="position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">×</button>
-            <div id="productHistoryDetails"></div>
-        </div>
-    </div>
-
-    <script>
-        function closeProductHistoryModal() {
-            const modal = document.getElementById('productHistoryModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        // Закриття по кліку на фон
-        document.getElementById('productHistoryModal')?.addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeProductHistoryModal();
-            }
-        });
-    </script>
-
-    <!-- Модальне вікно для оновлення cookies -->
-    <div id="cookiesUpdateModal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 700px; width: 90%;">
-            <h3 style="margin: 0 0 15px 0;">🔐 Оновлення Cookies для RemOnline API</h3>
-
-            <div
-                style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-                <p style="margin: 0; font-size: 0.9rem; color: #1e40af;">
-                    ℹ️ Cookies потрібні для отримання історії замовлень та повернень. Оновлюйте кожну годину.
-                </p>
-            </div>
-
-            <div
-                style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-                <p style="margin: 0 0 10px 0; font-weight: 600; color: #92400e;">Як отримати cookies:</p>
-                <ol style="margin: 0; padding-left: 20px; font-size: 0.9rem; color: #78350f;">
-                    <li>Відкрийте <a href="https://web.roapp.io" target="_blank"
-                            style="color: #0ea5e9; text-decoration: underline;">web.roapp.io</a> в новій вкладці</li>
-                    <li>Увійдіть в акаунт (якщо не залогінені)</li>
-                    <li>Натисніть <kbd>F12</kbd> → вкладка <strong>Network</strong></li>
-                    <li>Оновіть сторінку (<kbd>F5</kbd>)</li>
-                    <li>Виберіть будь-який запит до <code>roapp.io</code></li>
-                    <li>В <strong>Request Headers</strong> знайдіть <code>cookie:</code></li>
-                    <li>Скопіюйте ВЕСЬ текст після <code>cookie:</code> (Ctrl+C)</li>
-                    <li>Вставте нижче і натисніть "Зберегти"</li>
-                </ol>
-            </div>
-
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
-                Вставте cookies тут:
-            </label>
-            <textarea id="cookiesInput"
-                style="width: 100%; height: 150px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; resize: vertical;"
-                placeholder="PHPSESSID=abc123...; token=eyJ..."></textarea>
-
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="saveCookiesManually()"
-                    style="flex: 1; padding: 14px; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.3);">
-                    ✅ Зберегти Cookies
-                </button>
-                <button onclick="closeCookiesModal()"
-                    style="flex: 1; padding: 14px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer;">
-                    Скасувати
-                </button>
-            </div>
-
-            <div style="margin-top: 15px; padding: 12px; background: #f9fafb; border-radius: 6px;">
-                <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">
-                    💡 <strong>Порада:</strong> Додайте цю сторінку в закладки для швидкого доступу до оновлення cookies
-                </p>
             </div>
         </div>
     </div>
 
     <script>
-        function showCookiesUpdateModal() {
-            document.getElementById('cookiesUpdateModal').style.display = 'flex';
+        // --- U T I L S ---
+        async function apiGet(path) {
+            const res = await fetch(path);
+            return await res.json();
         }
 
-        function closeCookiesModal() {
-            document.getElementById('cookiesUpdateModal').style.display = 'none';
-            document.getElementById('cookiesInput').value = '';
-        }
-
-        async function saveCookiesManually() {
-            const cookies = document.getElementById('cookiesInput').value.trim();
-
-            if (!cookies) {
-                alert('❌ Будь ласка, вставте cookies');
-                return;
-            }
-
-            if (cookies.length < 100) {
-                alert('❌ Cookies занадто короткі. Переконайтесь що скопіювали ВЕСЬ текст після "cookie:"');
-                return;
-            }
-
+        // --- Инициализация: загружаем филиалы/локации ---
+        async function loadBranches() {
             try {
-                const result = await fetch('/api/temp-set-cookies', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cookies })
-                }).then(r => r.json());
+                const j = await apiGet('/api/branches');
+                let items = [];
+                if (j && j.success && Array.isArray(j.data)) items = j.data;
+                else if (j && Array.isArray(j)) items = j;
+                else if (j && j.data && Array.isArray(j.data)) items = j.data;
 
-                if (result.success) {
-                    alert(`✅ Cookies збережено!\n\nДовжина: ${result.cookiesLength} символів\n\nТепер можна переглядати історію товарів.`);
-                    closeCookiesModal();
-                } else {
-                    alert(`❌ Помилка: ${result.error}`);
-                }
-            } catch (error) {
-                alert(`❌ Помилка зв'язку з сервером: ${error.message}`);
-            }
-        }
-
-        async function checkCookiesStatus() {
-            try {
-                const result = await apiCall('/api/check-cookies-status');
-
-                let message = `📊 Статус Cookies для Goods-Flow:\n\n`;
-                message += `Cookies є: ${result.hasCookies ? '✅' : '❌'}\n`;
-
-                if (result.hasCookies) {
-                    message += `Довжина: ${result.cookiesLength} символів\n`;
-                    message += `Валідність: ${result.cookiesValid ? '✅ Працюють' : '❌ Застарілі'}\n`;
-
-                    if (result.httpStatus) {
-                        message += `HTTP статус: ${result.httpStatus}\n`;
+                const select = document.getElementById('branchSelect');
+                select.innerHTML = '<option value="">— выберите локацию —</option>';
+                items.forEach(b => {
+                    // ожидаем у объекта fields: id и title/name
+                    const id = b.id || b.branch_id || b.branchId || b.code || '';
+                    const name = b.name || b.title || b.branch_name || JSON.stringify(b).slice(0, 30);
+                    if (id) {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.textContent = name;
+                        select.appendChild(opt);
                     }
-                }
+                });
 
-                message += `\n${result.message}`;
-
-                if (!result.hasCookies || !result.cookiesValid) {
-                    message += `\n\n💡 Оновіть cookies через кнопку "🔐 Оновити Cookies API"`;
-                }
-
-                alert(message);
-            } catch (error) {
-                alert(`Помилка перевірки: ${error.message}`);
+                // Если не получили list — оставляем возможность ручного ввода
+            } catch (err) {
+                console.error('loadBranches error', err);
             }
         }
 
-        // Закриття по Escape
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                closeCookiesModal();
+        // --- Получаем склады по филиалу ---
+        async function loadWarehouses(branchId) {
+            const select = document.getElementById('warehouseSelect');
+            select.disabled = true;
+            select.innerHTML = '<option>Загрузка...</option>';
+            try {
+                const j = await apiGet(`/api/warehouses/${encodeURIComponent(branchId)}`);
+                let list = [];
+                if (j && j.success && Array.isArray(j.warehouses)) list = j.warehouses;
+                else if (j && Array.isArray(j)) list = j;
+                else if (j && j.data && Array.isArray(j.data)) list = j.data;
+                select.innerHTML = '<option value="">— выберите склад —</option>';
+                list.forEach(w => {
+                    const id = w.id || w.warehouse_id || w.warehouseId || w.id;
+                    const name = w.title || w.warehouse_title || w.name || w.label || JSON.stringify(w).slice(0, 30);
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = name;
+                    select.appendChild(opt);
+                });
+                select.disabled = false;
+            } catch (err) {
+                console.error('loadWarehouses error', err);
+                select.innerHTML = '<option value="">Ошибка загрузки</option>';
+                select.disabled = false;
             }
+        }
+
+        // --- Загружаем реальные остатки склада ---
+        async function showSelectedWarehouse() {
+            const warehouseId = document.getElementById('warehouseSelect').value;
+            const goodsBody = document.getElementById('goodsBody');
+            if (!warehouseId) return;
+            goodsBody.innerHTML = '<tr><td colspan="6" class="placeholder">⏳ Загрузка товаров и расчёт остатков...</td></tr>';
+
+            try {
+                const j = await apiGet(`/api/realtime-warehouse-goods/${encodeURIComponent(warehouseId)}`);
+                if (!j || !j.success) {
+                    goodsBody.innerHTML = `<tr><td colspan="6" class="placeholder">Ошибка: ${j?.error || 'неизвестно'}</td></tr>`;
+                    return;
+                }
+
+                let list = j.data || [];
+                // Сортировка по названию
+                list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+                renderGoodsList(list, warehouseId);
+            } catch (err) {
+                console.error('showSelectedWarehouse error', err);
+                goodsBody.innerHTML = `<tr><td colspan="6" class="placeholder">Ошибка: ${err.message}</td></tr>`;
+            }
+        }
+
+        function renderGoodsList(list, warehouseId) {
+            const body = document.getElementById('goodsBody');
+            if (!list || list.length === 0) {
+                body.innerHTML = '<tr><td colspan="6" class="placeholder">Нет товаров на складе</td></tr>';
+                return;
+            }
+            body.innerHTML = '';
+            list.forEach(item => {
+                const tr = document.createElement('tr');
+                const title = item.title || '';
+                const article = item.article || '';
+                const code = item.code || '';
+                const uom = item.uom_title || '';
+                const qty = Number(item.calculated_residue || 0).toFixed(2).replace(/\.00$/, '');
+                tr.innerHTML = `
+        <td>${escapeHtml(title)}</td>
+        <td>${escapeHtml(article)}</td>
+        <td>${escapeHtml(code)}</td>
+        <td>${escapeHtml(uom)}</td>
+        <td class="quantity">${qty}</td>
+        <td><button class="btn-history" onclick="openHistoryModal('${item.product_id || item.productId || item.id}','${warehouseId}','${escapeAttr(title)}')">История</button></td>
+      `;
+                body.appendChild(tr);
+            });
+        }
+
+        // --- Modal: история товара ---
+        function openHistoryModal(productId, warehouseId, titleEscaped) {
+            const modal = document.getElementById('historyModal');
+            document.getElementById('modalTitle').textContent = `История: ${unescapeHtml(titleEscaped)}`;
+            document.getElementById('modalSubtitle').textContent = `Товар ID: ${productId}  —  Склад ID: ${warehouseId}`;
+            document.getElementById('opsBody').innerHTML = '';
+            document.getElementById('opsPlaceholder').style.display = 'none';
+            modal.style.display = 'block';
+            modal.className = 'modal';
+
+            // Загрузка операций
+            fetch(`/api/goods-flow-items/${encodeURIComponent(productId)}/${encodeURIComponent(warehouseId)}`)
+                .then(r => r.json())
+                .then(j => {
+                    if (!j || !j.success) {
+                        document.getElementById('opsBody').innerHTML = `<tr><td colspan="4">${j?.error || 'Ошибка'}</td></tr>`;
+                        return;
+                    }
+                    const data = j.data || [];
+                    if (data.length === 0) {
+                        document.getElementById('opsPlaceholder').style.display = 'block';
+                        return;
+                    }
+                    const tbody = document.getElementById('opsBody');
+                    data.forEach(op => {
+                        const tr = document.createElement('tr');
+                        const date = op.date ? new Date(op.date).toLocaleString() : '';
+                        const type = op.operation_type || op.raw?.type || '';
+                        const delta = op.delta ?? (op.raw && (op.raw.delta || op.raw.amount || op.raw.quantity)) ?? '';
+                        const doc = op.doc || op.raw?.document || '';
+                        tr.innerHTML = `<td>${escapeHtml(date)}</td><td>${escapeHtml(type)}</td><td>${escapeHtml(String(delta))}</td><td>${escapeHtml(String(doc))}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    console.error('openHistoryModal error', err);
+                    document.getElementById('opsBody').innerHTML = `<tr><td colspan="4">Ошибка: ${err.message}</td></tr>`;
+                });
+        }
+
+        // Закрыть модалку
+        document.getElementById('closeModal').addEventListener('click', () => {
+            const modal = document.getElementById('historyModal');
+            modal.style.display = 'none';
+            modal.className = '';
         });
+
+        // --- Поиск товаров по списку (локальный фильтр) ---
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const q = (e.target.value || '').trim().toLowerCase();
+            filterGoods(q);
+        });
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            filterGoods('');
+        });
+
+        function filterGoods(q) {
+            const rows = Array.from(document.querySelectorAll('#goodsBody tr'));
+            rows.forEach(r => {
+                if (!q) { r.style.display = ''; return; }
+                const text = r.innerText.toLowerCase();
+                r.style.display = text.includes(q) ? '' : 'none';
+            });
+        }
+
+        // --- Escape helpers ---
+        function escapeHtml(s) { if (!s && s !== 0) return ''; return String(s).replace(/[&<>"']/g, function (m) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]; }); }
+        function escapeAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
+        function unescapeHtml(s) { const doc = new DOMParser().parseFromString(s, 'text/html'); return doc.documentElement.textContent; }
+
+        // --- События UI ---
+        document.getElementById('branchSelect').addEventListener('change', async function () {
+            const branchId = this.value;
+            const warehouseSelect = document.getElementById('warehouseSelect');
+            document.getElementById('showBtn').disabled = true;
+            warehouseSelect.disabled = true;
+            if (!branchId) {
+                warehouseSelect.innerHTML = '<option value="">— сначала выберите локацию —</option>';
+                return;
+            }
+            await loadWarehouses(branchId);
+        });
+
+        document.getElementById('warehouseSelect').addEventListener('change', function () {
+            const val = this.value;
+            document.getElementById('showBtn').disabled = !val;
+        });
+
+        document.getElementById('showBtn').addEventListener('click', showSelectedWarehouse);
+
+        // --- Запуск ---
+        (async function init() {
+            await loadBranches();
+        })();
     </script>
 </body>
 
