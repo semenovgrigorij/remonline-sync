@@ -94,12 +94,29 @@ async function webGet(endpoint, cookies) {
 // ==========================
 
 // 1️⃣ Локации
-app.get("/api/branches", async (req, res) => {
+// 1️⃣ Локации (берём из жёстко заданного массива)
+const branchIds = [
+  { name: "01.1_G_CAR_KY", id: 134397 },
+  { name: "02.1_G_CAR_LV", id: 137783 },
+  { name: "02.2_G_CAR_LV", id: 170450 },
+  { name: "02.3_G_CAR_LV", id: 198255 },
+  { name: "03_G_CAR_OD", id: 171966 },
+  { name: "07_G_CAR_VN", id: 189625 },
+  { name: "08_G_CAR_PLT", id: 147848 },
+  { name: "09_G_CAR_IF", id: 186381 },
+  { name: "15_G_CAR_CK", id: 185929 },
+  { name: "16_G_CAR_CV", id: 155210 },
+  { name: "18.1_G_CAR_LU", id: 158504 },
+  { name: "18.2_G_CAR_LU", id: 177207 },
+  { name: "18.3_G_CAR_LU", id: 205571 },
+  { name: "19.1_G_CAR_RV", id: 154905 },
+  { name: "19.2_G_CAR_RV", id: 184657 },
+];
+
+app.get("/api/branches", (req, res) => {
   try {
-    const data = await apiGet("/branch/");
-    res.json({ success: true, data: data.data || [] });
+    res.json({ success: true, data: branchIds });
   } catch (err) {
-    console.error("❌ /api/branches:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
