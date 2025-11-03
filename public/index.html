@@ -1,438 +1,265 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Реальные остатки — RemOnline</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RemOnline — Залишки та історія товарів</title>
     <style>
         body {
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-            background: #f3f4f6;
-            color: #111827;
+            font-family: Arial, sans-serif;
+            background: #f7f9fb;
             margin: 0;
             padding: 20px;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
-        }
-
         h1 {
-            font-size: 1.25rem;
-            margin-bottom: 8px;
+            text-align: center;
+            color: #222;
         }
 
-        .controls {
+        .select-row {
             display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 10px;
         }
 
-        select,
-        button,
-        input {
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            background: white;
-            font-size: 0.95rem;
-        }
-
-        button.primary {
-            background: #4f46e5;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        button.ghost {
-            background: #fff;
-            color: #374151;
-            border: 1px solid #e5e7eb;
+        select {
+            padding: 10px;
+            font-size: 16px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 12px;
+            margin-top: 20px;
+            background: #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
         }
 
-        thead th {
-            text-align: left;
-            background: #111827;
-            color: white;
-            padding: 10px;
-            position: sticky;
-            top: 0;
-        }
-
+        th,
         td {
             padding: 10px;
-            border-bottom: 1px solid #eef2f7;
-            vertical-align: middle;
+            text-align: left;
+            border-bottom: 1px solid #eee;
         }
 
-        .quantity {
-            font-weight: 700;
-            color: #059669;
+        th {
+            background: #f1f3f6;
         }
 
-        .btn-history {
-            padding: 6px 8px;
-            border-radius: 6px;
-            background: #0ea5a0;
-            color: white;
+        tr:hover {
+            background: #fafafa;
+        }
+
+        button {
+            background: #007bff;
+            color: #fff;
             border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
             cursor: pointer;
         }
 
+        button:hover {
+            background: #0056b3;
+        }
+
+        /* Модальне вікно */
         .modal {
+            display: none;
             position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
             justify-content: center;
-            background: rgba(2, 6, 23, 0.5);
-        }
-
-        .modal-card {
-            width: 90%;
-            max-width: 900px;
-            background: white;
-            border-radius: 10px;
-            padding: 16px;
-            box-shadow: 0 10px 30px rgba(2, 6, 23, 0.4);
-            max-height: 85vh;
-            overflow: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
         }
 
-        .small {
-            font-size: 0.85rem;
-            color: #6b7280;
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            width: 90%;
+            max-width: 700px;
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: 80vh;
         }
 
-        .operations-table th {
-            background: #374151;
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            color: #666;
         }
 
-        .placeholder {
+        .close-btn:hover {
+            color: #000;
+        }
+
+        .spinner {
             text-align: center;
-            padding: 40px;
-            color: #6b7280;
+            margin: 40px;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Реальные остатки по складу (RemOnline)</h1>
+    <h1>📦 Залишки товарів RemOnline</h1>
 
-        <div class="controls">
-            <div>
-                <label class="small">Локация (branch)</label><br />
-                <select id="branchSelect">
-                    <option value="">— выберите локацию —</option>
-                </select>
-            </div>
+    <div class="select-row">
+        <select id="branchSelect">
+            <option value="">— Виберіть локацію —</option>
+        </select>
 
-            <div>
-                <label class="small">Склад</label><br />
-                <select id="warehouseSelect" disabled>
-                    <option value="">— сначала выберите локацию —</option>
-                </select>
-            </div>
-
-            <div style="align-self:end;">
-                <button id="showBtn" class="primary" disabled>Показать товары</button>
-            </div>
-
-            <div style="margin-left:auto; display:flex; gap:8px; align-items:end;">
-                <input id="searchInput" placeholder="Поиск товара..." />
-                <button id="clearBtn" class="ghost">Очистить</button>
-            </div>
-        </div>
-
-        <div id="matrixArea">
-            <table id="goodsTable">
-                <thead>
-                    <tr>
-                        <th style="width:38%;">Товар</th>
-                        <th style="width:12%;">Артикул</th>
-                        <th style="width:10%;">Код</th>
-                        <th style="width:10%;">Ед.</th>
-                        <th style="width:10%;">Остаток</th>
-                        <th style="width:20%;">История</th>
-                    </tr>
-                </thead>
-                <tbody id="goodsBody">
-                    <tr>
-                        <td colspan="6" class="placeholder">Выберите локацию и склад чтобы загрузить товары</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <select id="warehouseSelect" disabled>
+            <option value="">— Виберіть склад —</option>
+        </select>
     </div>
 
-    <!-- Modal -->
-    <div id="historyModal" style="display:none;" class="">
-        <div class="modal">
-            <div class="modal-card">
-                <div class="modal-header">
-                    <div>
-                        <h3 id="modalTitle" style="margin:0;">История</h3>
-                        <div class="small" id="modalSubtitle"></div>
-                    </div>
-                    <div>
-                        <button id="closeModal" class="ghost">Закрыть</button>
-                    </div>
-                </div>
+    <div id="tableContainer"></div>
 
-                <div id="modalContent">
-                    <table class="operations-table" style="width:100%; border-collapse:collapse;">
-                        <thead>
-                            <tr>
-                                <th>Дата</th>
-                                <th>Операция</th>
-                                <th>Delta</th>
-                                <th>Документ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="opsBody">
-                        </tbody>
-                    </table>
-
-                    <div id="opsPlaceholder" class="placeholder" style="display:none;">Нет операций</div>
-                </div>
-            </div>
+    <!-- Модальне вікно -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>📋 Історія товару</h2>
+            <div id="historyContent" class="spinner">Завантаження...</div>
         </div>
     </div>
 
     <script>
-        // --- U T I L S ---
-        async function apiGet(path) {
-            const res = await fetch(path);
-            return await res.json();
-        }
+        const branchSelect = document.getElementById("branchSelect");
+        const warehouseSelect = document.getElementById("warehouseSelect");
+        const tableContainer = document.getElementById("tableContainer");
 
-        // --- Инициализация: загружаем филиалы/локации ---
+        const historyModal = document.getElementById("historyModal");
+        const closeModal = document.getElementById("closeModal");
+        const historyContent = document.getElementById("historyContent");
+
+        const API_BASE = window.location.origin; // наприклад, http://localhost:3000
+
+        // 📍 1. Завантаження локацій
         async function loadBranches() {
-            try {
-                const j = await apiGet('/api/branches');
-                let items = [];
-                if (j && j.success && Array.isArray(j.data)) items = j.data;
-                else if (j && Array.isArray(j)) items = j;
-                else if (j && j.data && Array.isArray(j.data)) items = j.data;
-
-                const select = document.getElementById('branchSelect');
-                select.innerHTML = '<option value="">— выберите локацию —</option>';
-                items.forEach(b => {
-                    // ожидаем у объекта fields: id и title/name
-                    const id = b.id || b.branch_id || b.branchId || b.code || '';
-                    const name = b.name || b.title || b.branch_name || JSON.stringify(b).slice(0, 30);
-                    if (id) {
-                        const opt = document.createElement('option');
-                        opt.value = id;
-                        opt.textContent = name;
-                        select.appendChild(opt);
-                    }
-                });
-
-                // Если не получили list — оставляем возможность ручного ввода
-            } catch (err) {
-                console.error('loadBranches error', err);
-            }
+            const res = await fetch(`${API_BASE}/api/branches`);
+            const branches = await res.json();
+            branches.forEach(b => {
+                const opt = document.createElement("option");
+                opt.value = b.id;
+                opt.textContent = b.name;
+                branchSelect.appendChild(opt);
+            });
         }
 
-        // --- Получаем склады по филиалу ---
-        async function loadWarehouses(branchId) {
-            const select = document.getElementById('warehouseSelect');
-            select.disabled = true;
-            select.innerHTML = '<option>Загрузка...</option>';
-            try {
-                const j = await apiGet(`/api/warehouses/${encodeURIComponent(branchId)}`);
-                let list = [];
-                if (j && j.success && Array.isArray(j.warehouses)) list = j.warehouses;
-                else if (j && Array.isArray(j)) list = j;
-                else if (j && j.data && Array.isArray(j.data)) list = j.data;
-                select.innerHTML = '<option value="">— выберите склад —</option>';
-                list.forEach(w => {
-                    const id = w.id || w.warehouse_id || w.warehouseId || w.id;
-                    const name = w.title || w.warehouse_title || w.name || w.label || JSON.stringify(w).slice(0, 30);
-                    const opt = document.createElement('option');
-                    opt.value = id;
-                    opt.textContent = name;
-                    select.appendChild(opt);
-                });
-                select.disabled = false;
-            } catch (err) {
-                console.error('loadWarehouses error', err);
-                select.innerHTML = '<option value="">Ошибка загрузки</option>';
-                select.disabled = false;
+        // 🏢 2. Завантаження складів
+        branchSelect.addEventListener("change", async () => {
+            const branchId = branchSelect.value;
+            warehouseSelect.innerHTML = '<option value="">— Виберіть склад —</option>';
+            tableContainer.innerHTML = "";
+            if (!branchId) {
+                warehouseSelect.disabled = true;
+                return;
             }
-        }
+            warehouseSelect.disabled = false;
+            const res = await fetch(`${API_BASE}/api/warehouses/${branchId}`);
+            const data = await res.json();
+            data.forEach(w => {
+                const opt = document.createElement("option");
+                opt.value = w.id;
+                opt.textContent = w.title;
+                warehouseSelect.appendChild(opt);
+            });
+        });
 
-        // --- Загружаем реальные остатки склада ---
-        async function showSelectedWarehouse() {
-            const warehouseId = document.getElementById('warehouseSelect').value;
-            const goodsBody = document.getElementById('goodsBody');
+        // 📦 3. Завантаження залишків по складу
+        warehouseSelect.addEventListener("change", async () => {
+            const warehouseId = warehouseSelect.value;
             if (!warehouseId) return;
-            goodsBody.innerHTML = '<tr><td colspan="6" class="placeholder">⏳ Загрузка товаров и расчёт остатков...</td></tr>';
+            tableContainer.innerHTML = "<div class='spinner'>Завантаження товарів...</div>";
+
+            const res = await fetch(`${API_BASE}/api/realtime-warehouse-goods/${warehouseId}`);
+            const data = await res.json();
+            if (!data.success) {
+                tableContainer.innerHTML = `<p style="color:red">Помилка: ${data.error || "невідома"}</p>`;
+                return;
+            }
+
+            const rows = data.data.map(p => `
+        <tr>
+          <td>${p.title}</td>
+          <td>${p.article || "-"}</td>
+          <td>${p.category || "-"}</td>
+          <td>${p.uom_title || "-"}</td>
+          <td><b>${p.residue}</b></td>
+          <td><button onclick="showHistory(${p.product_id}, ${warehouseId}, '${p.title}')">Історія</button></td>
+        </tr>
+      `).join("");
+
+            tableContainer.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Назва</th>
+              <th>Артикул</th>
+              <th>Категорія</th>
+              <th>Од. вим.</th>
+              <th>Залишок</th>
+              <th>Дії</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+        });
+
+        // 📈 4. Історія товару
+        async function showHistory(productId, warehouseId, title) {
+            historyContent.innerHTML = "⏳ Завантаження історії...";
+            historyModal.style.display = "flex";
 
             try {
-                const j = await apiGet(`/api/realtime-warehouse-goods/${encodeURIComponent(warehouseId)}`);
-                if (!j || !j.success) {
-                    goodsBody.innerHTML = `<tr><td colspan="6" class="placeholder">Ошибка: ${j?.error || 'неизвестно'}</td></tr>`;
+                const branchId = branchSelect.value;
+                const res = await fetch(`${API_BASE}/api/goods-history/${productId}/${warehouseId}?branch_id=${branchId}`);
+
+                const data = await res.json();
+
+                if (!data.success || !data.history?.length) {
+                    historyContent.innerHTML = `<p>Історію для <b>${title}</b> не знайдено.</p>`;
                     return;
                 }
 
-                let list = j.data || [];
-                // Сортировка по названию
-                list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                const rows = data.history.map((h, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${new Date(h.date).toLocaleDateString("uk-UA")}</td>
+            <td>${h.type}</td>
+            <td>${h.delta}</td>
+          </tr>
+        `).join("");
 
-                renderGoodsList(list, warehouseId);
-            } catch (err) {
-                console.error('showSelectedWarehouse error', err);
-                goodsBody.innerHTML = `<tr><td colspan="6" class="placeholder">Ошибка: ${err.message}</td></tr>`;
+                historyContent.innerHTML = `
+          <h3>${title}</h3>
+          <table>
+            <thead>
+              <tr><th>#</th><th>Дата</th><th>Тип</th><th>Кількість</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+            } catch (e) {
+                historyContent.innerHTML = `<p style="color:red">Помилка завантаження історії: ${e.message}</p>`;
             }
         }
 
-        function renderGoodsList(list, warehouseId) {
-            const body = document.getElementById('goodsBody');
-            if (!list || list.length === 0) {
-                body.innerHTML = '<tr><td colspan="6" class="placeholder">Нет товаров на складе</td></tr>';
-                return;
-            }
-            body.innerHTML = '';
-            list.forEach(item => {
-                const tr = document.createElement('tr');
-                const title = item.title || '';
-                const article = item.article || '';
-                const code = item.code || '';
-                const uom = item.uom_title || '';
-                const qty = Number(item.calculated_residue || 0).toFixed(2).replace(/\.00$/, '');
-                tr.innerHTML = `
-        <td>${escapeHtml(title)}</td>
-        <td>${escapeHtml(article)}</td>
-        <td>${escapeHtml(code)}</td>
-        <td>${escapeHtml(uom)}</td>
-        <td class="quantity">${qty}</td>
-        <td><button class="btn-history" onclick="openHistoryModal('${item.product_id || item.productId || item.id}','${warehouseId}','${escapeAttr(title)}')">История</button></td>
-      `;
-                body.appendChild(tr);
-            });
-        }
-
-        // --- Modal: история товара ---
-        function openHistoryModal(productId, warehouseId, titleEscaped) {
-            const modal = document.getElementById('historyModal');
-            document.getElementById('modalTitle').textContent = `История: ${unescapeHtml(titleEscaped)}`;
-            document.getElementById('modalSubtitle').textContent = `Товар ID: ${productId}  —  Склад ID: ${warehouseId}`;
-            document.getElementById('opsBody').innerHTML = '';
-            document.getElementById('opsPlaceholder').style.display = 'none';
-            modal.style.display = 'block';
-            modal.className = 'modal';
-
-            // Загрузка операций
-            fetch(`/api/goods-flow-items/${encodeURIComponent(productId)}/${encodeURIComponent(warehouseId)}`)
-                .then(r => r.json())
-                .then(j => {
-                    if (!j || !j.success) {
-                        document.getElementById('opsBody').innerHTML = `<tr><td colspan="4">${j?.error || 'Ошибка'}</td></tr>`;
-                        return;
-                    }
-                    const data = j.data || [];
-                    if (data.length === 0) {
-                        document.getElementById('opsPlaceholder').style.display = 'block';
-                        return;
-                    }
-                    const tbody = document.getElementById('opsBody');
-                    data.forEach(op => {
-                        const tr = document.createElement('tr');
-                        const date = op.date ? new Date(op.date).toLocaleString() : '';
-                        const type = op.operation_type || op.raw?.type || '';
-                        const delta = op.delta ?? (op.raw && (op.raw.delta || op.raw.amount || op.raw.quantity)) ?? '';
-                        const doc = op.doc || op.raw?.document || '';
-                        tr.innerHTML = `<td>${escapeHtml(date)}</td><td>${escapeHtml(type)}</td><td>${escapeHtml(String(delta))}</td><td>${escapeHtml(String(doc))}</td>`;
-                        tbody.appendChild(tr);
-                    });
-                })
-                .catch(err => {
-                    console.error('openHistoryModal error', err);
-                    document.getElementById('opsBody').innerHTML = `<tr><td colspan="4">Ошибка: ${err.message}</td></tr>`;
-                });
-        }
-
-        // Закрыть модалку
-        document.getElementById('closeModal').addEventListener('click', () => {
-            const modal = document.getElementById('historyModal');
-            modal.style.display = 'none';
-            modal.className = '';
+        closeModal.addEventListener("click", () => (historyModal.style.display = "none"));
+        window.addEventListener("click", e => {
+            if (e.target === historyModal) historyModal.style.display = "none";
         });
 
-        // --- Поиск товаров по списку (локальный фильтр) ---
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const q = (e.target.value || '').trim().toLowerCase();
-            filterGoods(q);
-        });
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            document.getElementById('searchInput').value = '';
-            filterGoods('');
-        });
-
-        function filterGoods(q) {
-            const rows = Array.from(document.querySelectorAll('#goodsBody tr'));
-            rows.forEach(r => {
-                if (!q) { r.style.display = ''; return; }
-                const text = r.innerText.toLowerCase();
-                r.style.display = text.includes(q) ? '' : 'none';
-            });
-        }
-
-        // --- Escape helpers ---
-        function escapeHtml(s) { if (!s && s !== 0) return ''; return String(s).replace(/[&<>"']/g, function (m) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]; }); }
-        function escapeAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
-        function unescapeHtml(s) { const doc = new DOMParser().parseFromString(s, 'text/html'); return doc.documentElement.textContent; }
-
-        // --- События UI ---
-        document.getElementById('branchSelect').addEventListener('change', async function () {
-            const branchId = this.value;
-            const warehouseSelect = document.getElementById('warehouseSelect');
-            document.getElementById('showBtn').disabled = true;
-            warehouseSelect.disabled = true;
-            if (!branchId) {
-                warehouseSelect.innerHTML = '<option value="">— сначала выберите локацию —</option>';
-                return;
-            }
-            await loadWarehouses(branchId);
-        });
-
-        document.getElementById('warehouseSelect').addEventListener('change', function () {
-            const val = this.value;
-            document.getElementById('showBtn').disabled = !val;
-        });
-
-        document.getElementById('showBtn').addEventListener('click', showSelectedWarehouse);
-
-        // --- Запуск ---
-        (async function init() {
-            await loadBranches();
-        })();
+        // 🚀 Старт
+        loadBranches();
     </script>
 </body>
 
