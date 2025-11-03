@@ -2,264 +2,415 @@
 <html lang="uk">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RemOnline — Залишки та історія товарів</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управління складами</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
-            background: #f7f9fb;
-            margin: 0;
             padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            text-align: center;
-            color: #222;
+            margin-bottom: 20px;
+            color: #333;
         }
 
-        .select-row {
+        .controls {
             display: flex;
-            justify-content: center;
-            margin: 20px 0;
-            gap: 10px;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
         select {
             padding: 10px;
-            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 250px;
         }
 
-        table {
+        .inventory-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            background: #fff;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
         }
 
-        th,
-        td {
-            padding: 10px;
+        .inventory-table th,
+        .inventory-table td {
+            padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #ddd;
         }
 
-        th {
-            background: #f1f3f6;
+        .inventory-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
         }
 
-        tr:hover {
-            background: #fafafa;
+        .inventory-table tr:hover {
+            background: #f8f9fa;
         }
 
-        button {
+        .inventory-table img {
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .history-btn {
+            padding: 6px 12px;
             background: #007bff;
-            color: #fff;
+            color: white;
             border: none;
-            padding: 6px 10px;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 13px;
         }
 
-        button:hover {
+        .history-btn:hover {
             background: #0056b3;
         }
 
         /* Модальне вікно */
-        .modal {
+        #historyModal {
             display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
+            z-index: 1000;
         }
 
         .modal-content {
-            background: #fff;
-            padding: 20px;
-            width: 90%;
-            max-width: 700px;
+            background: white;
+            padding: 30px;
             border-radius: 8px;
-            overflow-y: auto;
+            max-width: 800px;
             max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
         }
 
         .close-btn {
-            float: right;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
             cursor: pointer;
-            color: #666;
+            color: #999;
         }
 
         .close-btn:hover {
-            color: #000;
+            color: #333;
         }
 
-        .spinner {
-            text-align: center;
-            margin: 40px;
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .history-table th {
+            background: #f8f9fa;
+            font-weight: 600;
         }
     </style>
 </head>
 
 <body>
-    <h1>📦 Залишки товарів RemOnline</h1>
+    <div class="container">
+        <h1>📦 Управління складами</h1>
 
-    <div class="select-row">
-        <select id="branchSelect">
-            <option value="">— Виберіть локацію —</option>
-        </select>
+        <div class="controls">
+            <select id="branchSelect">
+                <option value="">— виберіть локацію —</option>
+            </select>
 
-        <select id="warehouseSelect" disabled>
-            <option value="">— Виберіть склад —</option>
-        </select>
+            <select id="warehouseSelect">
+                <option value="">— виберіть склад —</option>
+            </select>
+        </div>
+
+        <div id="tableContainer"></div>
     </div>
 
-    <div id="tableContainer"></div>
-
-    <!-- Модальне вікно -->
-    <div class="modal" id="historyModal">
+    <!-- Модальне вікно для історії -->
+    <div id="historyModal">
         <div class="modal-content">
             <span class="close-btn" id="closeModal">&times;</span>
-            <h2>📋 Історія товару</h2>
-            <div id="historyContent" class="spinner">Завантаження...</div>
+            <h2>Історія товару</h2>
+            <div id="historyContent"></div>
         </div>
     </div>
 
     <script>
+        const API_BASE = window.location.origin;
+
+        // --- Елементи DOM ---
         const branchSelect = document.getElementById("branchSelect");
         const warehouseSelect = document.getElementById("warehouseSelect");
         const tableContainer = document.getElementById("tableContainer");
-
         const historyModal = document.getElementById("historyModal");
         const closeModal = document.getElementById("closeModal");
         const historyContent = document.getElementById("historyContent");
 
-        const API_BASE = window.location.origin; // наприклад, http://localhost:3000
+        // --- Масив локацій ---
+        const branchIds = [
+            { name: "01.1_G_CAR_KY", id: 134397 },
+            { name: "02.1_G_CAR_LV", id: 137783 },
+            { name: "02.2_G_CAR_LV", id: 170450 },
+            { name: "02.3_G_CAR_LV", id: 198255 },
+            { name: "03_G_CAR_OD", id: 171966 },
+            { name: "07_G_CAR_VN", id: 189625 },
+            { name: "08_G_CAR_PLT", id: 147848 },
+            { name: "09_G_CAR_IF", id: 186381 },
+            { name: "15_G_CAR_CK", id: 185929 },
+            { name: "16_G_CAR_CV", id: 155210 },
+            { name: "18.1_G_CAR_LU", id: 158504 },
+            { name: "18.2_G_CAR_LU", id: 177207 },
+            { name: "18.3_G_CAR_LU", id: 205571 },
+            { name: "19.1_G_CAR_RV", id: 154905 },
+            { name: "19.2_G_CAR_RV", id: 184657 }
+        ];
 
-        // 📍 1. Завантаження локацій
-        async function loadBranches() {
-            const res = await fetch(`${API_BASE}/api/branches`);
-            const branches = await res.json();
-            branches.forEach(b => {
-                const opt = document.createElement("option");
-                opt.value = b.id;
-                opt.textContent = b.name;
-                branchSelect.appendChild(opt);
-            });
-        }
+        // --- Заповнити список локацій ---
+        branchIds.forEach(b => {
+            const option = document.createElement("option");
+            option.value = b.id;
+            option.textContent = b.name;
+            branchSelect.appendChild(option);
+        });
 
-        // 🏢 2. Завантаження складів
+        // --- При виборі локації ---
         branchSelect.addEventListener("change", async () => {
             const branchId = branchSelect.value;
-            warehouseSelect.innerHTML = '<option value="">— Виберіть склад —</option>';
+            warehouseSelect.innerHTML = `<option value="">— виберіть склад —</option>`;
             tableContainer.innerHTML = "";
-            if (!branchId) {
-                warehouseSelect.disabled = true;
-                return;
-            }
-            warehouseSelect.disabled = false;
-            const res = await fetch(`${API_BASE}/api/warehouses/${branchId}`);
-            const data = await res.json();
-            data.forEach(w => {
-                const opt = document.createElement("option");
-                opt.value = w.id;
-                opt.textContent = w.title;
-                warehouseSelect.appendChild(opt);
-            });
-        });
 
-        // 📦 3. Завантаження залишків по складу
-        warehouseSelect.addEventListener("change", async () => {
-            const warehouseId = warehouseSelect.value;
-            if (!warehouseId) return;
-            tableContainer.innerHTML = "<div class='spinner'>Завантаження товарів...</div>";
-
-            const res = await fetch(`${API_BASE}/api/realtime-warehouse-goods/${warehouseId}`);
-            const data = await res.json();
-            if (!data.success) {
-                tableContainer.innerHTML = `<p style="color:red">Помилка: ${data.error || "невідома"}</p>`;
-                return;
-            }
-
-            const rows = data.data.map(p => `
-        <tr>
-          <td>${p.title}</td>
-          <td>${p.article || "-"}</td>
-          <td>${p.category || "-"}</td>
-          <td>${p.uom_title || "-"}</td>
-          <td><b>${p.residue}</b></td>
-          <td><button onclick="showHistory(${p.product_id}, ${warehouseId}, '${p.title}')">Історія</button></td>
-        </tr>
-      `).join("");
-
-            tableContainer.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Назва</th>
-              <th>Артикул</th>
-              <th>Категорія</th>
-              <th>Од. вим.</th>
-              <th>Залишок</th>
-              <th>Дії</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      `;
-        });
-
-        // 📈 4. Історія товару
-        async function showHistory(productId, warehouseId, title) {
-            historyContent.innerHTML = "⏳ Завантаження історії...";
-            historyModal.style.display = "flex";
+            if (!branchId) return;
 
             try {
-                const branchId = branchSelect.value;
-                const res = await fetch(`${API_BASE}/api/goods-history/${productId}/${warehouseId}?branch_id=${branchId}`);
+                const res = await fetch(`${API_BASE}/api/warehouses/${branchId}`);
+                const result = await res.json();
+                const data = result.data || result;
 
-                const data = await res.json();
+                data.forEach(w => {
+                    const option = document.createElement("option");
+                    option.value = w.id;
+                    option.textContent = w.title;
+                    warehouseSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("❌ Error loading warehouses:", err);
+            }
+        });
 
-                if (!data.success || !data.history?.length) {
-                    historyContent.innerHTML = `<p>Історію для <b>${title}</b> не знайдено.</p>`;
+        // --- При виборі складу ---
+        warehouseSelect.addEventListener("change", async () => {
+            const warehouseId = warehouseSelect.value;
+            const branchId = branchSelect.value;
+            tableContainer.innerHTML = "";
+
+            if (!warehouseId) return;
+
+            tableContainer.innerHTML = "<p>⏳ Завантаження товарів...</p>";
+
+            try {
+                const res = await fetch(`${API_BASE}/api/warehouse-goods/${warehouseId}`);
+                const result = await res.json();
+                const data = result.data || result;
+
+                if (!data || data.length === 0) {
+                    tableContainer.innerHTML = "<p>Товарів на складі не знайдено.</p>";
                     return;
                 }
 
-                const rows = data.history.map((h, i) => `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${new Date(h.date).toLocaleDateString("uk-UA")}</td>
-            <td>${h.type}</td>
-            <td>${h.delta}</td>
-          </tr>
-        `).join("");
+                // Побудувати таблицю
+                let html = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Фото</th>
+                            <th>Назва</th>
+                            <th>Артикул</th>
+                            <th>Категорія</th>
+                            <th>Од. вим.</th>
+                            <th>Залишок</th>
+                            <th>Дія</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
 
-                historyContent.innerHTML = `
-          <h3>${title}</h3>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Дата</th><th>Тип</th><th>Кількість</th></tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-            } catch (e) {
-                historyContent.innerHTML = `<p style="color:red">Помилка завантаження історії: ${e.message}</p>`;
+                data.forEach(item => {
+                    const image = item.image?.[0] || "https://via.placeholder.com/50";
+
+                    // 🔧 ВИПРАВЛЕНО: Правильна обробка uom
+                    let uom = "—";
+                    if (item.uom) {
+                        if (typeof item.uom === 'object' && item.uom !== null) {
+                            uom = item.uom.title || "—";
+                        } else if (typeof item.uom === 'string') {
+                            uom = item.uom;
+                        }
+                    }
+
+                    // 🔧 ВИПРАВЛЕНО: Правильна обробка category
+                    let category = "—";
+                    if (item.category) {
+                        if (typeof item.category === 'object' && item.category !== null) {
+                            category = item.category.title || "—";
+                        } else if (typeof item.category === 'string') {
+                            category = item.category;
+                        }
+                    }
+
+                    html += `
+                    <tr>
+                        <td><img src="${image}" width="50" height="50"></td>
+                        <td>${item.title || "—"}</td>
+                        <td>${item.article || "—"}</td>
+                        <td>${category}</td>
+                        <td>${uom}</td>
+                        <td>${item.residue ?? 0}</td>
+                        <td><button class="history-btn" data-id="${item.id}" data-warehouse="${warehouseId}" data-branch="${branchId}">Історія</button></td>
+                    </tr>
+                    `;
+                });
+
+                html += `</tbody></table>`;
+                tableContainer.innerHTML = html;
+
+                // Прив'язати обробники до кнопок
+                document.querySelectorAll(".history-btn").forEach(btn => {
+                    btn.addEventListener("click", () => showHistory(
+                        btn.dataset.id,
+                        btn.dataset.warehouse,
+                        btn.dataset.branch
+                    ));
+                });
+            } catch (err) {
+                console.error("❌ Error loading goods:", err);
+                tableContainer.innerHTML = "<p>❌ Помилка завантаження товарів.</p>";
+            }
+        });
+
+        // --- Показати історію ---
+        async function showHistory(productId, warehouseId, branchId) {
+            historyModal.style.display = "flex";
+            historyContent.innerHTML = "<p>⏳ Завантаження історії...</p>";
+
+            try {
+                const res = await fetch(`${API_BASE}/api/goods-history/${productId}/${warehouseId}?branch_id=${branchId}`);
+                const result = await res.json();
+
+                // 🔧 ВИПРАВЛЕНО: Читаємо history замість data!
+                const historyData = result.history || result.data || [];
+
+                console.log("History response:", result); // для дебагу
+
+                if (!historyData || historyData.length === 0) {
+                    historyContent.innerHTML = "<p>Історію для товару не знайдено.</p>";
+                    return;
+                }
+
+                let html = `
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Операція</th>
+                            <th>+</th>
+                            <th>-</th>
+                            <th>Залишок після</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                let runningBalance = 0;
+
+                // Сортуємо за датою
+                historyData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                for (const op of historyData) {
+                    // 🔧 ВИПРАВЛЕНО: Використовуємо delta замість amount
+                    const delta = Math.abs(Number(op.delta) || 0);
+                    let plus = "", minus = "";
+
+                    // Позитивна delta = приход
+                    if (op.delta > 0) {
+                        plus = delta;
+                        runningBalance += delta;
+                    } else {
+                        // Негативна delta = витрата
+                        minus = delta;
+                        runningBalance -= delta;
+                    }
+
+                    html += `
+                    <tr>
+                        <td>${new Date(op.date).toLocaleDateString('uk-UA')}</td>
+                        <td>${op.type}</td>
+                        <td>${plus}</td>
+                        <td>${minus}</td>
+                        <td>${runningBalance}</td>
+                    </tr>
+                    `;
+                }
+
+                html += `
+                    </tbody>
+                </table>
+                <p style="margin-top: 15px;"><strong>Поточний залишок: ${runningBalance}</strong></p>
+                `;
+
+                historyContent.innerHTML = html;
+            } catch (err) {
+                console.error("❌ Error loading history:", err);
+                historyContent.innerHTML = "<p>❌ Помилка отримання історії.</p>";
             }
         }
 
-        closeModal.addEventListener("click", () => (historyModal.style.display = "none"));
-        window.addEventListener("click", e => {
-            if (e.target === historyModal) historyModal.style.display = "none";
+        // --- Закрити модалку ---
+        closeModal.addEventListener("click", () => {
+            historyModal.style.display = "none";
         });
 
-        // 🚀 Старт
-        loadBranches();
+        window.addEventListener("click", e => {
+            if (e.target === historyModal) {
+                historyModal.style.display = "none";
+            }
+        });
     </script>
 </body>
 

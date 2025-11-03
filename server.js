@@ -1,161 +1,150 @@
-// server.js — финальная версия RemOnline Sync без BigQuery
-// =========================================================
-
+// === server.js ===
 import express from "express";
 import fetch from "node-fetch";
-import dotenv from "dotenv";
 import cors from "cors";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// ---------------------
-// 🔧 Конфигурация
-// ---------------------
+// === Конфигурация ===
 const PORT = process.env.PORT || 3000;
-const API_URL = "https://api.roapp.io";
+const API_BASE = "https://api.roapp.io";
 const LOGIN_SERVICE_URL = process.env.LOGIN_SERVICE_URL;
-const API_TOKEN = process.env.REMONLINE_API_TOKEN;
 
-// ---------------------
-// 🧰 Утилиты
-// ---------------------
-async function apiGet(path) {
-  const url = `${API_URL}${path}`;
+// === Универсальный запрос к RemOnline API ===
+async function apiGet(endpoint) {
+  const url = `${API_BASE}${endpoint}`;
   const res = await fetch(url, {
     headers: {
       accept: "application/json",
-      authorization: `Bearer ${API_TOKEN}`,
+      authorization: `Bearer ${process.env.REMONLINE_API_TOKEN}`,
     },
   });
+
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`API error ${res.status}: ${txt}`);
+    const errText = await res.text();
+    throw new Error(`API error ${res.status}: ${errText}`);
   }
-  return await res.json();
+
+  return res.json();
 }
 
-async function webGet(path, cookies) {
-  const res = await fetch(`https://web.roapp.io${path}`, {
+// === Универсальный запрос к Web API с cookies ===
+async function webGet(endpoint, cookies) {
+  const url = `https://app.remonline.ua${endpoint}`;
+  const res = await fetch(url, {
     headers: {
-      accept: "application/json",
       cookie: cookies,
+      accept: "application/json",
     },
   });
+
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`WEB error ${res.status}: ${txt}`);
+    const errText = await res.text();
+    throw new Error(`WEB error ${res.status}: ${errText}`);
   }
-  return await res.json();
+
+  return res.json();
 }
 
-// ---------------------
-// 🔑 Получение cookies
-// ---------------------
+// === Получение cookies через login-service ===
 async function getCookies() {
   try {
     const res = await fetch(`${LOGIN_SERVICE_URL}/get-cookies`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: process.env.REMONLINE_EMAIL,
-        password: process.env.REMONLINE_PASSWORD,
-      }),
     });
-    if (!res.ok) throw new Error(`Login service error ${res.status}`);
     const data = await res.json();
-    if (data.success && data.cookies) {
-      return data.cookies;
-    } else {
-      throw new Error("Login-service did not return cookies");
-    }
-  } catch (err) {
-    console.warn("⚠️ getCookies failed:", err.message);
-    return null;
+    if (!data?.success) throw new Error("Login service error");
+    return data.cookies;
+  } catch (e) {
+    console.warn("⚠️ getCookies failed:", e.message);
+    return null; // не прерываем выполнение
   }
 }
 
-// ---------------------
-// 📍 1. Список локаций
-// ---------------------
-app.get("/api/branches", async (req, res) => {
-  try {
-    const branches = [
-      { name: "01.1_G_CAR_KY", id: 134397 },
-      { name: "02.1_G_CAR_LV", id: 137783 },
-      { name: "02.2_G_CAR_LV", id: 170450 },
-      { name: "02.3_G_CAR_LV", id: 198255 },
-      { name: "03_G_CAR_OD", id: 171966 },
-      { name: "07_G_CAR_VN", id: 189625 },
-      { name: "08_G_CAR_PLT", id: 147848 },
-      { name: "09_G_CAR_IF", id: 186381 },
-      { name: "15_G_CAR_CK", id: 185929 },
-      { name: "16_G_CAR_CV", id: 155210 },
-      { name: "18.1_G_CAR_LU", id: 158504 },
-      { name: "18.2_G_CAR_LU", id: 177207 },
-      { name: "18.3_G_CAR_LU", id: 205571 },
-      { name: "19.1_G_CAR_RV", id: 154905 },
-      { name: "19.2_G_CAR_RV", id: 184657 },
-    ];
-    res.json(branches);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+// === Универсальная функция постраничного получения данных ===
+async function fetchAllPages(urlBase, useWeb = false, cookies = null) {
+  let page = 1;
+  let allData = [];
+
+  while (true) {
+    const url = `${urlBase}${urlBase.includes("?") ? "&" : "?"}page=${page}`;
+    try {
+      const res = useWeb ? await webGet(url, cookies) : await apiGet(url);
+
+      if (!res?.data || res.data.length === 0) break;
+
+      allData = allData.concat(res.data);
+      page++;
+
+      if (page > 100) break; // предохранитель от зацикливания
+    } catch (err) {
+      if (err.message.includes("404") || err.message.includes("no results"))
+        break;
+      console.warn(`⚠️ fetchAllPages error (${url}):`, err.message);
+      break;
+    }
   }
+
+  return allData;
+}
+
+// === 1️⃣ Локации ===
+app.get("/api/branches", (req, res) => {
+  const branchIds = [
+    { name: "01.1_G_CAR_KY", id: 134397 },
+    { name: "02.1_G_CAR_LV", id: 137783 },
+    { name: "02.2_G_CAR_LV", id: 170450 },
+    { name: "02.3_G_CAR_LV", id: 198255 },
+    { name: "03_G_CAR_OD", id: 171966 },
+    { name: "07_G_CAR_VN", id: 189625 },
+    { name: "08_G_CAR_PLT", id: 147848 },
+    { name: "09_G_CAR_IF", id: 186381 },
+    { name: "15_G_CAR_CK", id: 185929 },
+    { name: "16_G_CAR_CV", id: 155210 },
+    { name: "18.1_G_CAR_LU", id: 158504 },
+    { name: "18.2_G_CAR_LU", id: 177207 },
+    { name: "18.3_G_CAR_LU", id: 205571 },
+    { name: "19.1_G_CAR_RV", id: 154905 },
+    { name: "19.2_G_CAR_RV", id: 184657 },
+  ];
+
+  res.json(branchIds);
 });
 
-// ---------------------
-// 🏢 2. Список складов по локации
-// ---------------------
+// === 2️⃣ Склады конкретной локации ===
 app.get("/api/warehouses/:branchId", async (req, res) => {
+  const { branchId } = req.params;
+
   try {
-    const { branchId } = req.params;
     const data = await apiGet(`/warehouse/?branch_id=${branchId}`);
-    res.json(data.data || []);
+    res.json({ success: true, data: data.data });
   } catch (err) {
     console.error("❌ /api/warehouses:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ---------------------
-// 📦 3. Остатки по складу
-// ---------------------
-app.get("/api/realtime-warehouse-goods/:warehouseId", async (req, res) => {
-  const { warehouseId } = req.params;
-  try {
-    const goodsResp = await apiGet(
-      `/warehouse/goods/${warehouseId}?exclude_zero_residue=true`
-    );
-
-    const goodsList = goodsResp.data || [];
-    const results = goodsList.map((item) => ({
-      product_id: item.id,
-      title: item.title,
-      article: item.article || "",
-      category: item.category?.title || "",
-      uom_title: item.uom?.title || "",
-      image: item.image?.[0] || "",
-      residue: item.residue ?? 0,
-    }));
-
-    res.json({
-      success: true,
-      warehouseId,
-      totalProducts: results.length,
-      data: results,
-    });
-  } catch (err) {
-    console.error("❌ /api/realtime-warehouse-goods:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ---------------------
-// 📈 4. История товара по складу
-// ---------------------
+// === 3️⃣ Товары на складе (все страницы) ===
+app.get("/api/warehouse-goods/:warehouseId", async (req, res) => {
+  const { warehouseId } = req.params;
+
+  try {
+    const goods = await fetchAllPages(
+      `/warehouse/goods/${warehouseId}?exclude_zero_residue=true`
+    );
+    res.json({ success: true, total: goods.length, data: goods });
+  } catch (err) {
+    console.error("❌ /api/warehouse-goods:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// === 4️⃣ Історія товару по складу ===
 app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
   const { productId, warehouseId } = req.params;
   const branchId = req.query.branch_id;
@@ -168,78 +157,94 @@ app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
 
   try {
     const cookies = await getCookies();
-
-    // 🔹 Основні операції через Bearer API
-    const [postings, moves, outcomes, sales] = await Promise.all([
-      apiGet(
-        `/warehouse/postings/?warehouse_ids[]=${warehouseId}&branch_id=${branchId}`
-      ),
-      apiGet(
-        `/warehouse/moves/?warehouse_id=${warehouseId}&branch_id=${branchId}`
-      ),
-      apiGet(
-        `/warehouse/outcome-transactions/?warehouse_id=${warehouseId}&branch_id=${branchId}`
-      ),
-      apiGet(
-        `/retail/sales/?branch_id=${branchId}&warehouse_id=${warehouseId}`
-      ),
-    ]);
-
     const allOps = [];
 
-    const pushOps = (arr, type) => {
-      if (!arr?.data) return;
-      for (const item of arr.data) {
-        for (const p of item.products || []) {
-          if (String(p.id) === String(productId)) {
-            const qty = p.quantity || p.qty || p.amount || 0;
+    // 🔸 Оприходування
+    const postings = await fetchAllPages(
+      `/warehouse/postings/?warehouse_ids[]=${warehouseId}&branch_id=${branchId}`
+    );
+    for (const item of postings)
+      for (const p of item.products || [])
+        if (String(p.id) === String(productId))
+          allOps.push({
+            type: "Оприходування",
+            date: new Date(item.created_at),
+            delta: +Math.abs(p.amount || 0),
+          });
 
-            // определяем знак
-            let delta = qty;
-            if (
-              [
-                "Переміщення",
-                "Списання",
-                "Продаж",
-                "Повернення постачальнику",
-              ].includes(type)
-            ) {
-              delta = -Math.abs(qty);
-            }
+    // 🔸 Переміщення
+    const moves = await fetchAllPages(
+      `/warehouse/moves/?warehouse_id=${warehouseId}&branch_id=${branchId}`
+    );
+    for (const item of moves)
+      for (const p of item.products || [])
+        if (String(p.id) === String(productId))
+          allOps.push({
+            type: "Переміщення",
+            date: new Date(item.created_at),
+            delta: -Math.abs(p.amount || 0),
+          });
 
-            allOps.push({
-              type,
-              date: new Date(item.created_at || item.date || Date.now()),
-              delta,
-            });
-          }
-        }
-      }
-    };
+    // 🔸 Списання
+    const outcomes = await fetchAllPages(
+      `/warehouse/outcome-transactions/?warehouse_id=${warehouseId}&branch_id=${branchId}`
+    );
+    for (const item of outcomes)
+      for (const p of item.products || [])
+        if (String(p.id) === String(productId))
+          allOps.push({
+            type: "Списання",
+            date: new Date(item.created_at),
+            delta: -Math.abs(p.amount || 0),
+          });
 
-    pushOps(postings, "Оприходування");
-    pushOps(moves, "Переміщення");
-    pushOps(outcomes, "Списання");
-    pushOps(sales, "Продаж");
+    // 🔸 Продаж
+    const sales = await fetchAllPages(
+      `/retail/sales/?branch_id=${branchId}&warehouse_id=${warehouseId}`
+    );
+    for (const item of sales)
+      for (const p of item.products || [])
+        if (String(p.id) === String(productId))
+          allOps.push({
+            type: "Продаж",
+            date: new Date(item.created_at),
+            delta: -Math.abs(p.amount || 0),
+          });
 
-    // 🔹 Додатково — Заказ і Повернення (через cookies)
+    // 🔹 Замовлення / Повернення постачальнику (через cookies)
     if (cookies) {
       try {
-        const orders = await webGet(
+        const orders = await fetchAllPages(
           `/api/v2/warehouse/orders/?warehouse_id=${warehouseId}&branch_id=${branchId}`,
+          true,
           cookies
         );
-        pushOps(orders, "Замовлення");
+        for (const item of orders)
+          for (const p of item.products || [])
+            if (String(p.id) === String(productId))
+              allOps.push({
+                type: "Замовлення",
+                date: new Date(item.created_at),
+                delta: +Math.abs(p.amount || 0),
+              });
       } catch (e) {
         console.warn("⚠️ Orders fetch failed:", e.message);
       }
 
       try {
-        const returns = await webGet(
+        const returns = await fetchAllPages(
           `/api/v2/warehouse/returns/?warehouse_id=${warehouseId}&branch_id=${branchId}`,
+          true,
           cookies
         );
-        pushOps(returns, "Повернення постачальнику");
+        for (const item of returns)
+          for (const p of item.products || [])
+            if (String(p.id) === String(productId))
+              allOps.push({
+                type: "Повернення постачальнику",
+                date: new Date(item.created_at),
+                delta: -Math.abs(p.amount || 0),
+              });
       } catch (e) {
         console.warn("⚠️ Returns fetch failed:", e.message);
       }
@@ -261,25 +266,18 @@ app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
   }
 });
 
+// === 5️⃣ Раздача фронтенда (если index.html в /public) ===
 import path from "path";
 import { fileURLToPath } from "url";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Обслуживаем всё содержимое /public (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (req, res) =>
+  res.sendFile(path.join(__dirname, "public", "index.html"))
+);
 
-// ✅ Если запрашивается "/", возвращаем index.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ---------------------
-// 🚀 Старт сервера
-// ---------------------
+// === Запуск сервера ===
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`🔗 RemOnline API: ${API_URL}`);
-  console.log(`🔗 Login-service: ${LOGIN_SERVICE_URL}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
