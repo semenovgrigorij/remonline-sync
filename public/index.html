@@ -947,9 +947,6 @@
 
         // Массив локаций
         const branchIds = [
-            // { name: "001_G_CAR_UA", id: 112954 },
-            // { name: "002_G_CAR_PL", id: 123343 },
-            // { name: "003_INSURANCE CASES", id: 178097 },
             { name: "01.1_G_CAR_KY", id: 134397 },
             { name: "02.1_G_CAR_LV", id: 137783 },
             { name: "02.2_G_CAR_LV", id: 170450 },
@@ -2870,6 +2867,30 @@
                 console.log(`🔍 Фільтрація завершена: ${allOperations.length} → ${filteredOperations.length} операцій`);
             }
 
+            ///////////////////////////////
+            // После фильтрации операций
+            console.log(`🔍 Отладка для склада ${warehouseTitle} (ID: ${filterWarehouseId})`);
+            console.log(`Операций до фильтрации: ${allOperations.length}`);
+            console.log(`Операций после фильтрации: ${filteredOperations.length}`);
+
+            // Группировка по типам
+            const operationsByType = {};
+            filteredOperations.forEach(op => {
+                if (!operationsByType[op.type]) {
+                    operationsByType[op.type] = { count: 0, totalDelta: 0 };
+                }
+                operationsByType[op.type].count++;
+                operationsByType[op.type].totalDelta += op.delta;
+            });
+
+            console.table(operationsByType);
+
+            // Проверка расчета
+            const calculatedBalance = filteredOperations.reduce((sum, op) => sum + op.delta, 0);
+            console.log(`📊 Рассчитанный остаток: ${calculatedBalance}`);
+            console.log(`📊 Остаток из BigQuery: ${data.currentBalance}`);
+            console.log(`📊 Разница: ${calculatedBalance - data.currentBalance}`);
+            ////////////////////////////////
             // ============================================
             // 3. РОЗРАХУНОК ЗАЛИШКІВ ТА ПОБУДОВА ТАБЛИЦІ
             // ============================================
