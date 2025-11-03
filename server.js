@@ -3760,7 +3760,7 @@ class RemonlineMatrixSync {
                 MAX(operation_date) as updated_at
             FROM all_operations
             WHERE warehouse_id IS NOT NULL
-            GROUP BY warehouse_id, product_title
+            GROUP BY warehouse_id, product_id, product_title
             HAVING SUM(quantity_delta) > 0
             ORDER BY warehouse_id, product_title;
         `;
