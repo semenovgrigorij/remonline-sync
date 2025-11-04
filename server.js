@@ -52,14 +52,10 @@ async function webGet(endpoint, cookies) {
 }
 
 // === Получение cookies через login-service ===
+// === Получение cookies через login-service ===
 async function getCookies(forceRefresh = false) {
-  // if (!LOGIN_SERVICE_URL) {
-  //   return null;
-  // }
-
-  if (process.env.MANUAL_COOKIES) {
-    console.log("✅ Використовуємо manual cookies з .env");
-    return process.env.MANUAL_COOKIES;
+  if (!LOGIN_SERVICE_URL) {
+    return null;
   }
 
   const username = process.env.REMONLINE_USERNAME;
