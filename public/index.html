@@ -247,10 +247,13 @@
             try {
                 const res = await fetch(`${API_BASE}/api/warehouse-goods/${warehouseId}`);
                 const result = await res.json();
+
+                console.log('📦 Warehouse goods response:', result); // Дебаг
+
                 const data = result.data || result;
 
                 if (!data || data.length === 0) {
-                    tableContainer.innerHTML = "<p>Товарів на складі не знайдено.</p>";
+                    tableContainer.innerHTML = "<p>Товарів на складі не знайдено або залишки нульові.</p>";
                     return;
                 }
 

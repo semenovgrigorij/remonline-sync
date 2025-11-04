@@ -35,7 +35,7 @@ async function apiGet(endpoint) {
 
 // === Универсальный запрос к Web API с cookies ===
 async function webGet(endpoint, cookies) {
-  const url = `https://app.remonline.ua${endpoint}`;
+  const url = `https://web.roapp.io${endpoint}`;
   const res = await fetch(url, {
     headers: {
       cookie: cookies,
@@ -52,17 +52,58 @@ async function webGet(endpoint, cookies) {
 }
 
 // === Получение cookies через login-service ===
-async function getCookies() {
+async function getCookies(forceRefresh = false) {
+  // if (!LOGIN_SERVICE_URL) {
+  //   return null;
+  // }
+
+  if (process.env.MANUAL_COOKIES) {
+    console.log("✅ Використовуємо manual cookies з .env");
+    return process.env.MANUAL_COOKIES;
+  }
+
+  const username = process.env.REMONLINE_USERNAME;
+  const password = process.env.REMONLINE_PASSWORD;
+
+  if (!username || !password) {
+    console.warn(
+      "⚠️ REMONLINE_USERNAME або REMONLINE_PASSWORD не встановлені в .env"
+    );
+    return null;
+  }
+
   try {
-    const res = await fetch(`${LOGIN_SERVICE_URL}/get-cookies`, {
+    const url = forceRefresh
+      ? `${LOGIN_SERVICE_URL}/get-cookies?force=true`
+      : `${LOGIN_SERVICE_URL}/get-cookies`;
+
+    const res = await fetch(url, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
     });
+
     const data = await res.json();
-    if (!data?.success) throw new Error("Login service error");
+
+    if (!data?.success) {
+      throw new Error(data?.error || "Login service error");
+    }
+
+    if (forceRefresh) {
+      console.log(`✅ Cookies примусово оновлено`);
+    } else {
+      console.log(`✅ Cookies отримано${data.cached ? " (з кешу)" : ""}`);
+    }
+
     return data.cookies;
   } catch (e) {
     console.warn("⚠️ getCookies failed:", e.message);
-    return null; // не прерываем выполнение
+    return null;
   }
 }
 
@@ -145,6 +186,7 @@ app.get("/api/warehouse-goods/:warehouseId", async (req, res) => {
 });
 
 // === 4️⃣ Історія товару по складу ===
+// === 4️⃣ Історія товару по складу (НОВА ВЕРСІЯ) ===
 app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
   const { productId, warehouseId } = req.params;
   const branchId = req.query.branch_id;
@@ -156,101 +198,195 @@ app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
   }
 
   try {
-    const cookies = await getCookies();
+    let cookies = await getCookies();
+
+    if (!cookies) {
+      return res.status(500).json({
+        success: false,
+        error: "Не вдалося отримати cookies для авторизації",
+      });
+    }
+
     const allOps = [];
 
-    // 🔸 Оприходування
-    const postings = await fetchAllPages(
-      `/warehouse/postings/?warehouse_ids[]=${warehouseId}&branch_id=${branchId}`
-    );
-    for (const item of postings)
-      for (const p of item.products || [])
-        if (String(p.id) === String(productId))
-          allOps.push({
-            type: "Оприходування",
-            date: new Date(item.created_at),
-            delta: +Math.abs(p.amount || 0),
-          });
+    // 🆕 НОВИЙ ПІДХІД: Використовуємо універсальний ендпоінт get-goods-flow-items
+    // Він повертає ВСЮ історію товару з усіма типами операцій
 
-    // 🔸 Переміщення
-    const moves = await fetchAllPages(
-      `/warehouse/moves/?warehouse_id=${warehouseId}&branch_id=${branchId}`
-    );
-    for (const item of moves)
-      for (const p of item.products || [])
-        if (String(p.id) === String(productId))
-          allOps.push({
-            type: "Переміщення",
-            date: new Date(item.created_at),
-            delta: -Math.abs(p.amount || 0),
-          });
+    // Маппінг типів операцій з API на зрозумілі назви
+    const OPERATION_TYPES = {
+      0: "Замовлення",
+      1: "Продаж",
+      3: "Оприходування",
+      4: "Списання",
+      5: "Переміщення",
+      7: "Повернення постачальнику",
+    };
 
-    // 🔸 Списання
-    const outcomes = await fetchAllPages(
-      `/warehouse/outcome-transactions/?warehouse_id=${warehouseId}&branch_id=${branchId}`
-    );
-    for (const item of outcomes)
-      for (const p of item.products || [])
-        if (String(p.id) === String(productId))
-          allOps.push({
-            type: "Списання",
-            date: new Date(item.created_at),
-            delta: -Math.abs(p.amount || 0),
-          });
+    // Отримуємо поточний timestamp для endDate
+    const endDate = Date.now();
 
-    // 🔸 Продаж
-    const sales = await fetchAllPages(
-      `/retail/sales/?branch_id=${branchId}&warehouse_id=${warehouseId}`
-    );
-    for (const item of sales)
-      for (const p of item.products || [])
-        if (String(p.id) === String(productId))
-          allOps.push({
-            type: "Продаж",
-            date: new Date(item.created_at),
-            delta: -Math.abs(p.amount || 0),
-          });
+    // Запит до нового ендпоінту
+    let page = 1;
+    let hasMorePages = true;
 
-    // 🔹 Замовлення / Повернення постачальнику (через cookies)
-    if (cookies) {
-      try {
-        const orders = await fetchAllPages(
-          `/api/v2/warehouse/orders/?warehouse_id=${warehouseId}&branch_id=${branchId}`,
-          true,
-          cookies
-        );
-        for (const item of orders)
-          for (const p of item.products || [])
-            if (String(p.id) === String(productId))
-              allOps.push({
-                type: "Замовлення",
-                date: new Date(item.created_at),
-                delta: +Math.abs(p.amount || 0),
-              });
-      } catch (e) {
-        console.warn("⚠️ Orders fetch failed:", e.message);
-      }
+    console.log(
+      `📊 Завантаження історії товару ${productId} на складі ${warehouseId}...`
+    );
+
+    while (hasMorePages && page <= 100) {
+      const url = `/app/warehouse/get-goods-flow-items?page=${page}&pageSize=50&id=${productId}&startDate=0&endDate=${endDate}`;
 
       try {
-        const returns = await fetchAllPages(
-          `/api/v2/warehouse/returns/?warehouse_id=${warehouseId}&branch_id=${branchId}`,
-          true,
-          cookies
+        const data = await webGet(url, cookies);
+
+        if (!data.data || data.data.length === 0) {
+          hasMorePages = false;
+          break;
+        }
+
+        console.log(
+          `📄 Сторінка ${page}: знайдено ${data.data.length} операцій`
         );
-        for (const item of returns)
-          for (const p of item.products || [])
-            if (String(p.id) === String(productId))
-              allOps.push({
-                type: "Повернення постачальнику",
-                date: new Date(item.created_at),
-                delta: -Math.abs(p.amount || 0),
-              });
-      } catch (e) {
-        console.warn("⚠️ Returns fetch failed:", e.message);
+
+        // Обробляємо кожну операцію
+        for (const item of data.data) {
+          // Фільтруємо тільки операції для потрібного складу
+          if (String(item.warehouse_id) !== String(warehouseId)) {
+            continue;
+          }
+
+          const operationType = OPERATION_TYPES[item.relation_type];
+
+          // Якщо тип операції невідомий, пропускаємо
+          if (!operationType) {
+            console.warn(`⚠️ Невідомий тип операції: ${item.relation_type}`);
+            continue;
+          }
+
+          // Визначаємо delta (income - приход, outcome - витрата)
+          let delta = 0;
+          let finalOperationType = operationType;
+
+          if (item.income !== undefined && item.income !== null) {
+            delta = +item.income; // Приход товару
+            // Для переміщення уточнюємо напрямок
+            if (item.relation_type === 5) {
+              finalOperationType = "Переміщення (вхід)";
+            }
+          } else if (item.outcome !== undefined && item.outcome !== null) {
+            delta = -item.outcome; // Витрата товару
+            // Для переміщення уточнюємо напрямок
+            if (item.relation_type === 5) {
+              finalOperationType = "Переміщення (вихід)";
+            }
+          }
+
+          allOps.push({
+            type: finalOperationType,
+            date: new Date(item.created_at),
+            delta: delta,
+            documentId: item.relation_id_label || item.relation_id,
+            clientName: item.client_name || null,
+            warehouseTitle: item.warehouse_title || null,
+          });
+        }
+
+        page++;
+
+        // Якщо отримали менше ніж pageSize, значить це остання сторінка
+        if (data.data.length < 50) {
+          hasMorePages = false;
+        }
+      } catch (err) {
+        console.log(`🔍 DEBUG: err.message = "${err.message}"`);
+        console.log(
+          `🔍 DEBUG: includes('401') = ${err.message.includes("401")}`
+        );
+        console.log(`🔍 DEBUG: page = ${page}`);
+
+        // Перевіряємо чи це помилка 401 (Unauthorized)
+        if (err.message.includes("401") && page === 1) {
+          console.warn(`⚠️ Помилка 401 - cookies застаріли, оновлюємо...`);
+
+          // Оновлюємо cookies примусово
+          cookies = await getCookies(true);
+
+          if (cookies) {
+            console.log(`🔄 Повторна спроба з новими cookies...`);
+            // Повторюємо запит з новими cookies
+            try {
+              const data = await webGet(url, cookies);
+
+              if (data.data && data.data.length > 0) {
+                console.log(
+                  `📄 Сторінка ${page}: знайдено ${data.data.length} операцій`
+                );
+
+                // Обробляємо операції (копіюємо логіку з основного блоку)
+                for (const item of data.data) {
+                  if (String(item.warehouse_id) !== String(warehouseId))
+                    continue;
+
+                  const operationType = OPERATION_TYPES[item.relation_type];
+                  if (!operationType) continue;
+
+                  let delta = 0;
+                  let finalOperationType = operationType;
+
+                  if (item.income !== undefined && item.income !== null) {
+                    delta = +item.income;
+                    if (item.relation_type === 5)
+                      finalOperationType = "Переміщення (вхід)";
+                  } else if (
+                    item.outcome !== undefined &&
+                    item.outcome !== null
+                  ) {
+                    delta = -item.outcome;
+                    if (item.relation_type === 5)
+                      finalOperationType = "Переміщення (вихід)";
+                  }
+
+                  allOps.push({
+                    type: finalOperationType,
+                    date: new Date(item.created_at),
+                    delta: delta,
+                    documentId: item.relation_id_label || item.relation_id,
+                    clientName: item.client_name || null,
+                    warehouseTitle: item.warehouse_title || null,
+                  });
+                }
+
+                page++;
+                if (data.data.length < 50) hasMorePages = false;
+              } else {
+                hasMorePages = false;
+              }
+            } catch (retryErr) {
+              console.warn(`⚠️ Повторна спроба не вдалася:`, retryErr.message);
+              hasMorePages = false;
+            }
+          } else {
+            console.error(`❌ Не вдалося оновити cookies`);
+            hasMorePages = false;
+          }
+        } else {
+          console.warn(`⚠️ Помилка на сторінці ${page}:`, err.message);
+          hasMorePages = false;
+        }
       }
     }
 
+    // Сортуємо за датою
     allOps.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    console.log(`✅ Загалом знайдено операцій: ${allOps.length}`);
+
+    // Групуємо статистику по типах
+    const stats = {};
+    allOps.forEach((op) => {
+      stats[op.type] = (stats[op.type] || 0) + 1;
+    });
+    console.log(`📊 Статистика:`, stats);
 
     res.json({
       success: true,
@@ -259,6 +395,7 @@ app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
       warehouseId,
       branchId,
       history: allOps,
+      stats,
     });
   } catch (err) {
     console.error("❌ /api/goods-history:", err.message);
