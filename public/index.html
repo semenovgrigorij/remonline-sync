@@ -83,65 +83,86 @@
 
         .header {
             background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center
         }
 
+        .header h1 {
+            font-size: 1.3em;
+        }
+
         .logout-btn {
-            padding: 8px 15px;
+            padding: 5px 12px;
             background: #f44;
             color: white;
             border: none;
             border-radius: 5px;
-            cursor: pointer
+            cursor: pointer;
+            transition: box-shadow 0.25s ease, transform 0.1s ease;
+        }
+
+        .logout-btn:hover {
+            box-shadow: 0 4px 12px rgba(244, 68, 68, 0.5);
+        }
+
+        .logout-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 6px rgba(244, 68, 68, 0.4);
         }
 
         .controls {
             background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: space-between;
+        }
+
+        .controls label {
+            font-size: 0.8em;
         }
 
         .controls select,
         .controls input {
             width: 100%;
-            padding: 8px;
-            margin: 5px 0;
+            padding: 5px;
             border: 1px solid #ddd;
             border-radius: 5px
         }
 
         .content {
             background: white;
-            border-radius: 10px;
-            padding: 20px
+            border-radius: 5px;
+            padding: 5px 10px;
         }
 
         .search-section {
-            margin-bottom: 15px;
+            margin-bottom: 5px;
             display: flex;
             gap: 10px
         }
 
         .search-input {
             flex: 1;
-            padding: 10px;
+            padding: 5px 10px;
             border: 1px solid #ddd;
             border-radius: 5px
         }
 
         .search-btn {
-            padding: 10px 20px;
+            padding: 5px 20px;
             background: #667eea;
             color: white;
             border: none;
             border-radius: 5px;
-            cursor: pointer
+            cursor: pointer;
         }
 
         table {
@@ -198,7 +219,7 @@
 
         .empty {
             text-align: center;
-            padding: 40px;
+            padding: 5px;
             color: #999
         }
 
@@ -498,9 +519,10 @@
 
     <div id="mainContainer" class="main-container">
         <div class="header">
-            <h1><img src="./img/GCAR_LOGO.png" alt="golo" width="50"> Історія переміщення товарів 📦</h1>
+            <img src="./img/GCAR_LOGO.png" alt="golo" width="30">
+            <h1>Історія переміщення товарів</h1>
             <div>
-                <span id="userEmail"></span>
+                <!-- <span id="userEmail"></span> -->
                 <button class="logout-btn" id="logoutBtn">Вийти</button>
             </div>
         </div>
