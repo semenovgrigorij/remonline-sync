@@ -1,416 +1,601 @@
-// === server.js ===
 import express from "express";
-import fetch from "node-fetch";
-import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+import session from "express-session";
+import https from "https";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-// === Конфигурация ===
 const PORT = process.env.PORT || 3000;
-const API_BASE = "https://api.roapp.io";
-const LOGIN_SERVICE_URL = process.env.LOGIN_SERVICE_URL;
 
-// === Универсальный запрос к RemOnline API ===
-async function apiGet(endpoint) {
-  const url = `${API_BASE}${endpoint}`;
-  const res = await fetch(url, {
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${process.env.REMONLINE_API_TOKEN}`,
-    },
-  });
+app.use(express.json());
+app.use(express.static("public"));
+app.use(
+  session({
+    secret: "remonline-secret-key-2024",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
+  })
+);
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`API error ${res.status}: ${errText}`);
+function requireAuth(req, res, next) {
+  if (!req.session.username || !req.session.cookies) {
+    return res.status(401).json({ success: false, error: "Не авторизовано" });
   }
-
-  return res.json();
+  next();
 }
 
-// === Универсальный запрос к Web API с cookies ===
-async function webGet(endpoint, cookies) {
-  const url = `https://web.roapp.io${endpoint}`;
-  const res = await fetch(url, {
-    headers: {
-      cookie: cookies,
-      accept: "application/json",
-    },
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`WEB error ${res.status}: ${errText}`);
-  }
-
-  return res.json();
-}
-
-// === Получение cookies через login-service ===
-// === Получение cookies через login-service ===
-async function getCookies(forceRefresh = false) {
-  if (!LOGIN_SERVICE_URL) {
-    return null;
-  }
-
-  const username = process.env.REMONLINE_USERNAME;
-  const password = process.env.REMONLINE_PASSWORD;
-
-  if (!username || !password) {
-    console.warn(
-      "⚠️ REMONLINE_USERNAME або REMONLINE_PASSWORD не встановлені в .env"
-    );
-    return null;
-  }
-
-  try {
-    const url = forceRefresh
-      ? `${LOGIN_SERVICE_URL}/get-cookies?force=true`
-      : `${LOGIN_SERVICE_URL}/get-cookies`;
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+async function getCookiesFromLoginService(
+  username,
+  password,
+  forceNew = false
+) {
+  return new Promise((resolve) => {
+    const postData = JSON.stringify({ username, password, forceNew });
+    const req = https.request(
+      {
+        // hostname: "remonline-login.fly.dev",
+        hostname: "remonline-login-improved.fly.dev",
+        port: 443,
+        path: "/get-cookies",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData),
+        },
       },
-      body: JSON.stringify({
-        username: username,
-        password: password,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!data?.success) {
-      throw new Error(data?.error || "Login service error");
-    }
-
-    if (forceRefresh) {
-      console.log(`✅ Cookies примусово оновлено`);
-    } else {
-      console.log(`✅ Cookies отримано${data.cached ? " (з кешу)" : ""}`);
-    }
-
-    return data.cookies;
-  } catch (e) {
-    console.warn("⚠️ getCookies failed:", e.message);
-    return null;
-  }
-}
-
-// === Универсальная функция постраничного получения данных ===
-async function fetchAllPages(urlBase, useWeb = false, cookies = null) {
-  let page = 1;
-  let allData = [];
-
-  while (true) {
-    const url = `${urlBase}${urlBase.includes("?") ? "&" : "?"}page=${page}`;
-    try {
-      const res = useWeb ? await webGet(url, cookies) : await apiGet(url);
-
-      if (!res?.data || res.data.length === 0) break;
-
-      allData = allData.concat(res.data);
-      page++;
-
-      if (page > 100) break; // предохранитель от зацикливания
-    } catch (err) {
-      if (err.message.includes("404") || err.message.includes("no results"))
-        break;
-      console.warn(`⚠️ fetchAllPages error (${url}):`, err.message);
-      break;
-    }
-  }
-
-  return allData;
-}
-
-// === 1️⃣ Локации ===
-app.get("/api/branches", (req, res) => {
-  const branchIds = [
-    { name: "01.1_G_CAR_KY", id: 134397 },
-    { name: "02.1_G_CAR_LV", id: 137783 },
-    { name: "02.2_G_CAR_LV", id: 170450 },
-    { name: "02.3_G_CAR_LV", id: 198255 },
-    { name: "03_G_CAR_OD", id: 171966 },
-    { name: "07_G_CAR_VN", id: 189625 },
-    { name: "08_G_CAR_PLT", id: 147848 },
-    { name: "09_G_CAR_IF", id: 186381 },
-    { name: "15_G_CAR_CK", id: 185929 },
-    { name: "16_G_CAR_CV", id: 155210 },
-    { name: "18.1_G_CAR_LU", id: 158504 },
-    { name: "18.2_G_CAR_LU", id: 177207 },
-    { name: "18.3_G_CAR_LU", id: 205571 },
-    { name: "19.1_G_CAR_RV", id: 154905 },
-    { name: "19.2_G_CAR_RV", id: 184657 },
-  ];
-
-  res.json(branchIds);
-});
-
-// === 2️⃣ Склады конкретной локации ===
-app.get("/api/warehouses/:branchId", async (req, res) => {
-  const { branchId } = req.params;
-
-  try {
-    const data = await apiGet(`/warehouse/?branch_id=${branchId}`);
-    res.json({ success: true, data: data.data });
-  } catch (err) {
-    console.error("❌ /api/warehouses:", err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// === 3️⃣ Товары на складе (все страницы) ===
-app.get("/api/warehouse-goods/:warehouseId", async (req, res) => {
-  const { warehouseId } = req.params;
-
-  try {
-    const goods = await fetchAllPages(
-      `/warehouse/goods/${warehouseId}?exclude_zero_residue=true`
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            const result = JSON.parse(data);
+            resolve(result.success && result.cookies ? result.cookies : null);
+          } catch (err) {
+            resolve(null);
+          }
+        });
+      }
     );
-    res.json({ success: true, total: goods.length, data: goods });
-  } catch (err) {
-    console.error("❌ /api/warehouse-goods:", err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+    req.on("error", () => resolve(null));
+    req.write(postData);
+    req.end();
+  });
+}
 
-// === 4️⃣ Історія товару по складу ===
-// === 4️⃣ Історія товару по складу (НОВА ВЕРСІЯ) ===
-app.get("/api/goods-history/:productId/:warehouseId", async (req, res) => {
-  const { productId, warehouseId } = req.params;
-  const branchId = req.query.branch_id;
+function webGet(path, cookies) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: "web.roapp.io",
+        port: 443,
+        path: path,
+        method: "GET",
+        headers: { Cookie: cookies, Accept: "application/json" },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          console.log(
+            "📡 webGet відповідь:",
+            res.statusCode,
+            "→",
+            data.length,
+            "байт"
+          );
+          if (res.statusCode === 401) {
+            console.log("⚠️ 401 Unauthorized");
+            reject(new Error("401"));
+          } else {
+            try {
+              const parsed = JSON.parse(data);
+              resolve(parsed);
+            } catch (err) {
+              console.error("❌ Помилка парсингу JSON:", err.message);
+              reject(new Error("Invalid JSON"));
+            }
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
 
-  if (!branchId) {
+function apiGet(path, token) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: "api.roapp.io",
+        port: 443,
+        path: path,
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: "Bearer " + token,
+        },
+      },
+      (res) => {
+        res.setEncoding("utf8");
+        let data = "";
+        let chunkCount = 0;
+
+        res.on("data", (chunk) => {
+          data += chunk;
+          chunkCount++;
+        });
+
+        res.on("end", () => {
+          console.log(
+            "📊 API відповідь:",
+            chunkCount,
+            "chunks,",
+            data.length,
+            "символів"
+          );
+
+          if (res.statusCode === 401) {
+            reject(new Error("401"));
+          } else {
+            try {
+              const parsed = JSON.parse(data);
+              console.log(
+                "📦 Розпарсено:",
+                parsed.data ? parsed.data.length : 0,
+                "записів"
+              );
+              resolve(parsed);
+            } catch (err) {
+              console.error("❌ Помилка парсингу:", err.message);
+              console.error("📄 Довжина:", data.length);
+              reject(new Error("Invalid JSON"));
+            }
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+app.post("/api/login", async (req, res) => {
+  const { username, password, apiToken } = req.body;
+  if (!username || !password || !apiToken)
     return res
       .status(400)
-      .json({ success: false, error: "branch_id є обов'язковим параметром" });
-  }
+      .json({ success: false, error: "Всі поля обов'язкові" });
 
   try {
-    let cookies = await getCookies();
+    console.log("🔐 Вхід:", username);
+    const cookies = await getCookiesFromLoginService(username, password, true);
+    if (!cookies)
+      return res.status(401).json({ success: false, error: "Невірний логін" });
 
-    if (!cookies) {
-      return res.status(500).json({
-        success: false,
-        error: "Не вдалося отримати cookies для авторизації",
-      });
-    }
+    req.session.username = username;
+    req.session.password = password;
+    req.session.cookies = cookies;
+    req.session.apiToken = apiToken;
 
-    const allOps = [];
+    console.log("✅", username, "увійшов");
+    res.json({ success: true, username: username });
+  } catch (err) {
+    console.error("Помилка:", err);
+    res.status(500).json({ success: false, error: "Помилка сервера" });
+  }
+});
 
-    // 🆕 НОВИЙ ПІДХІД: Використовуємо універсальний ендпоінт get-goods-flow-items
-    // Він повертає ВСЮ історію товару з усіма типами операцій
+app.post("/api/logout", (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
 
-    // Маппінг типів операцій з API на зрозумілі назви
-    const OPERATION_TYPES = {
-      0: "Замовлення",
-      1: "Продаж",
-      3: "Оприходування",
-      4: "Списання",
-      5: "Переміщення",
-      7: "Повернення постачальнику",
-    };
+app.get("/api/auth-status", (req, res) => {
+  res.json(
+    req.session.username && req.session.cookies
+      ? { authenticated: true, username: req.session.username }
+      : { authenticated: false }
+  );
+});
 
-    // Отримуємо поточний timestamp для endDate
-    const endDate = Date.now();
+app.get("/api/warehouses", requireAuth, async (req, res) => {
+  const { branch_id } = req.query;
+  if (!branch_id)
+    return res
+      .status(400)
+      .json({ success: false, error: "branch_id обов'язковий" });
 
-    // Запит до нового ендпоінту
-    let page = 1;
-    let hasMorePages = true;
+  try {
+    const apiToken = req.session.apiToken;
+    if (!apiToken)
+      return res
+        .status(401)
+        .json({ success: false, error: "API Token відсутній" });
 
-    console.log(
-      `📊 Завантаження історії товару ${productId} на складі ${warehouseId}...`
-    );
+    const data = await apiGet("/warehouse/?branch_id=" + branch_id, apiToken);
+    console.log("✅ Складів:", data.data ? data.data.length : 0);
+    res.json({ success: true, warehouses: data.data || [] });
+  } catch (err) {
+    console.error("❌ Помилка:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-    while (hasMorePages && page <= 100) {
-      const url = `/app/warehouse/get-goods-flow-items?page=${page}&pageSize=50&id=${productId}&startDate=0&endDate=${endDate}`;
+app.get(
+  "/api/warehouse-all-goods/:warehouseId",
+  requireAuth,
+  async (req, res) => {
+    const { warehouseId } = req.params;
+    console.log("📦 /api/warehouse-all-goods:", warehouseId);
 
-      try {
-        const data = await webGet(url, cookies);
+    try {
+      const apiToken = req.session.apiToken;
+      if (!apiToken)
+        return res
+          .status(401)
+          .json({ success: false, error: "API Token відсутній" });
+
+      const allGoods = [];
+      let page = 1;
+      let hasMorePages = true;
+
+      while (hasMorePages && page <= 100) {
+        const url =
+          "/warehouse/goods/" +
+          warehouseId +
+          "?exclude_zero_residue=true&page=" +
+          page +
+          "&pageSize=50";
+        console.log("📡 Запит сторінки", page + ":", url);
+
+        const data = await apiGet(url, apiToken);
 
         if (!data.data || data.data.length === 0) {
           hasMorePages = false;
           break;
         }
 
+        allGoods.push(...data.data);
         console.log(
-          `📄 Сторінка ${page}: знайдено ${data.data.length} операцій`
+          "✅ Отримано",
+          data.data.length,
+          "товарів (всього:",
+          allGoods.length + ")"
         );
 
-        // Обробляємо кожну операцію
-        for (const item of data.data) {
-          // Фільтруємо тільки операції для потрібного складу
-          if (String(item.warehouse_id) !== String(warehouseId)) {
-            continue;
-          }
-
-          const operationType = OPERATION_TYPES[item.relation_type];
-
-          // Якщо тип операції невідомий, пропускаємо
-          if (!operationType) {
-            console.warn(`⚠️ Невідомий тип операції: ${item.relation_type}`);
-            continue;
-          }
-
-          // Визначаємо delta (income - приход, outcome - витрата)
-          let delta = 0;
-          let finalOperationType = operationType;
-
-          if (item.income !== undefined && item.income !== null) {
-            delta = +item.income; // Приход товару
-            // Для переміщення уточнюємо напрямок
-            if (item.relation_type === 5) {
-              finalOperationType = "Переміщення (вхід)";
-            }
-          } else if (item.outcome !== undefined && item.outcome !== null) {
-            delta = -item.outcome; // Витрата товару
-            // Для переміщення уточнюємо напрямок
-            if (item.relation_type === 5) {
-              finalOperationType = "Переміщення (вихід)";
-            }
-          }
-
-          allOps.push({
-            type: finalOperationType,
-            date: new Date(item.created_at),
-            delta: delta,
-            documentId: item.relation_id_label || item.relation_id,
-            clientName: item.client_name || null,
-            warehouseTitle: item.warehouse_title || null,
-          });
-        }
-
-        page++;
-
-        // Якщо отримали менше ніж pageSize, значить це остання сторінка
+        // Якщо отримали менше 50, це остання сторінка
         if (data.data.length < 50) {
           hasMorePages = false;
         }
-      } catch (err) {
-        console.log(`🔍 DEBUG: err.message = "${err.message}"`);
-        console.log(
-          `🔍 DEBUG: includes('401') = ${err.message.includes("401")}`
-        );
-        console.log(`🔍 DEBUG: page = ${page}`);
 
-        // Перевіряємо чи це помилка 401 (Unauthorized)
-        if (err.message.includes("401") && page === 1) {
-          console.warn(`⚠️ Помилка 401 - cookies застаріли, оновлюємо...`);
-
-          // Оновлюємо cookies примусово
-          cookies = await getCookies(true);
-
-          if (cookies) {
-            console.log(`🔄 Повторна спроба з новими cookies...`);
-            // Повторюємо запит з новими cookies
-            try {
-              const data = await webGet(url, cookies);
-
-              if (data.data && data.data.length > 0) {
-                console.log(
-                  `📄 Сторінка ${page}: знайдено ${data.data.length} операцій`
-                );
-
-                // Обробляємо операції (копіюємо логіку з основного блоку)
-                for (const item of data.data) {
-                  if (String(item.warehouse_id) !== String(warehouseId))
-                    continue;
-
-                  const operationType = OPERATION_TYPES[item.relation_type];
-                  if (!operationType) continue;
-
-                  let delta = 0;
-                  let finalOperationType = operationType;
-
-                  if (item.income !== undefined && item.income !== null) {
-                    delta = +item.income;
-                    if (item.relation_type === 5)
-                      finalOperationType = "Переміщення (вхід)";
-                  } else if (
-                    item.outcome !== undefined &&
-                    item.outcome !== null
-                  ) {
-                    delta = -item.outcome;
-                    if (item.relation_type === 5)
-                      finalOperationType = "Переміщення (вихід)";
-                  }
-
-                  allOps.push({
-                    type: finalOperationType,
-                    date: new Date(item.created_at),
-                    delta: delta,
-                    documentId: item.relation_id_label || item.relation_id,
-                    clientName: item.client_name || null,
-                    warehouseTitle: item.warehouse_title || null,
-                  });
-                }
-
-                page++;
-                if (data.data.length < 50) hasMorePages = false;
-              } else {
-                hasMorePages = false;
-              }
-            } catch (retryErr) {
-              console.warn(`⚠️ Повторна спроба не вдалася:`, retryErr.message);
-              hasMorePages = false;
-            }
-          } else {
-            console.error(`❌ Не вдалося оновити cookies`);
-            hasMorePages = false;
-          }
-        } else {
-          console.warn(`⚠️ Помилка на сторінці ${page}:`, err.message);
-          hasMorePages = false;
-        }
+        page++;
       }
+
+      console.log("🎯 Загалом завантажено товарів:", allGoods.length);
+
+      if (allGoods.length > 0) {
+        console.log("📊 Перший:", allGoods[0].title);
+        console.log("📊 Останній:", allGoods[allGoods.length - 1].title);
+      }
+
+      res.json({ success: true, goods: allGoods });
+    } catch (err) {
+      console.error("❌ Помилка:", err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+app.get("/api/search-goods", requireAuth, async (req, res) => {
+  const { branch_id, warehouse_id, query } = req.query;
+  if (!branch_id || !warehouse_id)
+    return res
+      .status(400)
+      .json({ success: false, error: "branch_id та warehouse_id обов'язкові" });
+
+  try {
+    const apiToken = req.session.apiToken;
+    if (!apiToken)
+      return res
+        .status(401)
+        .json({ success: false, error: "API Token відсутній" });
+
+    console.log("🔍 Пошук:", query || "(всі товари)");
+
+    // Завантажуємо всі товари зі складу
+    const allGoods = [];
+    let page = 1;
+    let hasMorePages = true;
+
+    while (hasMorePages && page <= 100) {
+      const url =
+        "/warehouse/goods/" +
+        warehouse_id +
+        "?exclude_zero_residue=true&page=" +
+        page +
+        "&pageSize=50";
+
+      const data = await apiGet(url, apiToken);
+
+      if (!data.data || data.data.length === 0) {
+        hasMorePages = false;
+        break;
+      }
+
+      allGoods.push(...data.data);
+
+      if (data.data.length < 50) {
+        hasMorePages = false;
+      }
+
+      page++;
     }
 
-    // Сортуємо за датою
-    allOps.sort((a, b) => new Date(a.date) - new Date(b.date));
+    console.log("📦 Завантажено товарів:", allGoods.length);
 
-    console.log(`✅ Загалом знайдено операцій: ${allOps.length}`);
+    // Фільтруємо по запиту
+    let filteredGoods = allGoods;
 
-    // Групуємо статистику по типах
-    const stats = {};
-    allOps.forEach((op) => {
-      stats[op.type] = (stats[op.type] || 0) + 1;
-    });
-    console.log(`📊 Статистика:`, stats);
+    if (query && query.trim()) {
+      const searchTerm = query.toLowerCase().trim();
+      filteredGoods = allGoods.filter((g) => {
+        const title = (g.title || "").toLowerCase();
+        const article = (g.article || "").toLowerCase();
+        return title.includes(searchTerm) || article.includes(searchTerm);
+      });
+      console.log(
+        "✅ Знайдено після фільтрації:",
+        filteredGoods.length,
+        "товарів"
+      );
+    } else {
+      console.log("✅ Повернуто всі товари:", filteredGoods.length);
+    }
 
     res.json({
       success: true,
-      total: allOps.length,
-      productId,
-      warehouseId,
-      branchId,
-      history: allOps,
-      stats,
+      goods: filteredGoods,
+      count: filteredGoods.length,
     });
   } catch (err) {
-    console.error("❌ /api/goods-history:", err.message);
+    console.error("❌ Помилка пошуку:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// === 5️⃣ Раздача фронтенда (если index.html в /public) ===
-import path from "path";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.get(
+  "/api/goods-history/:productId/:warehouseId",
+  requireAuth,
+  async (req, res) => {
+    const { productId, warehouseId } = req.params;
+    const { branch_id, startDate } = req.query;
+    if (!branch_id)
+      return res
+        .status(400)
+        .json({ success: false, error: "branch_id обов'язковий" });
 
-app.use(express.static(path.join(__dirname, "public")));
-app.get("/", (req, res) =>
-  res.sendFile(path.join(__dirname, "public", "index.html"))
+    try {
+      let cookies = req.session.cookies;
+      const username = req.session.username;
+      const password = req.session.password;
+
+      if (!cookies)
+        return res
+          .status(401)
+          .json({ success: false, error: "Сесія застаріла" });
+
+      const allOps = [];
+      const OPERATION_TYPES = {
+        0: "Замовлення",
+        1: "Продаж",
+        3: "Оприходування",
+        4: "Списання",
+        5: "Переміщення",
+        7: "Повернення",
+      };
+      const historyStartDate = startDate ? parseInt(startDate) : 0;
+      const endDate = Date.now();
+
+      let page = 1,
+        hasMorePages = true;
+
+      console.log(
+        "📊 Запит історії для productId:",
+        productId,
+        "warehouseId:",
+        warehouseId
+      );
+
+      while (hasMorePages && page <= 50) {
+        const url =
+          "/app/warehouse/get-goods-flow-items?page=" +
+          page +
+          "&pageSize=50&id=" +
+          productId +
+          "&startDate=" +
+          historyStartDate +
+          "&endDate=" +
+          endDate;
+
+        try {
+          const data = await webGet(url, cookies);
+          console.log(
+            "📦 Сторінка",
+            page + ":",
+            data.data ? data.data.length : 0,
+            "записів"
+          );
+
+          if (!data.data || data.data.length === 0) {
+            hasMorePages = false;
+            break;
+          }
+
+          for (const item of data.data) {
+            const operationType = OPERATION_TYPES[item.relation_type];
+            if (!operationType) continue;
+
+            let delta = 0,
+              finalType = operationType,
+              clientName = item.client_name || item.client_title || "—";
+            let targetWarehouseId = item.warehouse_id; // За замовчуванням - основний склад
+
+            // Обробка переміщень (relation_type === 5)
+            if (item.relation_type === 5) {
+              if (item.income > 0) {
+                // ВХІД: товар приходить на optional_warehouse (склад-отримувач)
+                targetWarehouseId = item.optional_warehouse_id;
+                delta = +item.income;
+                finalType = "Переміщення (вхід)";
+                clientName = item.warehouse_title || "—"; // Звідки прийшов товар
+              } else if (item.outcome > 0) {
+                // ВИХІД: товар йде з warehouse (склад-відправник)
+                targetWarehouseId = item.warehouse_id;
+                delta = -item.outcome;
+                finalType = "Переміщення (вихід)";
+                clientName = item.optional_warehouse_title || "—"; // Куди пішов товар
+              }
+            }
+            // Інші типи операцій (не переміщення)
+            else {
+              targetWarehouseId = item.warehouse_id;
+
+              if (item.income > 0) {
+                delta = +item.income;
+              }
+              if (item.outcome > 0) {
+                delta = -item.outcome;
+              }
+            }
+
+            // Фільтруємо: залишаємо тільки операції для нашого складу
+            if (String(targetWarehouseId) !== String(warehouseId)) continue;
+
+            allOps.push({
+              type: finalType,
+              date: new Date(item.created_at),
+              delta: delta,
+              documentId: item.relation_id_label || "—",
+              clientName: clientName,
+              warehouseTitle: item.warehouse_title || "—",
+              employeeId: item.employee_id || null, // ← Додаємо employee_id
+            });
+          }
+
+          page++;
+          if (data.data.length < 50) hasMorePages = false;
+        } catch (err) {
+          if (err.message.includes("401") && page === 1) {
+            cookies = await getCookiesFromLoginService(
+              username,
+              password,
+              true
+            );
+            if (cookies) {
+              req.session.cookies = cookies;
+              continue;
+            }
+          }
+          throw err;
+        }
+      }
+
+      allOps.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      console.log("✅ Знайдено операцій:", allOps.length);
+
+      const stats = {};
+      allOps.forEach((op) => {
+        stats[op.type] = (stats[op.type] || 0) + 1;
+      });
+
+      res.json({ success: true, operations: allOps, stats: stats });
+    } catch (err) {
+      console.error("❌ Помилка історії:", err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 );
 
-// === Запуск сервера ===
+// Кеш для списку співробітників
+let employeesCache = null;
+let employeesCacheTime = 0;
+const EMPLOYEES_CACHE_TTL = 30 * 60 * 1000; // 30 хвилин
+
+// Функція для завантаження списку всіх співробітників
+async function loadAllEmployees(apiToken) {
+  const now = Date.now();
+
+  // Перевіряємо кеш
+  if (employeesCache && now - employeesCacheTime < EMPLOYEES_CACHE_TTL) {
+    console.log("📦 Використовуємо кешований список співробітників");
+    return employeesCache;
+  }
+
+  console.log("🔄 Завантажуємо список всіх співробітників...");
+  const data = await apiGet("/employees/", apiToken);
+
+  if (data && data.data && Array.isArray(data.data)) {
+    // Створюємо Map для швидкого пошуку за ID
+    const employeesMap = new Map();
+    data.data.forEach((emp) => {
+      if (!emp.deleted) {
+        // Пропускаємо видалених
+        const fullName =
+          (emp.first_name || "").trim() +
+          (emp.last_name ? " " + emp.last_name.trim() : "");
+        employeesMap.set(emp.id, fullName || "—");
+      }
+    });
+
+    employeesCache = employeesMap;
+    employeesCacheTime = now;
+
+    console.log(`✅ Завантажено ${employeesMap.size} співробітників`);
+    return employeesMap;
+  }
+
+  console.log("⚠️ Не вдалося завантажити співробітників");
+  return new Map();
+}
+
+// Ендпоінт для отримання імені співробітника
+app.get("/api/employee/:employeeId", requireAuth, async (req, res) => {
+  const { employeeId } = req.params;
+
+  try {
+    const apiToken = req.session.apiToken;
+    if (!apiToken) {
+      return res
+        .status(401)
+        .json({ success: false, error: "API Token відсутній" });
+    }
+
+    console.log("👤 Запит співробітника:", employeeId);
+
+    // Завантажуємо список всіх співробітників (або беремо з кешу)
+    const employeesMap = await loadAllEmployees(apiToken);
+
+    // Шукаємо співробітника за ID
+    const employeeName = employeesMap.get(parseInt(employeeId));
+
+    if (employeeName) {
+      console.log("✅ Знайдено:", employeeName);
+      res.json({ success: true, name: employeeName });
+    } else {
+      console.log(
+        "⚠️ Співробітник не знайдений або видалений (ID:",
+        employeeId,
+        ")"
+      );
+      res.json({ success: true, name: "—" });
+    }
+  } catch (err) {
+    console.error("❌ Помилка отримання співробітника:", err.message);
+    res.json({ success: true, name: "—" });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log("🚀 RemOnline Sync v5.5.8 → http://localhost:" + PORT + "/");
 });

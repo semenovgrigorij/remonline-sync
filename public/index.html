@@ -3,94 +3,164 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управління складами</title>
+    <title>RemOnline v5.5.6</title>
     <style>
         * {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
+            box-sizing: border-box
         }
 
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
+            background: #667eea;
+            padding: 20px
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
+        .login-container {
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 400px;
+            margin: 100px auto
         }
 
-        h1 {
+        .login-container h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 20px
+        }
+
+        .form-group {
+            margin-bottom: 15px
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none
+        }
+
+        .main-container {
+            display: none
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
             margin-bottom: 20px;
-            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .logout-btn {
+            padding: 8px 15px;
+            background: #f44;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer
         }
 
         .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px
         }
 
-        select {
+        .controls select,
+        .controls input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px
+        }
+
+        .content {
+            background: white;
+            border-radius: 10px;
+            padding: 20px
+        }
+
+        .search-section {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px
+        }
+
+        .search-input {
+            flex: 1;
             padding: 10px;
             border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            min-width: 250px;
+            border-radius: 5px
         }
 
-        .inventory-table {
+        .search-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 15px
         }
 
-        .inventory-table th,
-        .inventory-table td {
-            padding: 12px;
+        th,
+        td {
+            padding: 10px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #ddd
         }
 
-        .inventory-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .inventory-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .inventory-table img {
-            border-radius: 4px;
-            object-fit: cover;
+        th {
+            background: #f5f5f5
         }
 
         .history-btn {
-            padding: 6px 12px;
-            background: #007bff;
+            padding: 5px 10px;
+            background: #4caf50;
             color: white;
             border: none;
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
+            cursor: pointer
         }
 
-        .history-btn:hover {
-            background: #0056b3;
-        }
-
-        /* Модальне вікно */
-        #historyModal {
+        .modal {
             display: none;
             position: fixed;
             top: 0;
@@ -98,323 +168,740 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
             z-index: 1000;
+            overflow-y: auto
         }
 
         .modal-content {
             background: white;
+            max-width: 1200px;
+            margin: 50px auto;
+            border-radius: 10px;
+            padding: 20px
+        }
+
+        .close-modal {
+            float: right;
+            font-size: 28px;
+            cursor: pointer
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999
+        }
+
+        /* Модальне вікно про розірвання сесії */
+        .session-expired-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.3s;
+        }
+
+        .session-expired-content {
+            background-color: white;
+            margin: 15% auto;
             padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s;
+        }
+
+        .session-expired-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .session-expired-title {
+            color: #d32f2f;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .session-expired-text {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .session-expired-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 40px;
             border-radius: 8px;
-            max-width: 800px;
-            max-height: 80vh;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .session-expired-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Контейнер для таблиці товарів з фіксованою шапкою */
+        .table-container {
+            max-height: 600px;
             overflow-y: auto;
             position: relative;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
 
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 28px;
-            cursor: pointer;
-            color: #999;
+        .table-container table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 0;
         }
 
-        .close-btn:hover {
+        .table-container thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f5f5f5;
+        }
+
+        .table-container thead th {
+            background: #f5f5f5;
+            position: sticky;
+            top: 0;
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Контейнер для модального вікна історії */
+        .modal-content {
+            background: white;
+            max-width: 1400px;
+            /* Збільшено для додаткових стовпців */
+            margin: 50px auto;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Таблиця історії з фіксованою шапкою */
+        #historyContent {
+            max-height: 500px;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        #historyContent table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 0;
+        }
+
+        #historyContent thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f5f5f5;
+        }
+
+        #historyContent thead th {
+            background: #f5f5f5;
+            position: sticky;
+            top: 0;
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+        }
+
+        #historyContent tbody td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* Кольорові виділення для +/- */
+        .plus-value {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .minus-value {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        /* Стовпець залишку */
+        .balance-cell {
+            font-weight: bold;
             color: #333;
         }
 
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        /* Стилі для імені співробітника */
+        .employee-name {
+            color: #666;
+            font-size: 13px;
         }
 
-        .history-table th,
-        .history-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+        /* Loader для завантаження імені */
+        .employee-loading {
+            color: #999;
+            font-style: italic;
+            font-size: 12px;
         }
 
-        .history-table th {
-            background: #f8f9fa;
-            font-weight: 600;
+        /* Покращена ширина стовпців */
+        #historyContent th:nth-child(1),
+        #historyContent td:nth-child(1) {
+            width: 100px;
+            /* Дата */
+        }
+
+        #historyContent th:nth-child(2),
+        #historyContent td:nth-child(2) {
+            width: 100px;
+            /* Документ */
+        }
+
+        #historyContent th:nth-child(3),
+        #historyContent td:nth-child(3) {
+            width: 150px;
+            /* Хто створив */
+        }
+
+        #historyContent th:nth-child(4),
+        #historyContent td:nth-child(4) {
+            width: 150px;
+            /* Операція */
+        }
+
+        #historyContent th:nth-child(5),
+        #historyContent td:nth-child(5) {
+            width: 200px;
+            /* Клієнт */
+        }
+
+        #historyContent th:nth-child(6),
+        #historyContent td:nth-child(6) {
+            width: 80px;
+            /* + */
+            text-align: right;
+        }
+
+        #historyContent th:nth-child(7),
+        #historyContent td:nth-child(7) {
+            width: 80px;
+            /* - */
+            text-align: right;
+        }
+
+        #historyContent th:nth-child(8),
+        #historyContent td:nth-child(8) {
+            width: 100px;
+            /* Залишок */
+            text-align: right;
+        }
+
+        /* Скролбар для webkit браузерів */
+        .table-container::-webkit-scrollbar,
+        #historyContent::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-track,
+        #historyContent::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb,
+        #historyContent::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover,
+        #historyContent::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>📦 Управління складами</h1>
 
-        <div class="controls">
-            <select id="branchSelect">
-                <option value="">— виберіть локацію —</option>
-            </select>
-
-            <select id="warehouseSelect">
-                <option value="">— виберіть склад —</option>
-            </select>
-        </div>
-
-        <div id="tableContainer"></div>
+    <div id="loginContainer" class="login-container">
+        <h1>📦 RemOnline</h1>
+        <p>v5.5.6</p>
+        <div class="error-message" id="loginError"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label>Пароль:</label>
+                <input type="password" id="password" required>
+            </div>
+            <div class="form-group">
+                <label>API Token:</label>
+                <input type="text" id="apiToken" required>
+            </div>
+            <button type="submit" class="login-btn" id="loginBtn">Увійти</button>
+        </form>
     </div>
 
-    <!-- Модальне вікно для історії -->
-    <div id="historyModal">
+    <div id="mainContainer" class="main-container">
+        <div class="header">
+            <h1>📦 RemOnline v5.5.6</h1>
+            <div>
+                <span id="userEmail"></span>
+                <button class="logout-btn" id="logoutBtn">Вийти</button>
+            </div>
+        </div>
+        <div class="controls">
+            <label>Локація:</label>
+            <select id="branchSelect">
+                <option value="">— виберіть —</option>
+            </select>
+            <label>Склад:</label>
+            <select id="warehouseSelect">
+                <option value="">— виберіть —</option>
+            </select>
+            <label>Дата:</label>
+            <input type="date" id="startDate">
+        </div>
+        <div class="content">
+            <div class="search-section">
+                <input type="text" class="search-input" id="searchInput" placeholder="Пошук...">
+                <button class="search-btn" id="searchBtn">🔍</button>
+                <button class="search-btn" id="resetBtn" style="background: #f44; display: none;">← Повернутися</button>
+            </div>
+            <div id="tableContainer" class="empty">Виберіть локацію та склад</div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" id="closeModal">&times;</span>
-            <h2>Історія товару</h2>
+            <span class="close-modal" id="closeModal">×</span>
+            <h2>📊 Історія</h2>
+            <div id="historyStats"></div>
             <div id="historyContent"></div>
         </div>
     </div>
 
+    <!-- Додайте це перед закриваючим тегом </body> -->
+
+    <!-- Модальне вікно про розірвання сесії -->
+    <div id="sessionExpiredModal" class="session-expired-modal">
+        <div class="session-expired-content">
+            <div class="session-expired-icon">⚠️</div>
+            <div class="session-expired-title">Помилка доступу</div>
+            <div class="session-expired-text">
+                Під вашим обліковим записом був виконаний вхід з іншого браузера або пристрою,
+                тому поточна сесія користувача розірвана.
+            </div>
+            <button class="session-expired-btn" onclick="reauthorize()">Авторизуватись</button>
+        </div>
+    </div>
+
+
     <script>
-        const API_BASE = window.location.origin;
+        // Скрипт для  показу модального вікна про розірвання сесії
+        // Функція для показу модального вікна про розірвання сесії
+        function showSessionExpiredModal() {
+            document.getElementById('sessionExpiredModal').style.display = 'block';
+        }
 
-        // --- Елементи DOM ---
-        const branchSelect = document.getElementById("branchSelect");
-        const warehouseSelect = document.getElementById("warehouseSelect");
-        const tableContainer = document.getElementById("tableContainer");
-        const historyModal = document.getElementById("historyModal");
-        const closeModal = document.getElementById("closeModal");
-        const historyContent = document.getElementById("historyContent");
+        // Функція для повторної авторизації
+        function reauthorize() {
+            document.getElementById('sessionExpiredModal').style.display = 'none';
+            // Показуємо форму логіну
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('mainContainer').style.display = 'none';
+            // Очищуємо поля (опціонально, залиште пароль для зручності)
+            // document.getElementById('password').value = '';
+        }
 
-        // --- Масив локацій ---
-        const branchIds = [
-            { name: "01.1_G_CAR_KY", id: 134397 },
-            { name: "02.1_G_CAR_LV", id: 137783 },
-            { name: "02.2_G_CAR_LV", id: 170450 },
-            { name: "02.3_G_CAR_LV", id: 198255 },
-            { name: "03_G_CAR_OD", id: 171966 },
-            { name: "07_G_CAR_VN", id: 189625 },
-            { name: "08_G_CAR_PLT", id: 147848 },
-            { name: "09_G_CAR_IF", id: 186381 },
-            { name: "15_G_CAR_CK", id: 185929 },
-            { name: "16_G_CAR_CV", id: 155210 },
-            { name: "18.1_G_CAR_LU", id: 158504 },
-            { name: "18.2_G_CAR_LU", id: 177207 },
-            { name: "18.3_G_CAR_LU", id: 205571 },
-            { name: "19.1_G_CAR_RV", id: 154905 },
-            { name: "19.2_G_CAR_RV", id: 184657 }
-        ];
-
-        // --- Заповнити список локацій ---
-        branchIds.forEach(b => {
-            const option = document.createElement("option");
-            option.value = b.id;
-            option.textContent = b.name;
-            branchSelect.appendChild(option);
-        });
-
-        // --- При виборі локації ---
-        branchSelect.addEventListener("change", async () => {
-            const branchId = branchSelect.value;
-            warehouseSelect.innerHTML = `<option value="">— виберіть склад —</option>`;
-            tableContainer.innerHTML = "";
-
-            if (!branchId) return;
-
+        // Глобальна функція для перевірки відповідей API
+        async function fetchWithSessionCheck(url, options = {}) {
             try {
-                const res = await fetch(`${API_BASE}/api/warehouses/${branchId}`);
-                const result = await res.json();
-                const data = result.data || result;
+                const response = await fetch(url, options);
 
-                data.forEach(w => {
-                    const option = document.createElement("option");
-                    option.value = w.id;
-                    option.textContent = w.title;
-                    warehouseSelect.appendChild(option);
-                });
-            } catch (err) {
-                console.error("❌ Error loading warehouses:", err);
-            }
-        });
-
-        // --- При виборі складу ---
-        warehouseSelect.addEventListener("change", async () => {
-            const warehouseId = warehouseSelect.value;
-            const branchId = branchSelect.value;
-            tableContainer.innerHTML = "";
-
-            if (!warehouseId) return;
-
-            tableContainer.innerHTML = "<p>⏳ Завантаження товарів...</p>";
-
-            try {
-                const res = await fetch(`${API_BASE}/api/warehouse-goods/${warehouseId}`);
-                const result = await res.json();
-
-                console.log('📦 Warehouse goods response:', result); // Дебаг
-
-                const data = result.data || result;
-
-                if (!data || data.length === 0) {
-                    tableContainer.innerHTML = "<p>Товарів на складі не знайдено або залишки нульові.</p>";
-                    return;
+                // ✅ Перевіряємо 401 ПЕРЕД парсингом JSON
+                if (response.status === 401) {
+                    console.warn('⚠️ Сесія розірвана (401)');
+                    showSessionExpiredModal();
+                    return null;
                 }
 
-                // Побудувати таблицю
-                let html = `
-                <table class="inventory-table">
-                    <thead>
-                        <tr>
-                            <th>Фото</th>
-                            <th>Назва</th>
-                            <th>Артикул</th>
-                            <th>Категорія</th>
-                            <th>Од. вим.</th>
-                            <th>Залишок</th>
-                            <th>Дія</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                `;
+                const data = await response.json();
 
-                data.forEach(item => {
-                    const image = item.image?.[0] || "https://via.placeholder.com/50";
-
-                    // 🔧 ВИПРАВЛЕНО: Правильна обробка uom
-                    let uom = "—";
-                    if (item.uom) {
-                        if (typeof item.uom === 'object' && item.uom !== null) {
-                            uom = item.uom.title || "—";
-                        } else if (typeof item.uom === 'string') {
-                            uom = item.uom;
-                        }
+                // Перевіряємо тільки помилки авторизації
+                if (!data.success && data.error) {
+                    if (data.error.includes('Не авторизовано') ||
+                        data.error.includes('Unauthorized')) {
+                        console.warn('⚠️ Сесія розірвана');
+                        showSessionExpiredModal();
+                        return null;
                     }
-
-                    // 🔧 ВИПРАВЛЕНО: Правильна обробка category
-                    let category = "—";
-                    if (item.category) {
-                        if (typeof item.category === 'object' && item.category !== null) {
-                            category = item.category.title || "—";
-                        } else if (typeof item.category === 'string') {
-                            category = item.category;
-                        }
-                    }
-
-                    html += `
-                    <tr>
-                        <td><img src="${image}" width="50" height="50"></td>
-                        <td>${item.title || "—"}</td>
-                        <td>${item.article || "—"}</td>
-                        <td>${category}</td>
-                        <td>${uom}</td>
-                        <td>${item.residue ?? 0}</td>
-                        <td><button class="history-btn" data-id="${item.id}" data-warehouse="${warehouseId}" data-branch="${branchId}">Історія</button></td>
-                    </tr>
-                    `;
-                });
-
-                html += `</tbody></table>`;
-                tableContainer.innerHTML = html;
-
-                // Прив'язати обробники до кнопок
-                document.querySelectorAll(".history-btn").forEach(btn => {
-                    btn.addEventListener("click", () => showHistory(
-                        btn.dataset.id,
-                        btn.dataset.warehouse,
-                        btn.dataset.branch
-                    ));
-                });
-            } catch (err) {
-                console.error("❌ Error loading goods:", err);
-                tableContainer.innerHTML = "<p>❌ Помилка завантаження товарів.</p>";
-            }
-        });
-
-        // --- Показати історію ---
-        async function showHistory(productId, warehouseId, branchId) {
-            historyModal.style.display = "flex";
-            historyContent.innerHTML = "<p>⏳ Завантаження історії...</p>";
-
-            try {
-                const res = await fetch(`${API_BASE}/api/goods-history/${productId}/${warehouseId}?branch_id=${branchId}`);
-                const result = await res.json();
-
-                // 🔧 ВИПРАВЛЕНО: Читаємо history замість data!
-                const historyData = result.history || result.data || [];
-
-                console.log("History response:", result); // для дебагу
-
-                if (!historyData || historyData.length === 0) {
-                    historyContent.innerHTML = "<p>Історію для товару не знайдено.</p>";
-                    return;
                 }
 
-                let html = `
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Дата</th>
-                            <th>Операція</th>
-                            <th>+</th>
-                            <th>-</th>
-                            <th>Залишок після</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                `;
-
-                let runningBalance = 0;
-
-                // Сортуємо за датою
-                historyData.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                for (const op of historyData) {
-                    // 🔧 ВИПРАВЛЕНО: Використовуємо delta замість amount
-                    const delta = Math.abs(Number(op.delta) || 0);
-                    let plus = "", minus = "";
-
-                    // Позитивна delta = приход
-                    if (op.delta > 0) {
-                        plus = delta;
-                        runningBalance += delta;
-                    } else {
-                        // Негативна delta = витрата
-                        minus = delta;
-                        runningBalance -= delta;
-                    }
-
-                    html += `
-                    <tr>
-                        <td>${new Date(op.date).toLocaleDateString('uk-UA')}</td>
-                        <td>${op.type}</td>
-                        <td>${plus}</td>
-                        <td>${minus}</td>
-                        <td>${runningBalance}</td>
-                    </tr>
-                    `;
-                }
-
-                html += `
-                    </tbody>
-                </table>
-                <p style="margin-top: 15px;"><strong>Поточний залишок: ${runningBalance}</strong></p>
-                `;
-
-                historyContent.innerHTML = html;
-            } catch (err) {
-                console.error("❌ Error loading history:", err);
-                historyContent.innerHTML = "<p>❌ Помилка отримання історії.</p>";
+                return data;
+            } catch (error) {
+                console.error('❌ Помилка:', error);
+                throw error;
             }
         }
 
-        // --- Закрити модалку ---
-        closeModal.addEventListener("click", () => {
-            historyModal.style.display = "none";
+        // Основной скрипт
+        const API = '';
+        const loginContainer = document.getElementById('loginContainer');
+        const mainContainer = document.getElementById('mainContainer');
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
+        const apiToken = document.getElementById('apiToken');
+        const userEmail = document.getElementById('userEmail');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const branchSelect = document.getElementById('branchSelect');
+        const warehouseSelect = document.getElementById('warehouseSelect');
+        const startDate = document.getElementById('startDate');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const tableContainer = document.getElementById('tableContainer');
+        const historyModal = document.getElementById('historyModal');
+        const closeModal = document.getElementById('closeModal');
+        const historyStats = document.getElementById('historyStats');
+        const historyContent = document.getElementById('historyContent');
+
+        const branches = [
+            { name: "01.1_G_CAR_KY", id: 134397 }, { name: "02.1_G_CAR_LV", id: 137783 }, { name: "02.2_G_CAR_LV", id: 170450 },
+            { name: "02.3_G_CAR_LV", id: 198255 }, { name: "03_G_CAR_OD", id: 171966 }, { name: "07_G_CAR_VN", id: 189625 },
+            { name: "08_G_CAR_PLT", id: 147848 }, { name: "09_G_CAR_IF", id: 186381 }, { name: "15_G_CAR_CK", id: 185929 },
+            { name: "16_G_CAR_CV", id: 155210 }, { name: "18.1_G_CAR_LU", id: 158504 }, { name: "18.2_G_CAR_LU", id: 177207 },
+            { name: "18.3_G_CAR_LU", id: 205571 }, { name: "19.1_G_CAR_RV", id: 154905 }, { name: "19.2_G_CAR_RV", id: 184657 }
+        ];
+        branches.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; branchSelect.appendChild(o); });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = username.value, p = password.value, t = apiToken.value;
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Вхід...';
+            loginError.style.display = 'none';
+            try {
+                const r = await fetch(API + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ username: u, password: p, apiToken: t }) });
+                const d = await r.json();
+                if (d.success) { userEmail.textContent = d.username; loginContainer.style.display = 'none'; mainContainer.style.display = 'block'; }
+                else { loginError.textContent = d.error || 'Помилка'; loginError.style.display = 'block'; }
+            } catch (e) { loginError.textContent = 'Помилка'; loginError.style.display = 'block'; }
+            finally { loginBtn.disabled = false; loginBtn.textContent = 'Увійти'; }
         });
 
-        window.addEventListener("click", e => {
-            if (e.target === historyModal) {
-                historyModal.style.display = "none";
-            }
+        logoutBtn.addEventListener('click', async () => {
+            await fetch(API + '/api/logout', { method: 'POST', credentials: 'include' });
+            location.reload();
         });
+
+        branchSelect.addEventListener('change', async () => {
+            const bid = branchSelect.value;
+            warehouseSelect.innerHTML = '<option value="">— виберіть —</option>';
+            tableContainer.innerHTML = '<div class="empty">Виберіть склад</div>';
+            if (!bid) return;
+            try {
+                // const r = await fetch(API + '/api/warehouses?branch_id=' + bid, { credentials: 'include' });
+                // const d = await r.json();
+                const d = await fetchWithSessionCheck(API + '/api/warehouses?branch_id=' + bid, { credentials: 'include' });
+                if (!d) return;
+                if (d.success && d.warehouses) {
+                    d.warehouses.forEach(w => { const o = document.createElement('option'); o.value = w.id; o.textContent = w.title; warehouseSelect.appendChild(o); });
+                }
+            } catch (e) { console.error(e); }
+        });
+
+        async function loadWarehouseGoods() {
+            const wid = warehouseSelect.value;
+            if (!wid) { tableContainer.innerHTML = '<div class="empty">Виберіть склад</div>'; return; }
+            tableContainer.innerHTML = '<div class="empty">Завантаження...</div>';
+            resetBtn.style.display = 'none';
+            searchInput.value = '';
+
+            try {
+                console.log('🔄 Склад:', wid);
+                const d = await fetchWithSessionCheck(API + '/api/warehouse-all-goods/' + wid, { credentials: 'include' });
+
+                if (!d) return; // Сесія розірвана
+
+                console.log('📦 Відповідь:', d);
+                console.log('📊 Товарів:', d.goods ? d.goods.length : 0);
+
+                if (d.success && d.goods && d.goods.length > 0) {
+                    console.log('✅ Будуємо таблицю:', d.goods.length);
+
+                    let h = '<p><strong>Товарів: ' + d.goods.length + '</strong></p>';
+                    h += '<div class="table-container">'; // ← Контейнер зі скролом
+                    h += '<table><thead><tr><th>№</th><th>Фото</th><th>Назва</th><th>Артикул</th><th>Залишок</th><th>Дія</th></tr></thead><tbody>';
+
+                    d.goods.forEach((g, i) => {
+                        const img = g.image && g.image.length > 0 ? g.image[0] : '';
+                        const imgH = img ? '<img src="' + img + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">' : '—';
+                        h += '<tr>';
+                        h += '<td>' + (i + 1) + '</td>';
+                        h += '<td>' + imgH + '</td>';
+                        h += '<td>' + g.title + '</td>';
+                        h += '<td>' + (g.article || '—') + '</td>';
+                        h += '<td><strong>' + (g.residue || 0) + '</strong></td>';
+                        h += '<td><button class="history-btn" onclick="showHistory(' + g.id + ',\'' + g.title.replace(/'/g, "\\'") + '\')">Історія</button></td>';
+                        h += '</tr>';
+                    });
+
+                    h += '</tbody></table>';
+                    h += '</div>'; // ← Закриваємо контейнер
+                    tableContainer.innerHTML = h;
+                    console.log('✅ Готово');
+                } else {
+                    tableContainer.innerHTML = '<div class="empty">Немає товарів</div>';
+                }
+            } catch (e) {
+                console.error('❌', e);
+                tableContainer.innerHTML = '<div class="empty">Помилка</div>';
+            }
+        }
+
+        warehouseSelect.addEventListener('change', loadWarehouseGoods);
+
+        searchBtn.addEventListener('click', doSearch);
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') doSearch(); });
+
+        // ====================================
+        // ОНОВЛЕННЯ ДЛЯ doSearch
+        // ====================================
+
+        async function doSearch() {
+            const bid = branchSelect.value, wid = warehouseSelect.value, q = searchInput.value.trim();
+            if (!bid || !wid) { alert('Виберіть локацію та склад'); return; }
+            tableContainer.innerHTML = '<div class="empty">Завантаження...</div>';
+
+            try {
+                const d = await fetchWithSessionCheck(
+                    API + '/api/search-goods?branch_id=' + bid + '&warehouse_id=' + wid + '&query=' + encodeURIComponent(q),
+                    { credentials: 'include' }
+                );
+
+                if (!d) return; // Сесія розірвана
+
+                if (d.success && d.goods.length > 0) {
+                    let h = '<div class="table-container">'; // ← Додаємо контейнер
+                    h += '<table><thead><tr><th>№</th><th>Фото</th><th>Назва</th><th>Артикул</th><th>Залишок</th><th>Дія</th></tr></thead><tbody>';
+
+                    d.goods.forEach((g, i) => {
+                        const img = g.image && g.image.length > 0 ? g.image[0] : '';
+                        const imgH = img ? '<img src="' + img + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">' : '—';
+                        const am = g.amount || g.residue || 0;
+                        h += '<tr>';
+                        h += '<td>' + (i + 1) + '</td>';
+                        h += '<td>' + imgH + '</td>';
+                        h += '<td>' + g.title + '</td>';
+                        h += '<td>' + (g.article || '—') + '</td>';
+                        h += '<td><strong>' + am + '</strong></td>';
+                        h += '<td><button class="history-btn" onclick="showHistory(' + g.id + ',\'' + g.title.replace(/'/g, "\\'") + '\')">Історія</button></td>';
+                        h += '</tr>';
+                    });
+
+                    h += '</tbody></table>';
+                    h += '</div>'; // ← Закриваємо контейнер
+                    tableContainer.innerHTML = h;
+                    resetBtn.style.display = 'inline-block';
+                } else {
+                    tableContainer.innerHTML = '<div class="empty">Нічого не знайдено</div>';
+                    resetBtn.style.display = 'inline-block';
+                }
+            } catch (e) {
+                console.error(e);
+                tableContainer.innerHTML = '<div class="empty">Помилка пошуку</div>';
+            }
+        }
+
+        resetBtn.addEventListener('click', loadWarehouseGoods);
+
+        // Кеш для імен співробітників (щоб не робити повторні запити)
+        const employeeCache = new Map();
+
+        // Функція для отримання імені співробітника
+        async function getEmployeeName(employeeId) {
+            if (!employeeId) {
+                console.log('⚠️ employeeId порожній');
+                return "—";
+            }
+
+            console.log('👤 Запит імені для employeeId:', employeeId);
+
+            // Перевіряємо кеш
+            if (employeeCache.has(employeeId)) {
+                console.log('📦 Взято з кешу:', employeeCache.get(employeeId));
+                return employeeCache.get(employeeId);
+            }
+
+            try {
+                const response = await fetchWithSessionCheck(
+                    API + '/api/employee/' + employeeId,
+                    { credentials: 'include' }
+                );
+
+                if (!response) {
+                    console.log('❌ Відповідь порожня');
+                    return "—";
+                }
+
+                console.log('📥 Відповідь API:', response);
+
+                const name = response.success && response.name ? response.name : "—";
+                console.log('✅ Ім\'я співробітника:', name);
+
+                employeeCache.set(employeeId, name);
+                return name;
+            } catch (e) {
+                console.error('❌ Помилка завантаження співробітника:', e);
+                return "—";
+            }
+        }
+
+        async function showHistory(pid, title) {
+            const bid = branchSelect.value, wid = warehouseSelect.value;
+            const s = startDate.value ? new Date(startDate.value).getTime() : 0;
+            historyStats.innerHTML = '<h3>' + title + '</h3><p>Завантаження...</p>';
+            historyContent.innerHTML = '';
+            historyModal.style.display = 'block';
+
+            try {
+                const d = await fetchWithSessionCheck(
+                    API + '/api/goods-history/' + pid + '/' + wid + '?branch_id=' + bid + '&startDate=' + s,
+                    { credentials: 'include' }
+                );
+
+                if (!d) {
+                    historyModal.style.display = 'none';
+                    return;
+                }
+
+                console.log('📊 Отримано операцій:', d.operations.length);
+                console.log('📋 Перша операція:', d.operations[0]);
+
+                if (d.success && d.operations.length > 0) {
+                    let bal = 0;
+
+                    // Створюємо таблицю
+                    let h = '<table>';
+                    h += '<thead><tr>';
+                    h += '<th>Дата</th>';
+                    h += '<th>Документ</th>';
+                    h += '<th>Хто створив</th>';
+                    h += '<th>Операція</th>';
+                    h += '<th>Клієнт</th>';
+                    h += '<th style="text-align:right">+</th>';
+                    h += '<th style="text-align:right">-</th>';
+                    h += '<th style="text-align:right">Залишок</th>';
+                    h += '</tr></thead>';
+                    h += '<tbody>';
+
+                    d.operations.forEach((op, index) => {
+                        bal += op.delta;
+                        const dt = new Date(op.date).toLocaleDateString('uk-UA');
+                        const time = new Date(op.date).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+                        const pl = op.delta > 0 ? op.delta : '';
+                        const mn = op.delta < 0 ? Math.abs(op.delta) : '';
+
+                        h += '<tr>';
+                        h += '<td>' + dt + '<br><small style="color:#999">' + time + '</small></td>';
+                        h += '<td>' + op.documentId + '</td>';
+                        h += '<td class="employee-cell" data-employee-id="' + (op.employeeId || '') + '" data-row="' + index + '">';
+                        h += '<span class="employee-loading">⏳...</span>';
+                        h += '</td>';
+                        h += '<td>' + op.type + '</td>';
+                        h += '<td>' + op.clientName + '</td>';
+                        h += '<td class="plus-value" style="text-align:right">' + (pl ? '+' + pl : '') + '</td>';
+                        h += '<td class="minus-value" style="text-align:right">' + (mn ? '-' + mn : '') + '</td>';
+                        h += '<td class="balance-cell" style="text-align:right"><strong>' + bal + '</strong></td>';
+                        h += '</tr>';
+                    });
+
+                    h += '</tbody></table>';
+                    historyStats.innerHTML = '<h3>' + title + '</h3><p>Операцій: ' + d.operations.length + '</p>';
+                    historyContent.innerHTML = h;
+
+                    console.log('🔄 Починаємо завантаження імен співробітників...');
+
+                    // Асинхронно завантажуємо імена співробітників
+                    const employeeCells = document.querySelectorAll('.employee-cell');
+                    console.log('👥 Знайдено комірок для імен:', employeeCells.length);
+
+                    employeeCells.forEach(async (cell, idx) => {
+                        const employeeId = cell.getAttribute('data-employee-id');
+                        console.log(`📝 Комірка ${idx}: employeeId =`, employeeId);
+
+                        if (employeeId) {
+                            const name = await getEmployeeName(employeeId);
+                            cell.innerHTML = '<span class="employee-name">' + name + '</span>';
+                        } else {
+                            console.log(`⚠️ Комірка ${idx}: employeeId порожній`);
+                            cell.innerHTML = '—';
+                        }
+                    });
+
+                    console.log('✅ Таблиця побудована');
+
+                } else {
+                    historyStats.innerHTML = '<h3>' + title + '</h3><p>Немає операцій</p>';
+                }
+            } catch (e) {
+                console.error('❌ Помилка:', e);
+                historyContent.innerHTML = '<p style="color:red">Помилка завантаження історії</p>';
+            }
+        }
+
+        closeModal.addEventListener('click', () => { historyModal.style.display = 'none'; });
+        historyModal.addEventListener('click', (e) => { if (e.target === historyModal) historyModal.style.display = 'none'; });
     </script>
+
 </body>
 
 </html>
