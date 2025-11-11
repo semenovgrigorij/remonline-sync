@@ -574,7 +574,7 @@
 
     <script>
         // Скрипт для  показу модального вікна про розірвання сесії
-        // Функція для показу модального вікна про розірвання сесії
+
         function showSessionExpiredModal() {
             document.getElementById('sessionExpiredModal').style.display = 'block';
         }
@@ -655,17 +655,62 @@
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const u = username.value, p = password.value, t = apiToken.value;
+
+            console.log('🔐 Спроба авторизації...');
+
+            const u = username.value.trim();
+            const p = password.value.trim();
+            const t = apiToken.value.trim();
+
+            console.log('👤 Username:', u);
+            console.log('🔑 Password length:', p.length);
+            console.log('🎫 API Token length:', t.length);
+
+            if (!u || !p || !t) {
+                loginError.textContent = 'Заповніть всі поля';
+                loginError.style.display = 'block';
+                console.error('❌ Порожні поля');
+                return;
+            }
+
             loginBtn.disabled = true;
             loginBtn.textContent = 'Вхід...';
             loginError.style.display = 'none';
+
             try {
-                const r = await fetch(API + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ username: u, password: p, apiToken: t }) });
+                console.log('📡 Відправляємо запит на /api/login...');
+
+                const r = await fetch(API + '/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username: u, password: p, apiToken: t })
+                });
+
+                console.log('📥 Response status:', r.status);
+                console.log('📥 Response ok:', r.ok);
+
                 const d = await r.json();
-                if (d.success) { userEmail.textContent = d.username; loginContainer.style.display = 'none'; mainContainer.style.display = 'block'; }
-                else { loginError.textContent = d.error || 'Помилка'; loginError.style.display = 'block'; }
-            } catch (e) { loginError.textContent = 'Помилка'; loginError.style.display = 'block'; }
-            finally { loginBtn.disabled = false; loginBtn.textContent = 'Увійти'; }
+                console.log('📦 Response data:', d);
+
+                if (d.success) {
+                    console.log('✅ Авторизація успішна!');
+                    loginContainer.style.display = 'none';
+                    mainContainer.style.display = 'block';
+                } else {
+                    console.error('❌ Авторизація неуспішна:', d.error);
+                    loginError.textContent = d.error || 'Невірний логін або пароль';
+                    loginError.style.display = 'block';
+                }
+            } catch (err) {
+                console.error('❌ ПОМИЛКА:', err);
+                console.error('❌ Stack:', err.stack);
+                loginError.textContent = "Помилка з'єднання з сервером";
+                loginError.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Авторизуватись';
+            }
         });
 
         logoutBtn.addEventListener('click', async () => {
