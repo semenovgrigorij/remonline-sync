@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>RemOnline v5.5.6</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Історія переміщення товарів</title>
+    <link rel="icon" type="image/x-icon" href="./img/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="./img/favicon.ico" />
     <style>
         * {
             margin: 0;
@@ -18,11 +21,18 @@
         }
 
         .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             background: white;
             border-radius: 10px;
             padding: 30px;
             max-width: 400px;
             margin: 100px auto
+        }
+
+        #loginForm {
+            width: 100%;
         }
 
         .login-container h1 {
@@ -466,29 +476,29 @@
 <body>
 
     <div id="loginContainer" class="login-container">
-        <h1>📦 RemOnline</h1>
-        <p>v5.5.6</p>
+        <img src="./img/GCAR_LOGO.png" alt="logo" width="50">
+        <h1>Історія переміщення товарів</h1>
         <div class="error-message" id="loginError"></div>
         <form id="loginForm">
             <div class="form-group">
-                <label>Email:</label>
+                <label>Логін або Email</label>
                 <input type="text" id="username" required>
             </div>
             <div class="form-group">
-                <label>Пароль:</label>
+                <label>Пароль</label>
                 <input type="password" id="password" required>
             </div>
             <div class="form-group">
-                <label>API Token:</label>
+                <label>API Token</label>
                 <input type="text" id="apiToken" required>
             </div>
-            <button type="submit" class="login-btn" id="loginBtn">Увійти</button>
+            <button type="submit" class="login-btn" id="loginBtn">Авторизуватись</button>
         </form>
     </div>
 
     <div id="mainContainer" class="main-container">
         <div class="header">
-            <h1>📦 RemOnline v5.5.6</h1>
+            <h1><img src="./img/GCAR_LOGO.png" alt="golo" width="50"> Історія переміщення товарів 📦</h1>
             <div>
                 <span id="userEmail"></span>
                 <button class="logout-btn" id="logoutBtn">Вийти</button>
@@ -519,7 +529,6 @@
     <div id="historyModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" id="closeModal">×</span>
-            <h2>📊 Історія</h2>
             <div id="historyStats"></div>
             <div id="historyContent"></div>
         </div>
@@ -835,10 +844,10 @@
                     h += '<th>Дата</th>';
                     h += '<th>Документ</th>';
                     h += '<th>Хто створив</th>';
-                    h += '<th>Операція</th>';
-                    h += '<th>Клієнт</th>';
-                    h += '<th style="text-align:right">+</th>';
-                    h += '<th style="text-align:right">-</th>';
+                    h += '<th>Тип документа</th>';
+                    h += '<th>Контрагент</th>';
+                    h += '<th style="text-align:right">Прихід</th>';
+                    h += '<th style="text-align:right">Витрата</th>';
                     h += '<th style="text-align:right">Залишок</th>';
                     h += '</tr></thead>';
                     h += '<tbody>';
@@ -865,7 +874,7 @@
                     });
 
                     h += '</tbody></table>';
-                    historyStats.innerHTML = '<h3>' + title + '</h3><p>Операцій: ' + d.operations.length + '</p>';
+                    historyStats.innerHTML = '<h3>' + title + '</h3>';
                     historyContent.innerHTML = h;
 
                     console.log('🔄 Починаємо завантаження імен співробітників...');
