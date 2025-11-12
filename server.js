@@ -596,10 +596,6 @@ app.get("/api/employee/:employeeId", requireAuth, async (req, res) => {
   }
 });
 
-// app.listen(PORT, () => {
-//   console.log("🚀 RemOnline Sync v5.5.8 → http://localhost:" + PORT + "/");
-// });
-
 // ====================================
 // ENDPOINT ДЛЯ HEALTH CHECK
 // ====================================
@@ -608,27 +604,33 @@ app.get("/health", (req, res) => {
 });
 
 // ====================================
-// ЗАПУСК СЕРВЕРА + ПІНГУВАННЯ
+// ЗАПУСК СЕРВЕРА + ПОДВІЙНЕ ПІНГУВАННЯ
 // ====================================
 app.listen(PORT, () => {
   console.log("🚀 RemOnline Sync v5.5.8 → http://localhost:" + PORT + "/");
-  console.log("🔔 Запущено пінгування Fly.io кожні 10 хвилин");
+  console.log("🔔 Запущено пінгування обох сервісів кожні 10 хвилин");
 
-  // Перший пінг одразу (через 5 сек)
+  // Визначаємо URL власного сервера
+  const SELF_URL =
+    process.env.RENDER_EXTERNAL_URL ||
+    (process.env.RENDER ? "https://remonline-sync.onrender.com" : null);
+
+  if (SELF_URL) {
+    console.log(`📍 Самопінгування: ${SELF_URL}`);
+  }
+
+  // ПІНГУВАННЯ FLY.IO
   setTimeout(async () => {
     try {
       const response = await fetch(
         "https://remonline-login-improved.fly.dev/health"
       );
-      if (response.ok) {
-        console.log("✅ Fly.io: перший пінг успішний");
-      }
+      if (response.ok) console.log("✅ Fly.io: перший пінг успішний");
     } catch (e) {
       console.log("⚠️ Fly.io: перший пінг не вдався");
     }
   }, 5000);
 
-  // Пінгування кожні 10 хвилин
   setInterval(async () => {
     try {
       const response = await fetch(
@@ -636,12 +638,34 @@ app.listen(PORT, () => {
       );
       if (response.ok) {
         const now = new Date().toLocaleTimeString("uk-UA");
-        console.log(`✅ [${now}] Fly.io pinged successfully`);
-      } else {
-        console.log(`⚠️ Fly.io ping failed: ${response.status}`);
+        console.log(`✅ [${now}] Fly.io pinged`);
       }
     } catch (e) {
       console.error("❌ Fly.io ping error:", e.message);
     }
-  }, 10 * 60 * 1000); // 10 хвилин
+  }, 10 * 60 * 1000);
+
+  // САМОПІНГУВАННЯ RENDER
+  if (SELF_URL) {
+    setTimeout(async () => {
+      try {
+        const response = await fetch(SELF_URL + "/health");
+        if (response.ok) console.log("✅ Render: перший самопінг успішний");
+      } catch (e) {
+        console.log("⚠️ Render: перший самопінг не вдався");
+      }
+    }, 30000);
+
+    setInterval(async () => {
+      try {
+        const response = await fetch(SELF_URL + "/health");
+        if (response.ok) {
+          const now = new Date().toLocaleTimeString("uk-UA");
+          console.log(`✅ [${now}] Render self-pinged`);
+        }
+      } catch (e) {
+        console.error("❌ Render self-ping error:", e.message);
+      }
+    }, 10 * 60 * 1000);
+  }
 });
