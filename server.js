@@ -520,7 +520,7 @@ app.get(
 // Кеш для списку співробітників
 let employeesCache = null;
 let employeesCacheTime = 0;
-const EMPLOYEES_CACHE_TTL = 30 * 60 * 1000; // 30 хвилин
+const EMPLOYEES_CACHE_TTL = 30 * 60 * 1000;
 
 // Функція для завантаження списку всіх співробітників
 async function loadAllEmployees(apiToken) {
@@ -596,6 +596,52 @@ app.get("/api/employee/:employeeId", requireAuth, async (req, res) => {
   }
 });
 
+// app.listen(PORT, () => {
+//   console.log("🚀 RemOnline Sync v5.5.8 → http://localhost:" + PORT + "/");
+// });
+
+// ====================================
+// ENDPOINT ДЛЯ HEALTH CHECK
+// ====================================
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: Date.now() });
+});
+
+// ====================================
+// ЗАПУСК СЕРВЕРА + ПІНГУВАННЯ
+// ====================================
 app.listen(PORT, () => {
   console.log("🚀 RemOnline Sync v5.5.8 → http://localhost:" + PORT + "/");
+  console.log("🔔 Запущено пінгування Fly.io кожні 10 хвилин");
+
+  // Перший пінг одразу (через 5 сек)
+  setTimeout(async () => {
+    try {
+      const response = await fetch(
+        "https://remonline-login-improved.fly.dev/health"
+      );
+      if (response.ok) {
+        console.log("✅ Fly.io: перший пінг успішний");
+      }
+    } catch (e) {
+      console.log("⚠️ Fly.io: перший пінг не вдався");
+    }
+  }, 5000);
+
+  // Пінгування кожні 10 хвилин
+  setInterval(async () => {
+    try {
+      const response = await fetch(
+        "https://remonline-login-improved.fly.dev/health"
+      );
+      if (response.ok) {
+        const now = new Date().toLocaleTimeString("uk-UA");
+        console.log(`✅ [${now}] Fly.io pinged successfully`);
+      } else {
+        console.log(`⚠️ Fly.io ping failed: ${response.status}`);
+      }
+    } catch (e) {
+      console.error("❌ Fly.io ping error:", e.message);
+    }
+  }, 10 * 60 * 1000); // 10 хвилин
 });

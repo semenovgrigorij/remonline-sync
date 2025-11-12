@@ -491,6 +491,27 @@
         #historyContent::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+
+        /* Spinner animation */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 
@@ -536,7 +557,7 @@
                 <option value="">— виберіть —</option>
             </select>
             <label>Дата:</label>
-            <input type="date" id="startDate">
+            <input type="date" id="startDate" lang="uk">
         </div>
         <div class="content">
             <div class="search-section">
@@ -656,7 +677,7 @@
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            console.log('🔐 Спроба авторизації...');
+            console.log('🔐 Спроба авторізації...');
 
             const u = username.value.trim();
             const p = password.value.trim();
@@ -675,6 +696,18 @@
 
             loginBtn.disabled = true;
             loginBtn.textContent = 'Вхід...';
+
+            // Таймер для показу часу
+            let elapsed = 0;
+            const loginTimer = setInterval(() => {
+                elapsed++;
+                if (elapsed <= 30) {
+                    loginBtn.textContent = `Вхід... (${elapsed}с)`;
+                } else {
+                    loginBtn.textContent = `Вхід... (${elapsed}с - майже готово)`;
+                }
+            }, 1000);
+
             loginError.style.display = 'none';
 
             try {
@@ -708,6 +741,9 @@
                 loginError.textContent = "Помилка з'єднання з сервером";
                 loginError.style.display = 'block';
             } finally {
+                // Зупиняємо таймер
+                if (typeof loginTimer !== "undefined") clearInterval(loginTimer);
+
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Авторизуватись';
             }
@@ -883,12 +919,24 @@
 
         async function showHistory(pid, title) {
             const bid = branchSelect.value, wid = warehouseSelect.value;
-            const s = startDate.value ? new Date(startDate.value).getTime() : 0;
-            historyStats.innerHTML = '<h3>' + title + '</h3><p>Завантаження...</p>';
+            // Якщо дата не вибрана - використовуємо 01.05.2022
+            const defaultStartDate = new Date('2022-05-01').getTime();
+            const s = startDate.value ? new Date(startDate.value).getTime() : defaultStartDate;
+
+            // Індикатор завантаження з попередженням
+            historyStats.innerHTML = '<h3>' + title + '</h3>' +
+                '<div style="text-align:center; padding:20px;">' +
+                '<div class="spinner" style="margin:0 auto 15px; width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #667eea; border-radius:50%; animation:spin 1s linear infinite;"></div>' +
+                '<p style="font-size:16px; margin:10px 0; font-weight:500;">⏳ Завантаження історії...</p>' +
+                '<p style="font-size:13px; color:#666; margin:5px 0;">Це може зайняти до 3 хвилин для товарів з великою історією</p>' +
+                '<p style="font-size:12px; color:#999; margin:5px 0;">Період: з 01.05.2022</p>' +
+                '</div>';
             historyContent.innerHTML = '';
             historyModal.style.display = 'block';
 
             try {
+                const startTime = Date.now();
+
                 const d = await fetchWithSessionCheck(
                     API + '/api/goods-history/' + pid + '/' + wid + '?branch_id=' + bid + '&startDate=' + s,
                     { credentials: 'include' }
@@ -899,13 +947,13 @@
                     return;
                 }
 
-                console.log('📊 Отримано операцій:', d.operations.length);
-                console.log('📋 Перша операція:', d.operations[0]);
+                const loadTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log('📊 Отримано операцій:', d.operations.length, 'за', loadTime, 'сек');
 
                 if (d.success && d.operations.length > 0) {
                     let bal = 0;
 
-                    // Створюємо таблицю
+                    // Створюємо таблицю ОДРАЗУ з placeholder для імен
                     let h = '<table>';
                     h += '<thead><tr>';
                     h += '<th>Дата</th>';
@@ -930,7 +978,7 @@
                         h += '<td>' + dt + '<br><small style="color:#999">' + time + '</small></td>';
                         h += '<td>' + op.documentId + '</td>';
                         h += '<td class="employee-cell" data-employee-id="' + (op.employeeId || '') + '" data-row="' + index + '">';
-                        h += '<span class="employee-loading">⏳...</span>';
+                        h += '<span style="color:#999;">⏳ ...</span>'; // Placeholder
                         h += '</td>';
                         h += '<td>' + op.type + '</td>';
                         h += '<td>' + op.clientName + '</td>';
@@ -941,36 +989,50 @@
                     });
 
                     h += '</tbody></table>';
-                    historyStats.innerHTML = '<h3>' + title + '</h3>';
+                    historyStats.innerHTML = '<h3>' + title + '</h3><p style="color:#666; font-size:14px;">Завантажено за ' + loadTime + ' сек. Завантаження імен співробітників...</p>';
                     historyContent.innerHTML = h;
 
-                    console.log('🔄 Починаємо завантаження імен співробітників...');
+                    console.log('✅ Таблиця показана, починаємо завантаження імен...');
 
-                    // Асинхронно завантажуємо імена співробітників
-                    const employeeCells = document.querySelectorAll('.employee-cell');
-                    console.log('👥 Знайдено комірок для імен:', employeeCells.length);
+                    // ОПТИМІЗАЦІЯ: Збираємо унікальні ID співробітників
+                    const uniqueEmployeeIds = [...new Set(
+                        d.operations
+                            .map(op => op.employeeId)
+                            .filter(id => id)
+                    )];
 
-                    employeeCells.forEach(async (cell, idx) => {
-                        const employeeId = cell.getAttribute('data-employee-id');
-                        console.log(`📝 Комірка ${idx}: employeeId =`, employeeId);
+                    console.log('👥 Унікальних співробітників:', uniqueEmployeeIds.length);
 
-                        if (employeeId) {
+                    // Завантажуємо імена ПАРАЛЕЛЬНО (всі одночасно)
+                    const employeeStartTime = Date.now();
+
+                    await Promise.all(
+                        uniqueEmployeeIds.map(async (employeeId) => {
                             const name = await getEmployeeName(employeeId);
-                            cell.innerHTML = '<span class="employee-name">' + name + '</span>';
-                        } else {
-                            console.log(`⚠️ Комірка ${idx}: employeeId порожній`);
-                            cell.innerHTML = '—';
-                        }
-                    });
 
-                    console.log('✅ Таблиця побудована');
+                            // Оновлюємо ВСІ комірки з цим employeeId
+                            const cells = document.querySelectorAll(`.employee-cell[data-employee-id="${employeeId}"]`);
+                            cells.forEach(cell => {
+                                cell.innerHTML = '<span class="employee-name">' + name + '</span>';
+                            });
+                        })
+                    );
+
+                    const employeeLoadTime = ((Date.now() - employeeStartTime) / 1000).toFixed(1);
+                    console.log('✅ Всі імена завантажено за', employeeLoadTime, 'сек');
+
+                    historyStats.innerHTML = '<h3>' + title + '</h3>' +
+                        '<p style="color:#666; font-size:14px;">Операцій: ' + d.operations.length + ' | ' +
+                        'Історія: ' + loadTime + 'с | ' +
+                        'Імена: ' + employeeLoadTime + 'с | ' +
+                        'Всього: ' + ((Date.now() - startTime) / 1000).toFixed(1) + 'с</p>';
 
                 } else {
                     historyStats.innerHTML = '<h3>' + title + '</h3><p>Немає операцій</p>';
                 }
             } catch (e) {
                 console.error('❌ Помилка:', e);
-                historyContent.innerHTML = '<p style="color:red">Помилка завантаження історії</p>';
+                historyContent.innerHTML = '<p style="color:red; padding:20px; text-align:center;">Помилка завантаження історії</p>';
             }
         }
 
