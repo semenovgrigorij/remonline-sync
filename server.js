@@ -5,6 +5,31 @@ import https from "https";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ====================================
+// КЕШУВАННЯ COOKIES (30 хвилин)
+// ====================================
+const cookieCache = new Map();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 хвилин
+
+function getCachedCookies(username, password) {
+  const cacheKey = `${username}:${password}`;
+  const cached = cookieCache.get(cacheKey);
+
+  if (cached && Date.now() - cached.time < CACHE_DURATION) {
+    const age = Math.round((Date.now() - cached.time) / 1000);
+    console.log(`💾 Використовуємо кеш cookies (вік: ${age} сек)`);
+    return cached.cookies;
+  }
+
+  return null;
+}
+
+function setCachedCookies(username, password, cookies) {
+  const cacheKey = `${username}:${password}`;
+  cookieCache.set(cacheKey, { cookies, time: Date.now() });
+  console.log(`💾 Cookies збережено в кеш на 30 хв`);
+}
+
 app.use(express.json());
 app.use(express.static("public"));
 app.use(
@@ -28,6 +53,17 @@ async function getCookiesFromLoginService(
   password,
   forceNew = false
 ) {
+  // Перевіряємо кеш (якщо не forceNew)
+  if (!forceNew) {
+    const cached = getCachedCookies(username, password);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const startTime = Date.now();
+  console.log("⏱️  Початок запиту до Fly.io...");
+
   return new Promise((resolve) => {
     const postData = JSON.stringify({ username, password, forceNew });
     const req = https.request(
@@ -46,16 +82,31 @@ async function getCookiesFromLoginService(
         let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+          console.log(`⏱️  Fly.io відповів за ${elapsed} сек`);
+
           try {
             const result = JSON.parse(data);
-            resolve(result.success && result.cookies ? result.cookies : null);
+            const cookies =
+              result.success && result.cookies ? result.cookies : null;
+
+            // Зберігаємо в кеш
+            if (cookies) {
+              setCachedCookies(username, password, cookies);
+            }
+
+            resolve(cookies);
           } catch (err) {
             resolve(null);
           }
         });
       }
     );
-    req.on("error", () => resolve(null));
+    req.on("error", () => {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`❌ Fly.io помилка після ${elapsed} сек`);
+      resolve(null);
+    });
     req.write(postData);
     req.end();
   });
@@ -160,6 +211,9 @@ function apiGet(path, token) {
 }
 
 app.post("/api/login", async (req, res) => {
+  const loginStartTime = Date.now();
+  console.log("⏱️  ============ ПОЧАТОК АВТОРИЗАЦІЇ ============");
+
   const { username, password, apiToken } = req.body;
   if (!username || !password || !apiToken)
     return res
@@ -168,19 +222,33 @@ app.post("/api/login", async (req, res) => {
 
   try {
     console.log("🔐 Вхід:", username);
-    const cookies = await getCookiesFromLoginService(username, password, true);
-    if (!cookies)
+
+    // Використовуємо кеш (forceNew = false)
+    const cookies = await getCookiesFromLoginService(username, password, false);
+
+    if (!cookies) {
+      const totalTime = ((Date.now() - loginStartTime) / 1000).toFixed(2);
+      console.log(
+        `⏱️  ============ ПОМИЛКА АВТОРИЗАЦІЇ (${totalTime} сек) ============`
+      );
       return res.status(401).json({ success: false, error: "Невірний логін" });
+    }
 
     req.session.username = username;
     req.session.password = password;
     req.session.cookies = cookies;
     req.session.apiToken = apiToken;
 
-    console.log("✅", username, "увійшов");
+    const totalTime = ((Date.now() - loginStartTime) / 1000).toFixed(2);
+    console.log(`✅ ${username} увійшов за ${totalTime} сек`);
+    console.log(
+      `⏱️  ============ КІНЕЦЬ АВТОРИЗАЦІЇ (${totalTime} сек) ============`
+    );
+
     res.json({ success: true, username: username });
   } catch (err) {
-    console.error("Помилка:", err);
+    const totalTime = ((Date.now() - loginStartTime) / 1000).toFixed(2);
+    console.error(`Помилка після ${totalTime} сек:`, err);
     res.status(500).json({ success: false, error: "Помилка сервера" });
   }
 });
@@ -520,7 +588,7 @@ app.get(
 // Кеш для списку співробітників
 let employeesCache = null;
 let employeesCacheTime = 0;
-const EMPLOYEES_CACHE_TTL = 30 * 60 * 1000;
+const EMPLOYEES_CACHE_TTL = 30 * 60 * 1000; // 30 хвилин
 
 // Функція для завантаження списку всіх співробітників
 async function loadAllEmployees(apiToken) {
@@ -604,7 +672,7 @@ app.get("/health", (req, res) => {
 });
 
 // ====================================
-// ЗАПУСК СЕРВЕРА + ПОДВІЙНЕ ПІНГУВАННЯ
+// ЗАПУСК СЕРВЕРА + ПІНГУВАННЯ
 // ====================================
 app.listen(PORT, () => {
   console.log("🚀 RemOnline Sync v5.5.8 → http://localhost:" + PORT + "/");
@@ -619,18 +687,25 @@ app.listen(PORT, () => {
     console.log(`📍 Самопінгування: ${SELF_URL}`);
   }
 
+  // ====================================
   // ПІНГУВАННЯ FLY.IO
+  // ====================================
+
+  // Перший пінг Fly.io одразу (через 5 сек)
   setTimeout(async () => {
     try {
       const response = await fetch(
         "https://remonline-login-improved.fly.dev/health"
       );
-      if (response.ok) console.log("✅ Fly.io: перший пінг успішний");
+      if (response.ok) {
+        console.log("✅ Fly.io: перший пінг успішний");
+      }
     } catch (e) {
       console.log("⚠️ Fly.io: перший пінг не вдався");
     }
   }, 5000);
 
+  // Регулярне пінгування Fly.io (кожні 10 хв)
   setInterval(async () => {
     try {
       const response = await fetch(
@@ -639,29 +714,40 @@ app.listen(PORT, () => {
       if (response.ok) {
         const now = new Date().toLocaleTimeString("uk-UA");
         console.log(`✅ [${now}] Fly.io pinged`);
+      } else {
+        console.log(`⚠️ Fly.io ping failed: ${response.status}`);
       }
     } catch (e) {
       console.error("❌ Fly.io ping error:", e.message);
     }
   }, 10 * 60 * 1000);
 
-  // САМОПІНГУВАННЯ RENDER
+  // ====================================
+  // САМОПІНГУВАННЯ RENDER (якщо на Render)
+  // ====================================
+
   if (SELF_URL) {
+    // Перший самопінг через 30 секунд
     setTimeout(async () => {
       try {
         const response = await fetch(SELF_URL + "/health");
-        if (response.ok) console.log("✅ Render: перший самопінг успішний");
+        if (response.ok) {
+          console.log("✅ Render: перший самопінг успішний");
+        }
       } catch (e) {
         console.log("⚠️ Render: перший самопінг не вдався");
       }
     }, 30000);
 
+    // Регулярне самопінгування (кожні 10 хв)
     setInterval(async () => {
       try {
         const response = await fetch(SELF_URL + "/health");
         if (response.ok) {
           const now = new Date().toLocaleTimeString("uk-UA");
           console.log(`✅ [${now}] Render self-pinged`);
+        } else {
+          console.log(`⚠️ Render self-ping failed: ${response.status}`);
         }
       } catch (e) {
         console.error("❌ Render self-ping error:", e.message);
